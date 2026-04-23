@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>SmartAuto CRM PRO+ (v7.0) Full Functionality</title>
+    <!-- Подключаем библиотеки для графиков и PDF -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <style>
+        :root {
+            --primary: #1a73e8; --danger: #d93025; --success: #2e7d32; --warning: #f29900;
+            --cold: #757575; --warm: #e67e22; --active: #27ae60; --refused: #546e7a;
+            --bg: #f1f3f4; --border: #dadce0;
+        }
+        body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg); margin: 0; padding: 0; font-size: 13px; color: #3c4043; overflow: hidden; }
+        
+        .logo-container { display: flex; align-items: center; padding: 0 15px; background: #fff; border-right: 1px solid var(--border); }
+        .logo-img { height: 28px; width: auto; border-radius: 4px; }
+
+        #login-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg); z-index: 9000; display: flex; align-items: center; justify-content: center; }
+        .login-card { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 320px; text-align: center; }
+        .login-card h2 { margin: 10px 0; color: var(--primary); font-size: 18px; }
+        .login-card input { margin-bottom: 10px; padding: 10px; border: 1px solid var(--border); border-radius: 4px; width: 100%; box-sizing: border-box; }
+        .login-toggle { margin-top: 15px; font-size: 11px; color: #666; cursor: pointer; text-decoration: underline; }
+        
+        .remember-container { display: flex; align-items: center; gap: 8px; margin-bottom: 15px; justify-content: flex-start; }
+        .remember-container input { width: auto; margin: 0; cursor: pointer; }
+
+        #loader { position: fixed; top: 0; left: 0; width: 100%; height: 3px; background: #ccc; z-index: 10000; display: none; }
+        #loader-bar { width: 30%; height: 100%; background: var(--primary); animation: load 2s infinite; }
+        @keyframes load { 0% { margin-left: -30%; } 100% { margin-left: 100%; } }
+
+        .tabs { display: flex; background: #fff; border-bottom: 1px solid var(--border); height: 40px; }
+        .tab-btn { padding: 0 15px; border: none; background: none; cursor: pointer; font-size: 10px; font-weight: bold; color: #5f6368; border-bottom: 3px solid transparent; text-transform: uppercase; line-height: 40px; display: flex; gap: 5px; }
+        .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); background: #f8f9fa; }
+        .tab-counter { background: #eee; padding: 0 6px; border-radius: 10px; height: 16px; line-height: 16px; margin-top: 12px; font-size: 9px; color: #666; }
+        
+        .content { display: none; height: calc(100vh - 40px); flex-direction: column; }
+        .content.active { display: flex; }
+        
+        .top-section { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 8px; background: #e0e0e0; border-bottom: 1px solid var(--border); height: 340px; min-height: 340px; box-sizing: border-box; }
+        .bottom-section { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; }
+        
+        .controls-bar { padding: 6px 10px; background: #fff; border-bottom: 1px solid var(--border); display: flex; gap: 8px; align-items: center; flex-wrap: nowrap; overflow-x: auto; }
+        .controls-bar input, .controls-bar select { padding: 4px; border: 1px solid var(--border); border-radius: 3px; font-size: 11px; height: 26px; min-width: 100px; }
+        
+        .scroll-list { flex-grow: 1; overflow-y: auto; padding: 5px; background: #f8f9fa; }
+        .card { background: white; padding: 10px; border-radius: 4px; border: 1px solid var(--border); height: 100%; box-sizing: border-box; overflow-y: auto; }
+        .card h3 { margin: 0 0 8px 0; font-size: 11px; color: var(--primary); text-transform: uppercase; border-bottom: 1px solid #eee; padding-bottom: 4px; }
+        
+        .input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 5px; }
+        input, textarea, select { width: 100%; padding: 4px 8px; border: 1px solid var(--border); border-radius: 3px; box-sizing: border-box; font-size: 11px; }
+        
+        button.main { width: 100%; padding: 7px; background: var(--primary); color: white; border: none; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 11px; }
+        
+        .list-item { background: white; padding: 4px 10px; border-radius: 3px; border: 1px solid var(--border); margin-bottom: 1px; cursor: pointer; display: flex; align-items: center; gap: 8px; min-height: 32px; }
+        .list-item:hover { border-color: var(--primary); background: #f0f7ff; }
+        .list-item.completed { background: #f9f9f9 !important; opacity: 0.6; border-left: 4px solid #999; }
+        
+        .list-item.overdue { background-color: #fff5f5; border-left: 4px solid var(--danger); }
+        .overdue-tag { background: var(--danger); color: white; font-size: 8px; padding: 1px 4px; border-radius: 3px; margin-left: 5px; text-transform: uppercase; font-weight: bold; }
+
+        .list-item h4 { margin: 0; font-size: 11px; line-height: 1.2; flex-grow: 1; }
+        .list-item p { margin: 0; font-size: 10px; color: #666; }
+        
+        .list-item.forgotten { background-color: #fff0f0; border-left: 4px solid var(--danger); }
+        .forgotten-tag { background: var(--danger); color: #fff; font-size: 8px; padding: 1px 4px; border-radius: 3px; margin-left: 5px; text-transform: uppercase; vertical-align: middle; }
+
+        .item-main { flex-grow: 1; min-width: 0; display: flex; flex-direction: column; }
+        .item-actions { display: flex; gap: 4px; }
+        .action-btn { cursor: pointer; border: none; background: none; font-size: 13px; color: #ccc; padding: 2px; }
+        .action-btn:hover { color: var(--primary); }
+        .btn-delete:hover { color: var(--danger); }
+
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 7000; }
+        .modal-content { background: #fff; padding: 15px; width: 480px; border-radius: 6px; margin: 40px auto; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+
+        .preview-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 5px; }
+        .preview-box { border-bottom: 1px solid #f1f3f4; padding-bottom: 2px; }
+        .preview-box label { display: block; font-size: 8px; color: #999; text-transform: uppercase; }
+        .preview-box span { font-weight: 500; font-size: 11px; color: #333; }
+        
+        .btn-pdf { background: var(--success); color: white; border: none; padding: 6px 12px; border-radius: 3px; cursor: pointer; font-size: 10px; text-transform: uppercase; font-weight: bold; margin-top: 10px; width: 100%; }
+        .btn-pdf:hover { background: #236327; }
+
+        /* Файлы Сделок */
+        .file-list-container { margin-top: 10px; border-top: 1px solid #eee; padding-top: 10px; }
+        .file-item { display: flex; align-items: center; justify-content: space-between; background: #f8f9fa; padding: 5px 8px; border-radius: 3px; margin-bottom: 4px; font-size: 10px; border: 1px solid #eee; }
+        .file-item a { color: var(--primary); text-decoration: none; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 160px; }
+        .file-delete { color: var(--danger); cursor: pointer; font-weight: bold; margin-left: 10px; font-size: 12px; }
+        .upload-area { margin-top: 8px; padding: 8px; border: 1px dashed var(--primary); background: #f0f7ff; text-align: center; border-radius: 4px; }
+
+        .report-table { width: 100%; border-collapse: collapse; background: white; font-size: 12px; margin-top: 10px; }
+        .report-table th, .report-table td { border: 1px solid var(--border); padding: 10px; text-align: center; }
+        .report-table th { background: #f8f9fa; color: var(--primary); text-transform: uppercase; font-size: 10px; }
+
+        .clickable-row { cursor: pointer; }
+        .clickable-row:hover { background: #e8f0fe !important; }
+        .admin-controls { background: #fffde7; padding: 10px; border: 1px solid #fff59d; margin-bottom: 15px; border-radius: 4px; display: flex; gap: 10px; align-items: center; }
+        .period-controls { background: #f0f7ff; padding: 10px; border: 1px solid var(--border); margin-bottom: 15px; border-radius: 4px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        
+        .charts-container { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+        .chart-box { background: white; padding: 15px; border: 1px solid var(--border); border-radius: 6px; height: 260px; }
+        .chart-box h4 { margin: 0 0 10px 0; font-size: 11px; color: #666; text-transform: uppercase; text-align: center; }
+
+        /* Профиль */
+        .profile-container { max-width: 600px; margin: 30px auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        .profile-header { display: flex; align-items: center; gap: 20px; margin-bottom: 30px; border-bottom: 1px solid #eee; padding-bottom: 20px; }
+        .profile-avatar { width: 80px; height: 80px; background: var(--primary); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: bold; }
+        .profile-group { margin-bottom: 15px; }
+        .profile-group label { display: block; font-size: 11px; color: #666; margin-bottom: 5px; text-transform: uppercase; }
+
+        #pdf-export-container { position: absolute; left: -9999px; top: -9999px; }
+        .pdf-page { width: 595px; padding: 50px; background: white; font-family: 'Segoe UI', sans-serif; color: #333; }
+        .pdf-header { display: flex; justify-content: space-between; border-bottom: 2px solid #1a73e8; padding-bottom: 15px; margin-bottom: 30px; }
+        .pdf-title { font-size: 26px; color: #1a73e8; font-weight: bold; }
+        .pdf-info-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 13px; }
+        .pdf-table { width: 100%; border-collapse: collapse; margin: 25px 0; }
+        .pdf-table th { background: #f8f9fa; text-align: left; padding: 10px; border: 1px solid #dee2e6; font-size: 13px; }
+        .pdf-table td { padding: 10px; border: 1px solid #dee2e6; font-size: 13px; }
+        .pdf-footer { margin-top: 50px; border-top: 1px solid #dee2e6; padding-top: 15px; font-size: 11px; color: #6c757d; }
+        
+        .share-tag { background: #e8f0fe; color: #1a73e8; padding: 2px 6px; border-radius: 10px; font-size: 9px; margin-right: 4px; border: 1px solid #d2e3fc; }
+    </style>
+</head>
+<body>
+
+<div id="loader"><div id="loader-bar"></div></div>
+
+<!-- Контейнер для экспорта PDF -->
+<div id="pdf-export-container">
+    <div id="pdf-template" class="pdf-page">
+        <div class="pdf-header">
+            <div>
+                <div class="pdf-title">ПРОПОЗИЦІЯ</div>
+                <div id="pdf-doc-date" style="font-size: 13px; color: #666; margin-top: 5px;"></div>
+            </div>
+            <div style="text-align: right;">
+                <div style="font-weight: bold; color: #1a73e8; font-size: 16px;">SmartAuto Ltd</div>
+                <div style="font-size: 11px;">Міжнародні вантажні перевезення</div>
+            </div>
+        </div>
+        
+        <div class="pdf-info-row">
+            <div><strong>Замовник (Клієнт):</strong> <span id="pdf-client"></span></div>
+            <div><strong>Номер угоди:</strong> <span id="pdf-number"></span></div>
+        </div>
+
+        <table class="pdf-table">
+            <thead>
+                <tr>
+                    <th style="width: 40%;">Опис послуги / Параметр</th>
+                    <th style="width: 60%;">Деталі</th>
+                </tr>
+            </thead>
+            <tbody id="pdf-table-body">
+                <!-- Данные заповнюються через JS -->
+            </tbody>
+        </table>
+
+        <div id="pdf-additional-info" style="margin-top: 30px; font-size: 12px; line-height: 1.6; background: #f8f9fa; padding: 15px; border-radius: 4px;">
+            <strong>Умови надання послуг:</strong><br>
+            • Пропозиція дійсна протягом 3-х банківських днів.<br>
+            • Оплата проводиться згідно домовленості у встановлені терміни.<br>
+            • Послуга включає експедирування та повний супровід вантажу.
+        </div>
+
+        <div class="pdf-footer">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div>
+                    <strong>Відповідальний менеджер:</strong> <span id="pdf-manager"></span><br>
+                    <span id="pdf-manager-contacts" style="font-size: 10px; color: #444;"></span>
+                </div>
+                <div style="text-align: center;">
+                    <div style="margin-bottom: 10px;">М.П. / Підпис</div>
+                    <div>__________________________</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="login-screen">
+    <div class="login-card">
+        <img src="https://cdn-icons-png.flaticon.com/512/2304/2304226.png" style="width: 80px; height: 80px; border-radius: 50%; margin-bottom: 10px;">
+        <h2>SmartAuto CRM</h2>
+        <div id="auth-login-fields">
+            <input type="text" id="loginEmail" placeholder="Email или Логин">
+            <input type="password" id="loginPass" placeholder="Пароль">
+            <div class="remember-container"><input type="checkbox" id="rememberMe"><label for="rememberMe" style="font-size:11px;">Запомнить меня</label></div>
+            <button class="main" onclick="handleLogin()">Войти</button>
+            <div class="login-toggle" onclick="toggleAuthMode(true)">Создать аккаунт</div>
+        </div>
+        <div id="auth-reg-fields" style="display:none;">
+            <input type="text" id="regName" placeholder="Ваше Имя">
+            <input type="email" id="regEmail" placeholder="Email">
+            <input type="password" id="regPass" placeholder="Пароль">
+            <button class="main" style="background:var(--success);" onclick="handleRegister()">Регистрация</button>
+            <div class="login-toggle" onclick="toggleAuthMode(false)">Уже есть аккаунт</div>
+        </div>
+    </div>
+</div>
+
+<div class="tabs">
+    <div class="logo-container"><img src="https://cdn-icons-png.flaticon.com/512/2304/2304226.png" class="logo-img"></div>
+    <button class="tab-btn active" id="btn-calls" onclick="openTab('calls')">📞 Активность <span class="tab-counter" id="count-calls">0</span></button>
+    <button class="tab-btn" id="btn-requests" onclick="openTab('requests')">📦 Запросы <span class="tab-counter" id="count-requests">0</span></button>
+    <button class="tab-btn" id="btn-deals" onclick="openTab('deals')">💰 Сделки <span class="tab-counter" id="count-deals">0</span></button>
+    <button class="tab-btn" id="btn-companies" onclick="openTab('companies')">🏢 Компании <span class="tab-counter" id="count-companies">0</span></button>
+    <button class="tab-btn" id="btn-partners" onclick="openTab('partners')">🤝 Партнеры <span class="tab-counter" id="count-partners">0</span></button>
+    <button class="tab-btn" id="btn-report" onclick="openTab('report')">📊 Отчет</button>
+    <button class="tab-btn" id="btn-stats" onclick="openTab('stats')">📈 Статистика</button>
+    <button class="tab-btn" id="btn-profile" onclick="openTab('profile')">👤 Профиль</button>
+    <div style="margin-left: auto; padding: 5px 10px; color: #999; font-size: 9px; text-align: right;">
+        <span id="user-display" style="color:var(--primary); font-weight:bold;"></span><br>
+        <span id="sync-status">Загрузка...</span> | <a href="#" onclick="logout()" style="color:var(--danger); text-decoration:none;">Выход</a>
+    </div>
+</div>
+
+<!-- ВКЛАДКА ЗВОНКИ -->
+<div id="calls" class="content active">
+    <div class="top-section">
+        <div class="card">
+            <h3>Запись звонка / Напоминание</h3>
+            <div class="input-row"><input type="text" id="callName" list="allEntitiesData" placeholder="Компания"><input type="datetime-local" id="callTime"><textarea id="callTopic" style="grid-column: span 2;" placeholder="Результат..."></textarea></div>
+            <button class="main" onclick="addReminder()">Добавить запись</button>
+        </div>
+        <div class="card" id="preview-calls"><div style="color:#ccc; text-align:center; margin-top:50px;">Выберите активность</div></div>
+    </div>
+    <div class="bottom-section">
+        <div class="controls-bar"><input type="text" id="searchCallComp" placeholder="Поиск..."><input type="date" id="searchCallDate" onchange="renderReminders()"><button onclick="clearCallFilters()">Сброс</button></div>
+        <div class="scroll-list" id="remindersList"></div>
+    </div>
+</div>
+
+<!-- ВКЛАДКА ЗАПРОСЫ -->
+<div id="requests" class="content">
+    <div class="top-section">
+        <div class="card">
+            <h3>Новый запрос</h3>
+            <div class="input-row">
+                <input type="text" id="reqComp" list="allEntitiesData" placeholder="Клиент *"><input type="text" id="reqCargo" placeholder="Груз *">
+                <select id="reqTransport" onchange="checkTransportFields('req')">
+                    <option value="авто">🚛 Авто</option>
+                    <option value="авиа">✈️ Авиа</option>
+                    <option value="море">🚢 Море</option>
+                    <option value="ж/д">🚂 Ж/Д</option>
+                </select>
+                <select id="reqContainer" style="display:none;"><option value="">Тип контейнера</option><option value="20GP">20GP</option><option value="40HC">40HC</option></select>
+                <input type="number" id="reqContQty" style="display:none;" placeholder="Кол-во конт.">
+                <input type="number" id="reqWeight" placeholder="Вес (кг)"><input type="number" id="reqVol" placeholder="Объем (м³)"><input type="number" id="reqValue" placeholder="Инвойс">
+                <select id="reqCurrency"><option value="USD">USD</option><option value="EUR">EUR</option></select><input type="text" id="reqLoad" placeholder="Загрузка"><input type="text" id="reqZip" placeholder="Индекс"><input type="text" id="reqUnload" placeholder="Выгрузка"><textarea id="reqDesc" style="grid-column: span 2;" placeholder="Детали..."></textarea>
+            </div>
+            <button class="main" style="background:#673ab7;" onclick="addRequest()">Сохранить запрос</button>
+        </div>
+        <div class="card" id="preview-requests"><div style="color:#ccc; text-align:center; margin-top:50px;">Выберите запрос</div></div>
+    </div>
+    <div class="bottom-section">
+        <div class="controls-bar"><input type="text" id="searchReq" placeholder="Поиск..." oninput="renderRequests()"></div>
+        <div class="scroll-list" id="requestsList"></div>
+    </div>
+</div>
+
+<!-- ВКЛАДКА СДЕЛКИ -->
+<div id="deals" class="content">
+    <div class="top-section">
+        <div class="card">
+            <h3>Новая сделка</h3>
+            <div class="input-row" style="grid-template-columns: 1fr 1fr 1fr;">
+                <input type="text" id="dealNum" placeholder="№ Сделки *"><input type="text" id="dealComp" list="allEntitiesData" placeholder="Клиент *"><input type="text" id="dealCargo" placeholder="Груз *">
+                <select id="dealType">
+                    <option value="">Тип сделки *</option>
+                    <option value="карго из Китая">📦 Карго из Китая</option>
+                    <option value="карго из Кореи">📦 Карго из Кореи</option>
+                    <option value="фрахт">🚢 Фрахт</option>
+                    <option value="карго Европа">🇪🇺 Карго Европа</option>
+                    <option value="контейнера - очистка">🧾 Контейнера - очистка</option>
+                    <option value="LCL">📦 LCL</option>
+                    <option value="экспорт">📤 Экспорт</option>
+                    <option value="trucking">🚛 Trucking</option>
+                </select>
+                <select id="dealTransport" onchange="checkTransportFields('deal')">
+                    <option value="авто">🚛 Авто</option>
+                    <option value="море">🚢 Море</option>
+                    <option value="авиа">✈️ Авиа</option>
+                    <option value="ж/д">🚂 Ж/Д</option>
+                </select>
+                <select id="dealContainer" style="display:none;"><option value="">Контейнер</option><option value="20GP">20GP</option><option value="40HC">40HC</option></select>
+                <input type="number" id="dealContQty" style="display:none;" placeholder="Кол-во конт.">
+                <input type="text" id="dealBL" style="display:none;" placeholder="№ Коносамента">
+                <input type="text" id="dealAWB" style="display:none;" placeholder="№ Авианакладной">
+                <input type="number" id="dealWeight" placeholder="Вес"><input type="number" id="dealVol" placeholder="Объем"><input type="number" id="dealVal" placeholder="Инвойс">
+                <input type="number" id="dealExp" placeholder="Расходы" oninput="calcDealProfit()"><input type="number" id="dealInc" placeholder="Доходы" oninput="calcDealProfit()"><input type="number" id="dealProf" placeholder="Прибыль" readonly style="background:#f0f7ff; color:var(--success); font-weight:bold;">
+                <input type="text" id="dealLoad" placeholder="Погрузка" style="grid-column: span 3;"><input type="text" id="dealUnload" placeholder="Выгрузка" style="grid-column: span 3;"><textarea id="dealInfo" style="grid-column: span 3;" placeholder="Инфо..."></textarea>
+            </div>
+            <button class="main" style="background:var(--active);" onclick="addDeal()">Создать сделку</button>
+        </div>
+        <div class="card" id="preview-deals"><div style="color:#ccc; text-align:center; margin-top:50px;">Выберите сделку</div></div>
+    </div>
+    <div class="bottom-section">
+        <div class="controls-bar"><input type="text" id="searchDeals" placeholder="Поиск..." oninput="renderDeals()"></div>
+        <div class="scroll-list" id="dealsList"></div>
+    </div>
+</div>
+
+<!-- ВКЛАДКА КОМПАНИИ -->
+<div id="companies" class="content">
+    <div class="top-section">
+        <div class="card">
+            <h3>Новая компания</h3>
+            <div class="input-row">
+                <input type="text" id="compName" placeholder="Название *"><input type="text" id="compCity" placeholder="Город"><input type="text" id="compContact" placeholder="Контакт"><input type="text" id="compPhone" placeholder="Телефон"><input type="email" id="compEmail" placeholder="Email"><input type="text" id="compWebsite" placeholder="Сайт"><input type="text" id="compImp" placeholder="Импорт"><input type="text" id="compExp" placeholder="Экспорт"><select id="compManager" style="grid-column: span 2;"></select><select id="compStatus"><option value="cold">❄️ Холодный</option><option value="warm">🔥 Теплый</option><option value="active">🏆 Активный</option></select>
+                <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" id="compPrivate"> Приватная</div>
+            </div>
+            <button class="main" style="background:var(--success);" onclick="addCompany()">Создать компанию</button>
+        </div>
+        <div class="card" id="preview-companies"></div>
+    </div>
+    <div class="bottom-section">
+        <div class="controls-bar">
+            <input type="text" id="searchComp" placeholder="Название..." oninput="renderCompanies()">
+            <input type="text" id="filterCity" placeholder="Город..." oninput="renderCompanies()">
+            <input type="text" id="filterImport" placeholder="Импорт..." oninput="renderCompanies()">
+            <input type="text" id="filterExport" placeholder="Экспорт..." oninput="renderCompanies()">
+            <select id="sortComp" onchange="updateSecondaryFilter()"><option value="">Фильтр</option><option value="manager">Менеджер</option><option value="status">Статус</option></select>
+            <select id="secondarySelect" style="display:none;" onchange="renderCompanies()"></select>
+        </div>
+        <div class="scroll-list" id="companiesList"></div>
+    </div>
+</div>
+
+<!-- ВКЛАДКА ПАРТНЕРЫ -->
+<div id="partners" class="content">
+    <div class="top-section">
+        <div class="card">
+            <h3>Новый партнер</h3>
+            <div class="input-row"><input type="text" id="partName" placeholder="Название *"><select id="partStatus"><option value="агент">🤝 Агент</option><option value="перевозчик">🚛 Перевозчик</option><option value="брокер">📑 Брокер</option></select><input type="text" id="partCountry" placeholder="Страна"><input type="text" id="partContact" placeholder="Контакт"><input type="text" id="partPhone" placeholder="Телефон"><input type="email" id="partEmail" placeholder="Email"><input type="text" id="partWeb" placeholder="Сайт"><textarea id="partDesc" style="grid-column: span 2;" placeholder="Описание..."></textarea></div>
+            <button class="main" style="background:#607d8b;" onclick="addPartner()">Добавить партнера</button>
+        </div>
+        <div class="card" id="preview-partners"></div>
+    </div>
+    <div class="bottom-section">
+        <div class="controls-bar"><input type="text" id="searchPart" placeholder="Поиск..." oninput="renderPartners()"></div>
+        <div class="scroll-list" id="partnersList"></div>
+    </div>
+</div>
+
+<!-- ВКЛАДКА ОТЧЕТ -->
+<div id="report" class="content">
+    <div class="scroll-list" style="background:white; padding:20px;">
+        <div id="admin-report-selector" class="admin-controls" style="display:none;">
+            <span>АДМИН:</span><select id="reportManagerFilter" onchange="generateReport()"></select>
+        </div>
+        <div class="period-controls">
+            <select id="reportYearFilter" onchange="generateReport()"></select>
+            <select id="reportMonthFilter" onchange="generateReport()">
+                <option value="all">Все месяцы</option>
+                <option value="0">Январь</option><option value="1">Февраль</option><option value="2">Март</option><option value="3">Апрель</option><option value="4">Май</option><option value="5">Июнь</option><option value="6">Июль</option><option value="7">Август</option><option value="8">Сентябрь</option><option value="9">Октябрь</option><option value="10">Ноябрь</option><option value="11">Декабрь</option>
+            </select>
+        </div>
+        <div id="reportData"></div>
+    </div>
+</div>
+
+<!-- ВКЛАДКА СТАТИСТИКА -->
+<div id="stats" class="content">
+    <div class="scroll-list" style="background:#f8f9fa; padding:20px;">
+        <div id="admin-stats-selector" class="admin-controls" style="display:none;">
+            <span>АДМИН:</span><select id="statsManagerFilter" onchange="renderManagerStats()"></select>
+        </div>
+        <div class="period-controls">
+            <select id="statsYearFilter" onchange="renderManagerStats()"></select>
+            <select id="statsMonthFilter" onchange="renderManagerStats()">
+                <option value="all">Все месяцы</option>
+                <option value="0">Январь</option><option value="1">Февраль</option><option value="2">Март</option><option value="3">Апрель</option><option value="4">Май</option><option value="5">Июнь</option><option value="6">Июль</option><option value="7">Август</option><option value="8">Сентябрь</option><option value="9">Октябрь</option><option value="10">Ноябрь</option><option value="11">Декабрь</option>
+            </select>
+            <select id="statsTypeFilter" onchange="renderManagerStats()">
+                <option value="all">Все типы сделок</option>
+                <option value="карго из Китая">📦 Карго из Китая</option>
+                <option value="карго из Кореи">📦 Карго из Кореи</option>
+                <option value="фрахт">🚢 Фрахт</option>
+                <option value="карго Европа">🇪🇺 Карго Европа</option>
+                <option value="контейнера - очистка">🧾 Контейнера - очистка</option>
+                <option value="LCL">📦 LCL</option>
+                <option value="экспорт">📤 Экспорт</option>
+                <option value="trucking">🚛 Trucking</option>
+            </select>
+        </div>
+
+        <div class="charts-container">
+            <div class="chart-box">
+                <h4>Динамика прибыли (USD)</h4>
+                <canvas id="chartProfitDynamics"></canvas>
+            </div>
+            <div class="chart-box">
+                <h4>Прибыль по типам сделок</h4>
+                <canvas id="chartProfitByType"></canvas>
+            </div>
+            <div class="chart-box" style="grid-column: span 2;">
+                <h4>Прибыль по менеджерам (ТОП)</h4>
+                <canvas id="chartManagerPerformance"></canvas>
+            </div>
+        </div>
+
+        <div id="statsContent"></div>
+    </div>
+</div>
+
+<!-- ВКЛАДКА ПРОФИЛЬ -->
+<div id="profile" class="content">
+    <div class="scroll-list">
+        <div class="profile-container">
+            <div class="profile-header">
+                <div class="profile-avatar" id="profAvatar">A</div>
+                <div>
+                    <h2 id="profDisplayTitle" style="margin:0; color:var(--primary);">Загрузка...</h2>
+                    <p style="margin:5px 0 0 0; color:#666;">Личный кабинет сотрудника</p>
+                </div>
+            </div>
+            
+            <div class="profile-group">
+                <label>Ваше Имя (Логин)</label>
+                <input type="text" id="profName" placeholder="Отображаемое имя">
+            </div>
+            
+            <div class="profile-group">
+                <label>Email</label>
+                <input type="email" id="profEmail" placeholder="vash@mail.com">
+            </div>
+            
+            <div class="profile-group">
+                <label>Пароль</label>
+                <input type="password" id="profPass" placeholder="Новый пароль">
+            </div>
+            
+            <div class="profile-group">
+                <label>Контактный телефон</label>
+                <input type="text" id="profPhone" placeholder="+380...">
+            </div>
+            
+            <button class="main" style="background:var(--success); margin-top:20px; font-size:13px;" onclick="saveProfile()">Обновить данные профиля</button>
+        </div>
+    </div>
+</div>
+
+<!-- МОДАЛКИ -->
+<div id="editModal" class="modal-overlay" onclick="if(event.target===this) this.style.display='none'"><div class="modal-content" style="width: 550px;"><h3 id="editModalTitle">Редактирование</h3><div id="editFields" class="input-row"></div><input type="hidden" id="editId"><input type="hidden" id="editType"><button class="main" style="background:var(--success); margin-top:15px;" onclick="saveEdit()">Сохранить</button></div></div>
+<div id="statsDetailModal" class="modal-overlay" onclick="if(event.target===this) this.style.display='none'"><div class="modal-content" style="width: 80%; max-width: 800px;"><h3>Детали сделок</h3><div id="statsDetailTableContainer" style="overflow-x: auto;"></div><button class="main" style="background:var(--cold); margin-top:15px;" onclick="document.getElementById('statsDetailModal').style.display='none'">Закрыть</button></div></div>
+
+<datalist id="allEntitiesData"></datalist>
+
+<script>
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyQZBRHDwNVKxURCw2EA0QPiog3Ap2CP_mG4DQ5iZUjvgHAxOi4LSDwgcxXX0hgtZ_mtg/exec";
+    
+    let reminders = [], companies = [], partners = [], requests = [], managers = [], deals = [];
+    const statusMap = { cold: {label:'❄️ Холодный'}, warm: {label:'🔥 Теплый'}, active: {label:'🏆 Активный'} };
+    let charts = { dyn: null, type: null, perf: null };
+
+    function showLoader(s) { document.getElementById('loader').style.display = s ? 'block' : 'none'; }
+    function logout() { sessionStorage.clear(); location.reload(); }
+    function toggleAuthMode(isReg) { document.getElementById('auth-login-fields').style.display = isReg ? 'none' : 'block'; document.getElementById('auth-reg-fields').style.display = isReg ? 'block' : 'none'; }
+
+    async function handleLogin() {
+        const e = document.getElementById('loginEmail').value, p = document.getElementById('loginPass').value, rem = document.getElementById('rememberMe').checked;
+        if (!e || !p) return alert("Введите данные"); showLoader(true);
+        try {
+            const r = await fetch(`${SCRIPT_URL}?action=login&email=${encodeURIComponent(e)}&password=${encodeURIComponent(p)}`);
+            const res = await r.json();
+            if (res.success) { sessionStorage.setItem('crm_user', res.name); if(rem) { localStorage.setItem('crm_rem_email', e); localStorage.setItem('crm_rem_pass', p); } startApp(); } else alert("Ошибка входа");
+        } catch (err) { alert("Ошибка сети"); } finally { showLoader(false); }
+    }
+
+    async function handleRegister() {
+        const n = document.getElementById('regName').value, e = document.getElementById('regEmail').value, p = document.getElementById('regPass').value;
+        if(!n || !e || !p) return alert("Заполните поля");
+        showLoader(true);
+        try {
+            const r = await fetch(`${SCRIPT_URL}?action=register&email=${encodeURIComponent(e)}&password=${encodeURIComponent(p)}&name=${encodeURIComponent(n)}`);
+            const res = await r.json(); if(res.success) { alert("Успешно!"); toggleAuthMode(false); }
+        } catch(err) { alert("Ошибка"); } finally { showLoader(false); }
+    }
+
+    async function startApp() {
+        const user = sessionStorage.getItem('crm_user');
+        if (!user) {
+            const re = localStorage.getItem('crm_rem_email'), rp = localStorage.getItem('crm_rem_pass');
+            if (re && rp) { document.getElementById('loginEmail').value = re; document.getElementById('loginPass').value = rp; document.getElementById('rememberMe').checked = true; }
+            return;
+        }
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('user-display').innerText = user;
+        if (user === 'admin') { document.querySelectorAll('#admin-report-selector, #admin-stats-selector').forEach(el=>el.style.display='flex'); }
+        const currentYear = new Date().getFullYear();
+        let yearHtml = `<option value="all">Все годы</option>`;
+        for(let y = currentYear; y >= 2023; y--) { yearHtml += `<option value="${y}">${y} год</option>`; }
+        document.querySelectorAll('#reportYearFilter, #statsYearFilter').forEach(el=>el.innerHTML=yearHtml);
+        await loadCloudData(); setInterval(loadCloudData, 300000);
+    }
+
+    async function loadProfile() {
+        const user = sessionStorage.getItem('crm_user');
+        if(!user) return;
+        showLoader(true);
+        try {
+            const r = await fetch(`${SCRIPT_URL}?action=getUserProfile&name=${encodeURIComponent(user)}`);
+            const d = await r.json();
+            document.getElementById('profName').value = d.name || "";
+            document.getElementById('profEmail').value = d.email || "";
+            document.getElementById('profPass').value = d.pass || "";
+            document.getElementById('profPhone').value = d.phone || "";
+            document.getElementById('profAvatar').innerText = d.name ? d.name[0].toUpperCase() : "U";
+            document.getElementById('profDisplayTitle').innerText = d.name || "Пользователь";
+        } catch(e) { console.error(e); } finally { showLoader(false); }
+    }
+
+    async function saveProfile() {
+        const oldName = sessionStorage.getItem('crm_user');
+        const payload = {
+            action: 'updateProfile',
+            oldName: oldName,
+            name: document.getElementById('profName').value,
+            email: document.getElementById('profEmail').value,
+            pass: document.getElementById('profPass').value,
+            phone: document.getElementById('profPhone').value
+        };
+        if(!payload.name || !payload.email || !payload.pass) return alert("Поля Имя, Email и Пароль обязательны");
+        showLoader(true);
+        try {
+            await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
+            alert("Профиль успешно обновлен!");
+            sessionStorage.setItem('crm_user', payload.name);
+            location.reload();
+        } catch(e) { alert("Ошибка сохранения"); } finally { showLoader(false); }
+    }
+
+    async function loadCloudData() {
+        if (document.getElementById('editModal').style.display === 'block') return;
+        showLoader(true);
+        try {
+            const r = await fetch(`${SCRIPT_URL}?action=getAllData`);
+            const d = await r.json();
+            managers = d.managers || [];
+            document.getElementById('compManager').innerHTML = '<option value="">Менеджер *</option>' + managers.map(m => `<option value="${m}">${m}</option>`).join('');
+            if (sessionStorage.getItem('crm_user') === 'admin') {
+                const adminOpts = '<option value="all">📈 Все менеджеры</option>' + managers.map(m => `<option value="${m}">${m}</option>`).join('');
+                document.getElementById('reportManagerFilter').innerHTML = adminOpts;
+                document.getElementById('statsManagerFilter').innerHTML = adminOpts;
+            }
+            companies = d.companies.map(x => ({ id: x[0]||Date.now(), name: x[1]||"", contact: x[2]||"", phone: x[3]||"", product: x[4]||"", city: x[5]||"", email: x[6]||"", import: x[7]||"", export: x[8]||"", status: x[9]||"cold", createdAt: x[10]||"", activatedAt: x[11]||"", manager: x[12]||"", isPrivate: x[13]==="true"||x[13]===true, sharedWith: x[14]||"", website: x[15]||"" }));
+            requests = d.requests.map(x => ({ id: x[0]||Date.now(), company: x[1]||"", cargo: x[2]||"", transport: x[3]||"", weight: x[4]||"", vol: x[5]||"", value: x[6]||"", currency: x[7]||"", load: x[8]||"", unload: x[9]||"", desc: x[10]||"", createdAt: x[11]||"", status: x[12]||"active", comment: x[13]||"", container: x[14]||"", zip: x[15]||"", manager: x[16]||"", contQty: x[17]||"" }));
+            deals = d.deals.map(x => ({ 
+                id: x[0]||Date.now(), num: x[1]||"", company: x[2]||"", cargo: x[3]||"", trans: x[4]||"", weight: x[5]||"", vol: x[6]||"", value: x[7]||"", curr: x[8]||"", load: x[9]||"", zip: x[10]||"", unload: x[11]||"", info: x[12]||"", manager: x[13]||"", createdAt: x[14]||"", exp: x[15]||0, inc: x[16]||0, prof: x[17]||0, container: x[18]||"", sharedWith: x[19]||"", status: x[20]||"active", type: x[21]||"", contQty: x[22]||"", blNum: x[23]||"", awbNum: x[24]||"",
+                files: x[25] ? JSON.parse(x[25]) : [] 
+            }));
+            reminders = d.reminders.map(x => ({ id: x[0]||Date.now(), name: x[1]||"", date: x[2]||"", topic: x[3]||"", manager: x[4]||"", status: x[5]||"active" }));
+            partners = d.partners.map(x => ({ id: x[0]||Date.now(), name: x[1]||"", status: x[2]||"агент", country: x[3]||"", contact: x[4]||"", phone: x[5]||"", email: x[6]||"", website: x[7]||"", desc: x[8]||"" }));
+            renderAll(); 
+            document.getElementById('sync-status').innerText = "Обновлено: " + new Date().toLocaleTimeString();
+        } catch (e) { console.error(e); } finally { showLoader(false); }
+    }
+
+    function formatRow(sh, o) {
+        if (sh === 'companies') return [o.id, o.name, o.contact, o.phone, o.product || "", o.city || "", o.email || "", o.import || "", o.export || "", o.status, o.createdAt, o.activatedAt || "", o.manager, o.isPrivate, o.sharedWith || "", o.website || ""];
+        if (sh === 'requests') return [o.id, o.company, o.cargo, o.transport, o.weight, o.vol, o.value, o.currency, o.load, o.unload, o.desc, o.createdAt, o.status, o.comment, o.container, o.zip, o.manager, o.contQty || ""];
+        if (sh === 'deals') return [o.id, o.num, o.company, o.cargo, o.trans, o.weight, o.vol, o.value, o.curr, o.load, o.zip, o.unload, o.info, o.manager, o.createdAt, o.exp, o.inc, o.prof, o.container, o.sharedWith || "", o.status, o.type, o.contQty || "", o.blNum || "", o.awbNum || "", JSON.stringify(o.files || [])];
+        if (sh === 'reminders') return [o.id, o.name, o.date, o.topic, o.manager, o.status];
+        if (sh === 'partners') return [o.id, o.name, o.status, o.country, o.contact, o.phone, o.email, o.website, o.desc];
+        return [];
+    }
+
+    async function sync(sh, dt, isAppend = false) {
+        showLoader(true); let payload = { sheet: sh };
+        if (isAppend) { payload.action = 'append'; payload.rowData = formatRow(sh, dt[dt.length - 1]); } 
+        else { payload.action = 'clearAndSave'; payload.allData = dt.map(o => formatRow(sh, o)); }
+        try { await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) }); } catch (e) { console.error(e); } finally { showLoader(false); }
+    }
+
+    // НОВЫЕ ФУНКЦИИ ДЛЯ ФАЙЛОВ
+   async function uploadDealFile(dealId) {
+        const fileInput = document.getElementById('dealFileInput');
+        if (!fileInput.files.length) return alert("Выберите файл");
+        
+        const file = fileInput.files[0];
+        const reader = new FileReader();
+        
+        showLoader(true);
+        console.log("1. Начинаю чтение файла...");
+
+        reader.onload = async function(e) {
+            try {
+                const base64 = e.target.result.split(',')[1];
+                const payload = { 
+                    action: 'uploadFile', 
+                    filename: file.name, 
+                    mimeType: file.type, 
+                    base64: base64 
+                };
+
+                console.log("2. Отправка данных в Google...");
+                
+                const response = await fetch(SCRIPT_URL, { 
+                    method: 'POST', 
+                    body: JSON.stringify(payload) 
+                });
+
+                const res = await response.json();
+                console.log("3. Ответ от Google получен:", res);
+
+                if (res.success) {
+                    const idx = deals.findIndex(d => d.id == dealId);
+                    if (!deals[idx].files) deals[idx].files = [];
+                    
+                    deals[idx].files.push({ 
+                        name: res.fileName, 
+                        url: res.fileUrl, 
+                        id: res.fileId 
+                    });
+
+                    console.log("4. Сохраняю ссылку в таблицу...");
+                    await sync('deals', deals);
+                    showDealPreview(dealId);
+                    alert("УСПЕХ: Файл загружен!");
+                } else {
+                    alert("ОШИБКА ГУГЛА: " + JSON.stringify(res));
+                }
+            } catch (err) {
+                console.error("Ошибка:", err);
+                alert("ОШИБКА СКРИПТА: " + err.message);
+            } finally {
+                showLoader(false);
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function deleteFile(dealId, fileId) {
+        if (!confirm("Удалить файл?")) return;
+        const idx = deals.findIndex(d => d.id == dealId);
+        deals[idx].files = deals[idx].files.filter(f => f.id !== fileId);
+        sync('deals', deals).then(() => showDealPreview(dealId));
+    }
+
+    function checkAccess(n) { const me = sessionStorage.getItem('crm_user'); if (me === 'admin') return true; const c = companies.find(x=>x.name===n); return !c || !c.isPrivate || c.manager===me || (c.sharedWith||"").split(',').includes(me); }
+    function checkDealAccess(d) { const me = sessionStorage.getItem('crm_user'); if (me === 'admin') return true; return d.manager===me || (d.sharedWith||"").split(',').includes(me); }
+    
+    function checkTransportFields(p) {
+        const v = document.getElementById(p+'Transport')?.value || document.getElementById(p+'Trans')?.value;
+        const cont = document.getElementById(p+'Container') || document.getElementById(p+'Cont');
+        const contQty = document.getElementById(p+'ContQty');
+        const bl = document.getElementById(p+'BL');
+        const awb = document.getElementById(p+'AWB');
+        if (cont) cont.style.display = (v === 'море' ? 'block' : 'none');
+        if (contQty) contQty.style.display = (v === 'море' ? 'block' : 'none');
+        if (bl) bl.style.display = (v === 'море' ? 'block' : 'none');
+        if (awb) awb.style.display = (v === 'авиа' ? 'block' : 'none');
+    }
+
+    async function generateInvoicePDF(id) {
+        const item = deals.find(x => x.id == id);
+        if (!item) return;
+        showLoader(true);
+        let mTel = "", mEmail = "";
+        try {
+            const r = await fetch(`${SCRIPT_URL}?action=getUserProfile&name=${encodeURIComponent(item.manager)}`);
+            const d = await r.json();
+            mTel = d.phone || ""; mEmail = d.email || "";
+        } catch (e) { console.log("Profile load failed"); }
+
+        const dateStr = new Date().toLocaleDateString('uk-UA');
+        const fileName = `Propozytsiia_SmartAuto_${item.num}.pdf`;
+        let tableRows = `
+            <tr><td><strong>Вантаж / Тип угоди</strong></td><td>${item.cargo} (${item.type})</td></tr>
+            <tr><td><strong>Маршрут перевезення</strong></td><td>${item.load} → ${item.unload}</td></tr>
+            <tr><td><strong>Вага та Об'єм</strong></td><td>${item.weight} кг / ${item.vol} м³</td></tr>
+            <tr><td><strong>Вид транспорту</strong></td><td>${item.trans.toUpperCase()}</td></tr>
+            <tr><td style="color: #1a73e8;"><strong>РАЗОМ (USD)</strong></td><td style="color: #1a73e8;"><strong>${item.inc} USD</strong></td></tr>
+        `;
+        document.getElementById('pdf-doc-date').innerText = "Дата: " + dateStr;
+        document.getElementById('pdf-client').innerText = item.company;
+        document.getElementById('pdf-number').innerText = item.num;
+        document.getElementById('pdf-table-body').innerHTML = tableRows;
+        document.getElementById('pdf-manager').innerText = item.manager;
+        document.getElementById('pdf-manager-contacts').innerText = `Тел: ${mTel} | Email: ${mEmail}`;
+        const element = document.getElementById('pdf-template');
+        const opt = { margin: 0, filename: fileName, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'pt', format: 'a4', orientation: 'portrait' } };
+        html2pdf().set(opt).from(element).save().then(() => showLoader(false));
+    }
+
+    function showCallPreview(id) { 
+        const r = reminders.find(x=>x.id==id); 
+        if(r) { 
+            document.getElementById('preview-calls').innerHTML = `
+            <h3>${r.name}</h3>
+            <div class="preview-box"><label>Дата</label><span>${r.date}</span></div>
+            <div class="preview-box"><label>Менеджер</label><span>${r.manager}</span></div>
+            <div class="preview-box"><label>Статус</label><span>${r.status}</span></div>
+            <div class="preview-box" style="grid-column:span 2;"><label>Результат</label><p style="font-size:11px; margin-top:5px;">${r.topic}</p></div>`; 
+        } 
+    }
+
+    function showRequestPreview(id) {
+        const r = requests.find(x => x.id == id); 
+        if (!r || !checkAccess(r.company)) return;
+        document.getElementById('preview-requests').innerHTML = `
+        <h3>Запрос: ${r.company}</h3>
+        <div class="preview-grid">
+            <div class="preview-box"><label>Груз</label><span>${r.cargo}</span></div>
+            <div class="preview-box"><label>Транспорт</label><span>${r.transport} ${r.container || ''}</span></div>
+            <div class="preview-box"><label>Вес/Объем</label><span>${r.weight}кг / ${r.vol}м³</span></div>
+            <div class="preview-box"><label>Инвойс</label><span>${r.value} ${r.currency}</span></div>
+            <div class="preview-box"><label>Менеджер</label><span>${r.manager}</span></div>
+            <div class="preview-box"><label>Дата создания</label><span>${new Date(r.createdAt).toLocaleDateString()}</span></div>
+            <div class="preview-box" style="grid-column:span 2;"><label>Маршрут</label><span>${r.load} → ${r.unload}</span></div>
+            <div class="preview-box" style="grid-column:span 2;"><label>Детали</label><span>${r.desc || '-'}</span></div>
+        </div>`;
+    }
+
+    function showDealPreview(id) {
+        const d = deals.find(x => x.id == id); if (!d) return;
+        let tDetails = '';
+        if (d.trans === 'море') tDetails = `<div class="preview-box"><label>Конт. (${d.container})</label><span>${d.contQty || 0} шт.</span></div><div class="preview-box"><label>Коносамент</label><span>${d.blNum || '-'}</span></div>`;
+        else if (d.trans === 'авиа') tDetails = `<div class="preview-box" style="grid-column:span 2;"><label>Авианакладная</label><span>${d.awbNum || '-'}</span></div>`;
+        
+        let fHtml = (d.files || []).map(f => `<div class="file-item"><a href="${f.url}" target="_blank">📄 ${f.name}</a><span class="file-delete" onclick="deleteFile(${d.id}, '${f.id}')">×</span></div>`).join('');
+
+        document.getElementById('preview-deals').innerHTML = `
+        <h3>№ ${d.num} - ${d.company}</h3>
+        <div class="preview-grid">
+            <div class="preview-box"><label>Прибыль</label><span style="color:var(--success);font-weight:bold;">${d.prof} USD</span></div>
+            <div class="preview-box"><label>Доход / Расход</label><span>${d.inc} / ${d.exp}</span></div>
+            <div class="preview-box"><label>Тип сделки</label><span>${d.type || '-'}</span></div>
+            <div class="preview-box"><label>Транспорт</label><span>${d.trans.toUpperCase()}</span></div>
+            <div class="preview-box"><label>Менеджер</label><span>${d.manager}</span></div>
+            <div class="preview-box"><label>Вес/Объем</label><span>${d.weight}кг / ${d.vol}м³</span></div>
+            ${tDetails}
+            <div class="preview-box" style="grid-column:span 2;"><label>Маршрут</label><span>${d.load} → ${d.unload}</span></div>
+            <div class="preview-box" style="grid-column:span 2;"><label>Инфо</label><span>${d.info || '-'}</span></div>
+        </div>
+        <button class="btn-pdf" onclick="generateInvoicePDF(${d.id})">📄 Згенерувати пропозицію</button>
+        <div class="file-list-container">
+            <strong>Файли сделки:</strong>
+            <div style="margin-top:5px;">${fHtml || '<small style="color:#999">Нет файлов</small>'}</div>
+            <div class="upload-area">
+                <input type="file" id="dealFileInput" style="font-size:10px; width:150px;">
+                <button onclick="uploadDealFile(${d.id})" style="font-size:10px; padding:2px 5px;">Загрузить</button>
+            </div>
+        </div>`;
+    }
+
+    function showCompanyPreview(n) {
+        const c = companies.find(x => x.name === n); if (!c) return;
+        const me = sessionStorage.getItem('crm_user');
+        if (!checkAccess(c.name)) { document.getElementById('preview-companies').innerHTML = `<div style="padding:15px; text-align:center; background:#fff3cd; border-radius:4px;">🔒 ОГРАНИЧЕН</div>`; return; }
+        const history = reminders.filter(r => r.name === c.name).sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
+        let hHtml = history.length ? history.map(h => `<div style="font-size:10px; padding:4px 0; border-bottom:1px dashed #eee;"><b>${h.date}</b>: ${h.topic.substring(0,40)}...</div>`).join('') : '<small>Нет истории</small>';
+        let shareHtml = (c.manager === me || me === 'admin') ? `<div style="grid-column:span 2; border-top:1px solid #eee; margin-top:10px; padding-top:5px;"><label style="font-size:8px;">ДОСТУП</label><div style="display:flex; gap:5px; margin-top:5px;"><select id="shMan" style="flex-grow:1; font-size:10px;"><option value="">Поделиться...</option>${managers.filter(m=>m!==me).map(m=>`<option value="${m}">${m}</option>`).join('')}</select><button onclick="toggleAccess(${c.id}, document.getElementById('shMan').value, 'add')" style="padding:2px 8px; font-size:10px;">+</button></div><div style="margin-top:5px;">${(c.sharedWith || "").split(',').filter(s=>s).map(s=>`<span class="share-tag">${s} <span onclick="toggleAccess(${c.id},'${s}','remove')" style="cursor:pointer">×</span></span>`).join('') || '<small>Никому</small>'}</div></div>` : "";
+        document.getElementById('preview-companies').innerHTML = `
+        <h3>${c.name}</h3>
+        <div class="preview-grid">
+            <div class="preview-box"><label>Статус</label><span>${statusMap[c.status].label}</span></div>
+            <div class="preview-box"><label>Менеджер</label><span>${c.manager}</span></div>
+            <div class="preview-box"><label>Город</label><span>${c.city || '-'}</span></div>
+            <div class="preview-box"><label>Контакт</label><span>${c.contact || '-'}</span></div>
+            <div class="preview-box"><label>Телефон</label><span>${c.phone || '-'}</span></div>
+            <div class="preview-box"><label>Email</label><span>${c.email || '-'}</span></div>
+            <div class="preview-box"><label>Сайт</label><span>${c.website || '-'}</span></div>
+            <div class="preview-box"><label>Импорт/Экспорт</label><span>${c.import || '-'} / ${c.export || '-'}</span></div>
+            <div class="preview-box" style="grid-column:span 2;"><label>История активности</label><div>${hHtml}</div></div>${shareHtml}
+        </div>`;
+    }
+
+    function showPartnerPreview(id) {
+        const p = partners.find(x => x.id == id); if(!p) return;
+        document.getElementById('preview-partners').innerHTML = `
+        <h3>${p.name}</h3>
+        <div class="preview-grid">
+            <div class="preview-box"><label>Тип</label><span>${p.status.toUpperCase()}</span></div>
+            <div class="preview-box"><label>Страна</label><span>${p.country || '-'}</span></div>
+            <div class="preview-box"><label>Контакт</label><span>${p.contact || '-'}</span></div>
+            <div class="preview-box"><label>Телефон</label><span>${p.phone || '-'}</span></div>
+            <div class="preview-box"><label>Email</label><span>${p.email || '-'}</span></div>
+            <div class="preview-box"><label>Сайт</label><span>${p.website || '-'}</span></div>
+            <div class="preview-box" style="grid-column:span 2;"><label>Описание</label><div style="font-size:11px; white-space:pre-wrap; background:#f9f9f9; padding:5px;">${p.desc || '-'}</div></div>
+        </div>`;
+    }
+
+    function renderReminders() {
+        const s = document.getElementById('searchCallComp').value.toLowerCase(), d = document.getElementById('searchCallDate').value, me = sessionStorage.getItem('crm_user');
+        const limitMs = 3 * 24 * 60 * 60 * 1000, now = new Date();
+        let f = reminders.filter(r => r.name.toLowerCase().includes(s) && (!d || r.date.split('T')[0] === d));
+        if (me !== 'admin') f = f.filter(r => r.manager === me);
+        f.sort((a,b) => new Date(b.date) - new Date(a.date));
+        document.getElementById('remindersList').innerHTML = f.map(r => {
+            const isOverdue = r.status !== 'completed' && (now - new Date(r.date)) > limitMs;
+            return `<div class="list-item ${r.status==='completed'?'completed':''} ${isOverdue?'overdue':''}" onclick="showCallPreview(${r.id})"><div class="item-main"><h4>${r.name} ${isOverdue?'<span class="overdue-tag">ПРОСРОЧЕНО</span>':''}</h4><p>${r.date} | ${r.manager}</p></div><div class="item-actions">${r.status!=='completed'?'<button class="action-btn" style="color:var(--success)" onclick="finishRem(event,'+r.id+')">✅</button>':''}<button class="action-btn" onclick="openEdit(${r.id},'reminder')">✎</button><button class="action-btn btn-delete" onclick="deleteItem('reminders',${r.id})">×</button></div></div>`;
+        }).join('');
+        updateCounters();
+    }
+    async function finishRem(e, id) { e.stopPropagation(); const i = reminders.findIndex(x=>x.id==id); reminders[i].status = 'completed'; renderReminders(); await sync('reminders', reminders); }
+    
+    function renderRequests() {
+        const s = document.getElementById('searchReq').value.toLowerCase();
+        const limitMs = 2 * 24 * 60 * 60 * 1000, now = new Date();
+        document.getElementById('requestsList').innerHTML = requests.filter(r => checkAccess(r.company) && (r.company.toLowerCase().includes(s) || r.cargo.toLowerCase().includes(s))).map(r => {
+            const isOverdue = r.status !== 'completed' && (now - new Date(r.createdAt)) > limitMs;
+            return `<div class="list-item ${r.status === 'completed' ? 'completed' : ''} ${isOverdue?'overdue':''}" onclick="showRequestPreview(${r.id})"><div class="item-main"><h4>${r.company} ${isOverdue?'<span class="overdue-tag">ГОРЯЧИЙ / ЗАБЫТ</span>':''}</h4><p>${r.cargo} | ${r.manager}</p></div><div class="item-actions">${r.status!=='completed'?'<button class="action-btn" style="color:var(--success)" onclick="finishRequest(event,'+r.id+')">✅</button>':''}<button class="action-btn" onclick="openEdit(${r.id},'request')">✎</button><button class="action-btn btn-delete" onclick="deleteItem('requests',${r.id})">×</button></div></div>`;
+        }).join('');
+        updateCounters();
+    }
+    async function finishRequest(e, id) { e.stopPropagation(); if(!confirm("Завершить запрос?")) return; const i = requests.findIndex(x=>x.id==id); if(i>-1) { requests[i].status = 'completed'; renderRequests(); await sync('requests', requests); } }
+    
+    function renderDeals() {
+        const s = document.getElementById('searchDeals').value.toLowerCase();
+        document.getElementById('dealsList').innerHTML = deals.filter(d => checkDealAccess(d) && d.company.toLowerCase().includes(s)).map(d => `<div class="list-item ${d.status==='completed'?'completed':''}" onclick="showDealPreview(${d.id})"><div class="item-main"><h4>№ ${d.num} | ${d.company}</h4><p>${d.type || '-'} | ${d.manager}</p></div><div class="item-actions">${d.status!=='completed'?'<button class="action-btn" style="color:var(--success)" onclick="finishDeal(event,'+d.id+')">✅</button>':''}<button class="action-btn" onclick="openEdit(${d.id},'deal')">✎</button><button class="action-btn btn-delete" onclick="deleteItem('deals',${d.id})">×</button></div></div>`).join('');
+        updateCounters();
+    }
+    async function finishDeal(e, id) { e.stopPropagation(); if(!confirm("Завершить сделку?")) return; const i = deals.findIndex(x=>x.id==id); if(i>-1) { deals[i].status = 'completed'; renderDeals(); await sync('deals', deals); } }
+    
+    function renderCompanies() {
+        const s = document.getElementById('searchComp').value.toLowerCase(), fCity = document.getElementById('filterCity').value.toLowerCase(), fImp = document.getElementById('filterImport').value.toLowerCase(), fExp = document.getElementById('filterExport').value.toLowerCase(), cat = document.getElementById('sortComp').value, valSel = document.getElementById('secondarySelect').value;
+        const limitMs = 10 * 24 * 60 * 60 * 1000, now = new Date();
+        let f = companies.filter(c => {
+            const matchN = String(c.name).toLowerCase().includes(s);
+            const matchCity = String(c.city || "").toLowerCase().includes(fCity);
+            const matchImp = String(c.import || "").toLowerCase().includes(fImp);
+            const matchExp = String(c.export || "").toLowerCase().includes(fExp);
+            let matchT = true; if (cat === 'manager' && valSel) matchT = (c.manager === valSel); if (cat === 'status' && valSel) matchT = (c.status === valSel);
+            return matchN && matchCity && matchImp && matchExp && matchT;
+        });
+        document.getElementById('companiesList').innerHTML = f.map(c => {
+            let isForgotten = false;
+            if ((c.status === 'cold' || c.status === 'warm') && checkAccess(c.name)) {
+                const dates = [...reminders.filter(r => r.name === c.name).map(r => new Date(r.date)), ...requests.filter(r => r.company === c.name).map(r => new Date(r.createdAt)), ...deals.filter(d => d.company === c.name).map(d => new Date(d.createdAt))].filter(d => !isNaN(d));
+                if (dates.length === 0 || (now - new Date(Math.max(...dates))) > limitMs) isForgotten = true;
+            }
+            return `<div class="list-item ${isForgotten ? 'forgotten' : ''}" onclick="showCompanyPreview('${c.name}')"><div class="item-main"><h4>${c.name} ${isForgotten ? '<span class="forgotten-tag">⚠️ В работу</span>' : ''}</h4><p>${checkAccess(c.name) ? statusMap[c.status].label : '🔒 Ограничен'} | ${c.manager}</p></div><div class="item-actions"><button class="action-btn" onclick="openEdit(${c.id},'company')">✎</button><button class="action-btn btn-delete" onclick="deleteItem('companies', ${c.id})">×</button></div></div>`;
+        }).join('');
+        updateCounters();
+    }
+    function renderPartners() {
+        const s = document.getElementById('searchPart').value.toLowerCase();
+        document.getElementById('partnersList').innerHTML = partners.filter(p => p.name.toLowerCase().includes(s)).map(p => `<div class="list-item" onclick="showPartnerPreview(${p.id})"><div class="item-main"><h4>${p.name}</h4><p>${p.status.toUpperCase()} | ${p.country}</p></div><div class="item-actions"><button class="action-btn" onclick="openEdit(${p.id},'partner')">✎</button><button class="action-btn btn-delete" onclick="deleteItem('partners', ${p.id})">×</button></div></div>`).join('');
+        updateCounters();
+    }
+
+    function openEdit(id, type) {
+        event.stopPropagation(); document.getElementById('editId').value = id; document.getElementById('editType').value = type;
+        const f = document.getElementById('editFields'), title = document.getElementById('editModalTitle');
+        if (type === 'reminder') {
+            const r = reminders.find(x => x.id == id); title.innerText = "Правка активности";
+            f.innerHTML = `<input type="text" id="eRemName" value="${r.name}" list="allEntitiesData"><input type="datetime-local" id="eRemDate" value="${r.date}"><textarea id="eRemTopic" style="grid-column: span 2;">${r.topic}</textarea>`;
+        } else if (type === 'company') {
+            const c = companies.find(x => x.id == id); title.innerText = "Правка компании";
+            f.innerHTML = `<input type="text" id="eCompName" value="${c.name}"><input type="text" id="eCompCity" value="${c.city}"><input type="text" id="eCompContact" value="${c.contact}"><input type="text" id="eCompPhone" value="${c.phone}"><input type="email" id="eCompEmail" value="${c.email}"><input type="text" id="eCompWeb" value="${c.website}"><input type="text" id="eCompImp" value="${c.import}"><input type="text" id="eCompExp" value="${c.export}"><select id="eCompMan" style="grid-column: span 2;">${managers.map(m => `<option value="${m}" ${c.manager===m?'selected':''}>${m}</option>`).join('')}</select><select id="eCompStatus"><option value="cold" ${c.status==='cold'?'selected':''}>Холодный</option><option value="warm" ${c.status==='warm'?'selected':''}>Теплый</option><option value="active" ${c.status==='active'?'selected':''}>Активный</option></select><div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" id="eCompPriv" ${c.isPrivate?'checked':''}> Приватная</div>`;
+        } else if (type === 'request') {
+            const r = requests.find(x => x.id == id); title.innerText = "Правка запроса";
+            f.innerHTML = `<input type="text" id="eReqComp" value="${r.company}" list="allEntitiesData"><input type="text" id="eReqCargo" value="${r.cargo}"><select id="eReqTrans" onchange="checkTransportFields('eReq')"><option value="авто" ${r.transport==='авто'?'selected':''}>Авто</option><option value="авиа" ${r.transport==='авиа'?'selected':''}>Авиа</option><option value="море" ${r.transport==='море'?'selected':''}>Море</option><option value="ж/д" ${r.transport==='ж/д'?'selected':''}>Ж/Д</option></select><select id="eReqCont" style="display:${r.transport==='море'?'block':'none'}"><option value="20GP" ${r.container==='20GP'?'selected':''}>20GP</option><option value="40HC" ${r.container==='40HC'?'selected':''}>40HC</option></select><input type="number" id="eReqContQty" value="${r.contQty}" style="display:${r.transport==='море'?'block':'none'}" placeholder="Кол-во конт."><input type="number" id="eReqW" value="${r.weight}"><input type="number" id="eReqV" value="${r.vol}"><input type="number" id="eReqVal" value="${r.value}"><select id="eReqCurr"><option value="USD" ${r.currency==='USD'?'selected':''}>USD</option><option value="EUR" ${r.currency==='EUR'?'selected':''}>EUR</option></select><input type="text" id="eReqLoad" value="${r.load}"><input type="text" id="eReqZip" value="${r.zip}"><input type="text" id="eReqUnload" value="${r.unload}"><textarea id="eReqDesc" style="grid-column: span 2;">${r.desc}</textarea>`;
+        } else if (type === 'deal') {
+            const d = deals.find(x => x.id == id); title.innerText = "Правка сделки";
+            f.innerHTML = `<input type="text" id="eDealNum" value="${d.num}"><input type="text" id="eDealComp" value="${d.company}" list="allEntitiesData"><input type="text" id="eDealCargo" value="${d.cargo}"><select id="eDealTrans" onchange="checkTransportFields('eDeal')"><option value="авто" ${d.trans==='авто'?'selected':''}>Авто</option><option value="море" ${d.trans==='море'?'selected':''}>Море</option><option value="авиа" ${d.trans==='авиа'?'selected':''}>Авиа</option><option value="ж/д" ${d.trans==='ж/д'?'selected':''}>Ж/Д</option></select>
+                <select id="eDealCont" style="display:${d.trans==='море'?'block':'none'}"><option value="20GP" ${d.container==='20GP'?'selected':''}>20GP</option><option value="40HC" ${d.container==='40HC'?'selected':''}>40HC</option></select>
+                <input type="number" id="eDealContQty" value="${d.contQty}" style="display:${d.trans==='море'?'block':'none'}" placeholder="Кол-во">
+                <input type="text" id="eDealBL" value="${d.blNum}" style="display:${d.trans==='море'?'block':'none'}" placeholder="№ BL">
+                <input type="text" id="eDealAWB" value="${d.awbNum}" style="display:${d.trans==='авиа'?'block':'none'}" placeholder="№ AWB">
+                <input type="number" id="eDealW" value="${d.weight}"><input type="number" id="eDealV" value="${d.vol}"><input type="number" id="eDealVal" value="${d.value}"><input type="number" id="eDealExp" value="${d.exp}" oninput="calcEditProf()"><input type="number" id="eDealInc" value="${d.inc}" oninput="calcEditProf()"><input type="number" id="eDealProf" value="${d.prof}" readonly style="background:#f0f7ff;"><input type="text" id="eDealL" value="${d.load}" style="grid-column: span 2;"><input type="text" id="eDealU" value="${d.unload}" style="grid-column: span 2;"><textarea id="eDealI" style="grid-column: span 2;">${d.info}</textarea>`;
+        } else if (type === 'partner') {
+            const p = partners.find(x => x.id == id); title.innerText = "Правка партнера";
+            f.innerHTML = `<input type="text" id="ePartName" value="${p.name}"><select id="ePartStatus"><option value="агент" ${p.status==='агент'?'selected':''}>Агент</option><option value="перевозчик" ${p.status==='перевозчик'?'selected':''}>Перевозчик</option><option value="брокер" ${p.status==='брокер'?'selected':''}>Брокер</option></select><input type="text" id="ePartCountry" value="${p.country}"><input type="text" id="ePartContact" value="${p.contact}"><input type="text" id="ePartPhone" value="${p.phone}"><input type="email" id="ePartEmail" value="${p.email}"><input type="text" id="ePartWeb" value="${p.website}"><textarea id="ePartDesc" style="grid-column: span 2;">${p.desc}</textarea>`;
+        }
+        document.getElementById('editModal').style.display = 'block';
+    }
+
+    async function saveEdit() {
+        const id = document.getElementById('editId').value, type = document.getElementById('editType').value;
+        if (type === 'reminder') {
+            const i = reminders.findIndex(x => x.id == id); reminders[i].name = document.getElementById('eRemName').value; reminders[i].date = document.getElementById('eRemDate').value; reminders[i].topic = document.getElementById('eRemTopic').value;
+            await sync('reminders', reminders); renderReminders();
+        } else if (type === 'company') { 
+            const i = companies.findIndex(x => x.id == id); const oldSt = companies[i].status, newSt = document.getElementById('eCompStatus').value; if (newSt === 'active' && oldSt !== 'active') companies[i].activatedAt = new Date().toISOString();
+            companies[i].name = document.getElementById('eCompName').value; companies[i].city = document.getElementById('eCompCity').value; companies[i].contact = document.getElementById('eCompContact').value; companies[i].phone = document.getElementById('eCompPhone').value; companies[i].email = document.getElementById('eCompEmail').value; companies[i].website = document.getElementById('eCompWeb').value; companies[i].import = document.getElementById('eCompImp').value; companies[i].export = document.getElementById('eCompExp').value; companies[i].manager = document.getElementById('eCompMan').value; companies[i].status = newSt; companies[i].isPrivate = document.getElementById('eCompPriv').checked;
+            await sync('companies', companies); renderCompanies(); 
+        } else if (type === 'request') { 
+            const i = requests.findIndex(x => x.id == id); requests[i].company = document.getElementById('eReqComp').value; requests[i].cargo = document.getElementById('eReqCargo').value; requests[i].transport = document.getElementById('eReqTrans').value; requests[i].container = document.getElementById('eReqCont').value; requests[i].contQty = document.getElementById('eReqContQty').value; requests[i].weight = document.getElementById('eReqW').value; requests[i].vol = document.getElementById('eReqV').value; requests[i].value = document.getElementById('eReqVal').value; requests[i].currency = document.getElementById('eReqCurr').value; requests[i].load = document.getElementById('eReqLoad').value; requests[i].zip = document.getElementById('eReqZip').value; requests[i].unload = document.getElementById('eReqUnload').value; requests[i].desc = document.getElementById('eReqDesc').value;
+            await sync('requests', requests); renderRequests();
+        } else if (type === 'deal') { 
+            const i = deals.findIndex(x => x.id == id); deals[i].num = document.getElementById('eDealNum').value; deals[i].company = document.getElementById('eDealComp').value; deals[i].cargo = document.getElementById('eDealCargo').value; deals[i].trans = document.getElementById('eDealTrans').value; deals[i].container = document.getElementById('eDealCont').value; deals[i].contQty = document.getElementById('eDealContQty').value; deals[i].blNum = document.getElementById('eDealBL').value; deals[i].awbNum = document.getElementById('eDealAWB').value; deals[i].weight = document.getElementById('eDealW').value; deals[i].vol = document.getElementById('eDealV').value; deals[i].value = document.getElementById('eDealVal').value; deals[i].exp = document.getElementById('eDealExp').value; deals[i].inc = document.getElementById('eDealInc').value; deals[i].prof = document.getElementById('eDealProf').value; deals[i].load = document.getElementById('eDealL').value; deals[i].unload = document.getElementById('eDealU').value; deals[i].info = document.getElementById('eDealI').value;
+            await sync('deals', deals); renderDeals();
+        } else if (type === 'partner') {
+            const i = partners.findIndex(x => x.id == id); partners[i].name = document.getElementById('ePartName').value; partners[i].status = document.getElementById('ePartStatus').value; partners[i].country = document.getElementById('ePartCountry').value; partners[i].contact = document.getElementById('ePartContact').value; partners[i].phone = document.getElementById('ePartPhone').value; partners[i].email = document.getElementById('ePartEmail').value; partners[i].website = document.getElementById('ePartWeb').value; partners[i].desc = document.getElementById('ePartDesc').value;
+            await sync('partners', partners); renderPartners();
+        }
+        document.getElementById('editModal').style.display = 'none';
+    }
+
+    async function addReminder() { const n = document.getElementById('callName').value; if(!n)return alert("Имя?"); const newItem = { id: Date.now(), name: n, date: document.getElementById('callTime').value, topic: document.getElementById('callTopic').value, manager: sessionStorage.getItem('crm_user'), status: "active" }; reminders.push(newItem); renderReminders(); await sync('reminders', reminders, true); ['callName', 'callTime', 'callTopic'].forEach(i=>document.getElementById(i).value=''); }
+    async function addRequest() { const c = document.getElementById('reqComp').value; if(!c)return alert("Клиент?"); const newItem = { id: Date.now(), company: c, cargo: document.getElementById('reqCargo').value, transport: document.getElementById('reqTransport').value, weight: document.getElementById('reqWeight').value, vol: document.getElementById('reqVol').value, value: document.getElementById('reqValue').value, currency: document.getElementById('reqCurrency').value, load: document.getElementById('reqLoad').value, zip: document.getElementById('reqZip').value, unload: document.getElementById('reqUnload').value, desc: document.getElementById('reqDesc').value, createdAt: new Date().toISOString(), status: "active", manager: sessionStorage.getItem('crm_user'), container: document.getElementById('reqContainer').value, contQty: document.getElementById('reqContQty').value }; requests.push(newItem); renderRequests(); await sync('requests', requests, true); ['reqComp', 'reqCargo', 'reqWeight', 'reqVol', 'reqValue', 'reqLoad', 'reqZip', 'reqUnload', 'reqDesc', 'reqContQty'].forEach(i=>document.getElementById(i).value=''); }
+    async function addDeal() { const n = document.getElementById('dealNum').value, t = document.getElementById('dealType').value; if(!n||!t)return alert("Поля!"); const newItem = { id: Date.now(), num: n, company: document.getElementById('dealComp').value, cargo: document.getElementById('dealCargo').value, trans: document.getElementById('dealTransport').value, weight: document.getElementById('dealWeight').value, vol: document.getElementById('dealVol').value, value: document.getElementById('dealVal').value, curr: "USD", load: document.getElementById('dealLoad').value, zip: "", unload: document.getElementById('dealUnload').value, info: document.getElementById('dealInfo').value, manager: sessionStorage.getItem('crm_user'), createdAt: new Date().toISOString(), exp: document.getElementById('dealExp').value, inc: document.getElementById('dealInc').value, prof: document.getElementById('dealProf').value, status: "active", type: t, container: document.getElementById('dealContainer').value, contQty: document.getElementById('dealContQty').value, blNum: document.getElementById('dealBL').value, awbNum: document.getElementById('dealAWB').value, files: [] }; deals.push(newItem); renderDeals(); await sync('deals', deals, true); ['dealNum', 'dealComp', 'dealCargo', 'dealWeight', 'dealVol', 'dealVal', 'dealExp', 'dealInc', 'dealProf', 'dealLoad', 'dealUnload', 'dealInfo', 'dealContQty', 'dealBL', 'dealAWB'].forEach(i=>document.getElementById(i).value=''); }
+    async function addCompany() { const n = document.getElementById('compName').value, m = document.getElementById('compManager').value, st = document.getElementById('compStatus').value; if(!n||!m)return alert("Поля!"); const newItem = { id: Date.now(), name: n, manager: m, status: st, isPrivate: document.getElementById('compPrivate').checked, city: document.getElementById('compCity').value, contact: document.getElementById('compContact').value, phone: document.getElementById('compPhone').value, email: document.getElementById('compEmail').value, website: document.getElementById('compWebsite').value, import: document.getElementById('compImp').value, export: document.getElementById('compExp').value, createdAt: new Date().toISOString(), activatedAt: (st==='active'?new Date().toISOString():"") }; companies.push(newItem); renderCompanies(); await sync('companies', companies, true); ['compName', 'compCity', 'compContact', 'compPhone', 'compEmail', 'compWebsite', 'compImp', 'compExp'].forEach(i=>document.getElementById(i).value=''); }
+    async function addPartner() { const n = document.getElementById('partName').value; if(!n)return alert("Название?"); const newItem = { id: Date.now(), name: n, status: document.getElementById('partStatus').value, country: document.getElementById('partCountry').value, contact: document.getElementById('partContact').value, phone: document.getElementById('partPhone').value, email: document.getElementById('partEmail').value, website: document.getElementById('partWeb').value, desc: document.getElementById('partDesc').value }; partners.push(newItem); renderPartners(); await sync('partners', partners, true); ['partName', 'partCountry', 'partContact', 'partPhone', 'partEmail', 'partWeb', 'partDesc'].forEach(i=>document.getElementById(i).value=''); }
+
+    function renderManagerStats() {
+        const me = sessionStorage.getItem('crm_user');
+        let selMan = (me === 'admin') ? (document.getElementById('statsManagerFilter').value || 'all') : me;
+        const selYear = document.getElementById('statsYearFilter').value, selMonth = document.getElementById('statsMonthFilter').value, selType = document.getElementById('statsTypeFilter').value;
+        const ms = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"], statsMap = new Map();
+        let typeLabels = {}, managerLabels = {}, monthlyData = {};
+        const filteredDeals = deals.filter(d => {
+            const date = new Date(d.createdAt);
+            const isMatch = d.status === 'completed' && (selMan === 'all' || d.manager === selMan) && (selYear === 'all' || date.getFullYear().toString() === selYear) && (selMonth === 'all' || date.getMonth().toString() === selMonth) && (selType === 'all' || d.type === selType);
+            return isMatch;
+        });
+        filteredDeals.forEach(d => {
+            const date = new Date(d.createdAt), key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+            const prof = parseFloat(d.prof || 0);
+            if (!statsMap.has(key)) statsMap.set(key, { count: 0, profit: 0, month: date.getMonth(), year: date.getFullYear(), key: key });
+            const s = statsMap.get(key); s.count++; s.profit += prof;
+            monthlyData[key] = (monthlyData[key] || 0) + prof;
+            typeLabels[d.type] = (typeLabels[d.type] || 0) + prof;
+            managerLabels[d.manager] = (managerLabels[d.manager] || 0) + prof;
+        });
+        let h = `<table class="report-table"><thead><tr><th>Период</th><th>Сделок</th><th>Прибыль (USD)</th></tr></thead><tbody>`;
+        Array.from(statsMap.keys()).sort().reverse().forEach(k => { const s = statsMap.get(k); h += `<tr class="clickable-row" onclick="showStatsDetail('${s.key}', '${selMan}', '${selType}')"><td>${ms[s.month]} ${s.year}</td><td>${s.count}</td><td style="color:var(--success);font-weight:bold;">${s.profit.toFixed(2)}</td></tr>`; });
+        document.getElementById('statsContent').innerHTML = h + '</tbody></table>';
+        updateCharts(monthlyData, typeLabels, managerLabels);
+    }
+
+    function updateCharts(monthly, types, managersData) {
+        const ctxDyn = document.getElementById('chartProfitDynamics').getContext('2d');
+        const ctxType = document.getElementById('chartProfitByType').getContext('2d');
+        const ctxPerf = document.getElementById('chartManagerPerformance').getContext('2d');
+        if (charts.dyn) charts.dyn.destroy();
+        const sortedMonths = Object.keys(monthly).sort();
+        charts.dyn = new Chart(ctxDyn, { type: 'line', data: { labels: sortedMonths, datasets: [{ label: 'Прибыль USD', data: sortedMonths.map(m => monthly[m]), borderColor: '#1a73e8', backgroundColor: 'rgba(26, 115, 232, 0.1)', fill: true, tension: 0.3 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } });
+        if (charts.type) charts.type.destroy();
+        charts.type = new Chart(ctxType, { type: 'doughnut', data: { labels: Object.keys(types), datasets: [{ data: Object.values(types), backgroundColor: ['#4285F4', '#34A853', '#FBBC05', '#EA4335', '#673AB7', '#00ACC1', '#FF7043', '#9E9E9E'] }] }, options: { responsive: true, maintainAspectRatio: false } });
+        if (charts.perf) charts.perf.destroy();
+        charts.perf = new Chart(ctxPerf, { type: 'bar', data: { labels: Object.keys(managersData), datasets: [{ label: 'Прибыль по менеджерам', data: Object.values(managersData), backgroundColor: '#34A853' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } });
+    }
+
+    function showStatsDetail(key, manager, type) {
+        const [y, m] = key.split('-').map(Number);
+        const fDeals = deals.filter(d => {
+            const dd = new Date(d.createdAt);
+            return dd.getFullYear() === y && (dd.getMonth() + 1) === m && (manager === 'all' || d.manager === manager) && (type === 'all' || d.type === type) && d.status === 'completed';
+        });
+        let h = `<table class="report-table"><thead><tr><th>№</th><th>Клиент</th><th>Доход</th><th>Расход</th><th>Прибыль</th></tr></thead><tbody>`, tI=0, tE=0, tP=0;
+        fDeals.forEach(d => { tI += parseFloat(d.inc); tE += parseFloat(d.exp); tP += parseFloat(d.prof); h += `<tr><td><b>${d.num}</b></td><td>${d.company}</td><td>${parseFloat(d.inc).toFixed(2)}</td><td style="color:var(--danger)">${parseFloat(d.exp).toFixed(2)}</td><td style="color:var(--success);font-weight:bold;">${parseFloat(d.prof).toFixed(2)}</td></tr>`; });
+        h += `<tr style="background:#f8f9fa; font-weight:bold;"><td colspan="2" style="text-align:right">ИТОГО:</td><td>${tI.toFixed(2)}</td><td style="color:var(--danger)">${tE.toFixed(2)}</td><td style="color:var(--success)">${tP.toFixed(2)}</td></tr></tbody></table>`;
+        document.getElementById('statsDetailTableContainer').innerHTML = h;
+        document.getElementById('statsDetailModal').style.display = 'block';
+    }
+
+    function generateReport() {
+        const me = sessionStorage.getItem('crm_user');
+        let selMan = (me === 'admin') ? (document.getElementById('reportManagerFilter').value || 'all') : me;
+        const selYear = document.getElementById('reportYearFilter').value, selMonth = document.getElementById('reportMonthFilter').value;
+        const ms = ["Янв", "Фев", "Мар", "Апр", "Май", "Июн", "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек"], ap = new Map(); 
+        const mk = (ds) => { if (!ds) return; const d = new Date(ds); if (isNaN(d)) return; if (selYear !== 'all' && d.getFullYear().toString() !== selYear) return; if (selMonth !== 'all' && d.getMonth().toString() !== selMonth) return; const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; ap.set(k, {y:d.getFullYear(), m:d.getMonth()}); }; 
+        reminders.filter(r => selMan === 'all' || r.manager === selMan).forEach(r => mk(r.date)); 
+        requests.filter(r => selMan === 'all' || r.manager === selMan).forEach(r => mk(r.createdAt)); 
+        companies.filter(c => selMan === 'all' || c.manager === selMan).forEach(c => mk(c.activatedAt));
+        let h = `<h3>📊 Активность: ${selMan==='all'?'Все':selMan}</h3><table class="report-table"><thead><tr><th>Период</th><th>Звонки</th><th>Запросы</th><th>Новые клиенты</th></tr></thead><tbody>`; 
+        Array.from(ap.keys()).sort().reverse().forEach(k => { const {y, m} = ap.get(k); const c = reminders.filter(r => { const d = new Date(r.date); return (selMan === 'all' || r.manager === selMan) && d.getMonth() === m && d.getFullYear() === y; }).length; const rq = requests.filter(r => { const d = new Date(r.createdAt); return (selMan === 'all' || r.manager === selMan) && d.getMonth() === m && d.getFullYear() === y; }).length; const nc = companies.filter(co => { if(!co.activatedAt) return false; const d = new Date(co.activatedAt); return (selMan === 'all' || co.manager === selMan) && d.getMonth() === m && d.getFullYear() === y && co.status === 'active'; }).length; h += `<tr><td>${ms[m]} ${y}</td><td>${c}</td><td>${rq}</td><td style="color:var(--success); font-weight:bold;">${nc}</td></tr>`; }); 
+        document.getElementById('reportData').innerHTML = h + '</tbody></table>'; 
+    }
+
+    async function deleteItem(sh, id) { 
+        const me = sessionStorage.getItem('crm_user'); let itm = null;
+        if(sh==='requests') itm = requests.find(x=>x.id==id); else if(sh==='deals') itm = deals.find(x=>x.id==id); else if(sh==='companies') itm = companies.find(x=>x.id==id); else if(sh==='reminders') itm = reminders.find(x=>x.id==id); else if(sh==='partners') itm = partners.find(x=>x.id==id);
+        if(!itm) return; if(me!=='admin' && itm.manager!==me) return alert("Нельзя удалять чужое!");
+        if(!confirm("Удалить?"))return; 
+        if(sh==='requests') requests=requests.filter(x=>x.id!=id); else if(sh==='deals') deals=deals.filter(x=>x.id!=id); else if(sh==='companies') companies=companies.filter(x=>x.id!=id); else if(sh==='reminders') reminders=reminders.filter(x=>x.id!=id); else if(sh==='partners') partners=partners.filter(x=>x.id!=id); 
+        await sync(sh, (sh==='requests'?requests:sh==='deals'?deals:sh==='companies'?companies:sh==='partners'?partners:reminders), false); loadCloudData(); 
+    }
+    
+    async function toggleAccess(cid, man, act) { const i = companies.findIndex(x=>x.id==cid); if(!man) return; let arr = (companies[i].sharedWith||"").split(',').filter(s=>s); if(act==='add' && !arr.includes(man)) arr.push(man); if(act==='remove') arr = arr.filter(s=>s!==man); companies[i].sharedWith = arr.join(','); await sync('companies', companies); showCompanyPreview(companies[i].name); }
+
+    // ФУНКЦИИ ФАЙЛОВ
+    async function uploadDealFile(dealId) {
+        const fileInput = document.getElementById('dealFileInput');
+        if (!fileInput.files.length) return alert("Выберите файл");
+        const file = fileInput.files[0];
+        const reader = new FileReader();
+        showLoader(true);
+        reader.onload = async function(e) {
+            const base64 = e.target.result.split(',')[1];
+            const payload = { action: 'uploadFile', filename: file.name, mimeType: file.type, base64: base64 };
+            try {
+                const response = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
+                const res = await response.json();
+                if (res.success) {
+                    const idx = deals.findIndex(d => d.id == dealId);
+                    if (!deals[idx].files) deals[idx].files = [];
+                    deals[idx].files.push({ name: res.fileName, url: res.fileUrl, id: res.fileId });
+                    await sync('deals', deals);
+                    showDealPreview(dealId);
+                }
+            } catch (err) { alert("Ошибка загрузки"); } finally { showLoader(false); }
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function deleteFile(dealId, fileId) {
+        if (!confirm("Удалить файл?")) return;
+        const idx = deals.findIndex(d => d.id == dealId);
+        deals[idx].files = deals[idx].files.filter(f => f.id !== fileId);
+        sync('deals', deals).then(() => showDealPreview(dealId));
+    }
+
+    function showDealPreview(id) {
+        const d = deals.find(x => x.id == id); if (!d) return;
+        let tDetails = '';
+        if (d.trans === 'море') tDetails = `<div class="preview-box"><label>Конт. (${d.container})</label><span>${d.contQty || 0} шт.</span></div><div class="preview-box"><label>Коносамент</label><span>${d.blNum || '-'}</span></div>`;
+        else if (d.trans === 'авиа') tDetails = `<div class="preview-box" style="grid-column:span 2;"><label>Авианакладная</label><span>${d.awbNum || '-'}</span></div>`;
+        
+        let fHtml = (d.files || []).map(f => `<div class="file-item"><a href="${f.url}" target="_blank">📄 ${f.name}</a><span class="file-delete" onclick="deleteFile(${d.id}, '${f.id}')">×</span></div>`).join('');
+
+        document.getElementById('preview-deals').innerHTML = `
+        <h3>№ ${d.num} - ${d.company}</h3>
+        <div class="preview-grid">
+            <div class="preview-box"><label>Прибыль</label><span style="color:var(--success);font-weight:bold;">${d.prof} USD</span></div>
+            <div class="preview-box"><label>Доход / Расход</label><span>${d.inc} / ${d.exp}</span></div>
+            <div class="preview-box"><label>Тип сделки</label><span>${d.type || '-'}</span></div>
+            <div class="preview-box"><label>Транспорт</label><span>${d.trans.toUpperCase()}</span></div>
+            <div class="preview-box"><label>Менеджер</label><span>${d.manager}</span></div>
+            <div class="preview-box"><label>Вес/Объем</label><span>${d.weight}кг / ${d.vol}м³</span></div>
+            ${tDetails}
+            <div class="preview-box" style="grid-column:span 2;"><label>Маршрут</label><span>${d.load} → ${d.unload}</span></div>
+            <div class="preview-box" style="grid-column:span 2;"><label>Инфо</label><span>${d.info || '-'}</span></div>
+        </div>
+        <button class="btn-pdf" onclick="generateInvoicePDF(${d.id})">📄 Згенерувати пропозицію</button>
+        <div class="file-list-container">
+            <strong>Файли сделки:</strong>
+            <div style="margin-top:5px;">${fHtml || '<small style="color:#999">Нет файлов</small>'}</div>
+            <div class="upload-area">
+                <input type="file" id="dealFileInput" style="font-size:10px; width:150px;">
+                <button onclick="uploadDealFile(${d.id})" style="font-size:10px; padding:2px 5px;">Загрузить</button>
+            </div>
+        </div>`;
+    }
+
+    function openTab(id) { document.querySelectorAll('.content, .tab-btn').forEach(x => x.classList.remove('active')); document.getElementById(id).classList.add('active'); document.getElementById('btn-'+id).classList.add('active'); if(id==='report') generateReport(); if(id==='stats') renderManagerStats(); if(id==='profile') loadProfile(); }
+    function renderAll() { renderReminders(); renderRequests(); renderDeals(); renderCompanies(); renderPartners(); updateCounters(); updateDatalists(); }
+    function updateCounters() { document.getElementById('count-calls').innerText = reminders.length; document.getElementById('count-requests').innerText = requests.length; document.getElementById('count-deals').innerText = deals.length; document.getElementById('count-companies').innerText = companies.length; document.getElementById('count-partners').innerText = partners.length; }
+    function updateDatalists() { document.getElementById('allEntitiesData').innerHTML = companies.map(c => `<option value="${c.name}">`).join(''); }
+    function calcDealProfit() { const i = parseFloat(document.getElementById('dealInc').value||0), e = parseFloat(document.getElementById('dealExp').value||0); document.getElementById('dealProf').value=(i-e).toFixed(2); }
+    function calcEditProf() { const i = parseFloat(document.getElementById('eDealInc').value||0), e = parseFloat(document.getElementById('eDealExp').value||0); document.getElementById('eDealProf').value=(i-e).toFixed(2); }
+    function updateSecondaryFilter() { const p = document.getElementById('sortComp').value, s = document.getElementById('secondarySelect'); if (!p) { s.style.display = 'none'; renderCompanies(); return; } s.style.display = 'inline-block'; s.innerHTML = p === 'manager' ? '<option value="">Все</option>' + managers.map(m => `<option value="${m}">${m}</option>`).join('') : '<option value="">Все</option><option value="cold">Холодный</option><option value="warm">Теплый</option><option value="active">Активный</option>'; renderCompanies(); }
+    function clearCallFilters() { document.getElementById('searchCallComp').value = ''; document.getElementById('searchCallDate').value = ''; renderReminders(); }
+    
+    window.onload = startApp;
+</script>
+</body>
+</html>
