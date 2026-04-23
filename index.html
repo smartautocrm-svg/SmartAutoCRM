@@ -579,13 +579,12 @@
     // НОВЫЕ ФУНКЦИИ ДЛЯ ФАЙЛОВ
    async function uploadDealFile(dealId) {
         const fileInput = document.getElementById('dealFileInput');
-        if (!fileInput.files.length) return alert("Выберите файл");
+        if (!fileInput || !fileInput.files.length) return alert("Выберите файл!");
         
         const file = fileInput.files[0];
         const reader = new FileReader();
         
         showLoader(true);
-        console.log("1. Начинаю чтение файла...");
 
         reader.onload = async function(e) {
             try {
@@ -597,18 +596,18 @@
                     base64: base64 
                 };
 
-                console.log("2. Отправка данных в Google...");
-                
+                // Отправляем файл
                 const response = await fetch(SCRIPT_URL, { 
                     method: 'POST', 
                     body: JSON.stringify(payload) 
                 });
 
                 const res = await response.json();
-                console.log("3. Ответ от Google получен:", res);
 
                 if (res.success) {
                     const idx = deals.findIndex(d => d.id == dealId);
+                    if (idx === -1) throw new Error("Сделка не найдена в списке");
+                    
                     if (!deals[idx].files) deals[idx].files = [];
                     
                     deals[idx].files.push({ 
@@ -617,16 +616,25 @@
                         id: res.fileId 
                     });
 
-                    console.log("4. Сохраняю ссылку в таблицу...");
-                    await sync('deals', deals);
+                    // Сохраняем обновленный список файлов в таблицу
+                    // ВАЖНО: Тут мы вызываем синхронизацию БЕЗ no-cors для надежности
+                    await fetch(SCRIPT_URL, {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            action: 'clearAndSave',
+                            sheet: 'deals',
+                            allData: deals.map(d => formatRow('deals', d))
+                        })
+                    });
+
                     showDealPreview(dealId);
-                    alert("УСПЕХ: Файл загружен!");
+                    alert("Готово! Файл прикреплен.");
                 } else {
-                    alert("ОШИБКА ГУГЛА: " + JSON.stringify(res));
+                    alert("Ошибка Google Drive: " + JSON.stringify(res));
                 }
             } catch (err) {
-                console.error("Ошибка:", err);
-                alert("ОШИБКА СКРИПТА: " + err.message);
+                console.error("Upload error:", err);
+                alert("Ошибка: " + err.message);
             } finally {
                 showLoader(false);
             }
