@@ -451,8 +451,8 @@
 <datalist id="allEntitiesData"></datalist>
 
 <script>
-    // СЮДА НУЖНО ВСТАВИТЬ ВАШ URL
-    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby-oV9fCv8VIw8IdBigl70v-hD7nQoWVuwGbfScCXxvDtGyXje9ObDIBJv3pCWpwDPU1Q/exec";
+    // ВСТАВЬТЕ СВОЙ АКТУАЛЬНЫЙ URL СКРИПТА
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyQZBRHDwNVKxURCw2EA0QPiog3Ap2CP_mG4DQ5iZUjvgHAxOi4LSDwgcxXX0hgtZ_mtg/exec";
     
     let reminders = [], companies = [], partners = [], requests = [], managers = [], deals = [];
     const statusMap = { cold: {label:'❄️ Холодный'}, warm: {label:'🔥 Теплый'}, active: {label:'🏆 Активный'} };
@@ -550,15 +550,31 @@
             }
             companies = d.companies.map(x => ({ id: x[0]||Date.now(), name: x[1]||"", contact: x[2]||"", phone: x[3]||"", product: x[4]||"", city: x[5]||"", email: x[6]||"", import: x[7]||"", export: x[8]||"", status: x[9]||"cold", createdAt: x[10]||"", activatedAt: x[11]||"", manager: x[12]||"", isPrivate: x[13]==="true"||x[13]===true, sharedWith: x[14]||"", website: x[15]||"" }));
             requests = d.requests.map(x => ({ id: x[0]||Date.now(), company: x[1]||"", cargo: x[2]||"", transport: x[3]||"", weight: x[4]||"", vol: x[5]||"", value: x[6]||"", currency: x[7]||"", load: x[8]||"", unload: x[9]||"", desc: x[10]||"", createdAt: x[11]||"", status: x[12]||"active", comment: x[13]||"", container: x[14]||"", zip: x[15]||"", manager: x[16]||"", contQty: x[17]||"" }));
-            deals = d.deals.map(x => ({ 
-                id: x[0]||Date.now(), num: x[1]||"", company: x[2]||"", cargo: x[3]||"", trans: x[4]||"", weight: x[5]||"", vol: x[6]||"", value: x[7]||"", curr: x[8]||"", load: x[9]||"", zip: x[10]||"", unload: x[11]||"", info: x[12]||"", manager: x[13]||"", createdAt: x[14]||"", exp: x[15]||0, inc: x[16]||0, prof: x[17]||0, container: x[18]||"", sharedWith: x[19]||"", status: x[20]||"active", type: x[21]||"", contQty: x[22]||"", blNum: x[23]||"", awbNum: x[24]||"",
-                files: x[25] ? JSON.parse(x[25]) : [] 
-            }));
+            
+            // ЗАЩИТА ОТ ОШИБКИ ПАРСИНГА ФАЙЛОВ
+            deals = d.deals.map(x => {
+                let parsedFiles = [];
+                try {
+                  if (x[25] && x[25] !== "" && x[25] !== "[]") {
+                    parsedFiles = JSON.parse(x[25]);
+                  }
+                } catch(e) { console.warn("Ошибка JSON в сделке", x[1]); }
+                
+                return { 
+                  id: x[0]||Date.now(), num: x[1]||"", company: x[2]||"", cargo: x[3]||"", trans: x[4]||"", weight: x[5]||"", vol: x[6]||"", value: x[7]||"", curr: x[8]||"", load: x[9]||"", zip: x[10]||"", unload: x[11]||"", info: x[12]||"", manager: x[13]||"", createdAt: x[14]||"", exp: x[15]||0, inc: x[16]||0, prof: x[17]||0, container: x[18]||"", sharedWith: x[19]||"", status: x[20]||"active", type: x[21]||"", contQty: x[22]||"", blNum: x[23]||"", awbNum: x[24]||"",
+                  files: parsedFiles 
+                };
+            });
+
             reminders = d.reminders.map(x => ({ id: x[0]||Date.now(), name: x[1]||"", date: x[2]||"", topic: x[3]||"", manager: x[4]||"", status: x[5]||"active" }));
             partners = d.partners.map(x => ({ id: x[0]||Date.now(), name: x[1]||"", status: x[2]||"агент", country: x[3]||"", contact: x[4]||"", phone: x[5]||"", email: x[6]||"", website: x[7]||"", desc: x[8]||"" }));
             renderAll(); 
             document.getElementById('sync-status').innerText = "Обновлено: " + new Date().toLocaleTimeString();
-        } catch (e) { console.error(e); } finally { showLoader(false); }
+        } catch (e) { 
+            console.error("Критическая ошибка загрузки:", e); 
+        } finally { 
+            showLoader(false); // ГАРАНТИРОВАННО ВЫКЛЮЧАЕМ ЛОАДЕР
+        }
     }
 
     function formatRow(sh, o) {
@@ -572,82 +588,27 @@
 
     async function sync(sh, dt, isAppend = false) {
         showLoader(true); 
-        let payload = { action: isAppend ? 'append' : 'clearAndSave', sheet: sh };
-        if (isAppend) { payload.rowData = formatRow(sh, dt[dt.length - 1]); } 
-        else { payload.allData = dt.map(o => formatRow(sh, o)); }
-        
+        let payload = { sheet: sh };
+        if (isAppend) { 
+            payload.action = 'append'; 
+            payload.rowData = formatRow(sh, dt[dt.length - 1]); 
+        } else { 
+            payload.action = 'clearAndSave'; 
+            payload.allData = dt.map(o => formatRow(sh, o)); 
+        }
         try { 
-            // КРИТИЧЕСКИЙ ФИКС: УДАЛЕН NO-CORS
-            await fetch(SCRIPT_URL, { 
+            // УДАЛЕН NO-CORS ДЛЯ ПОЛУЧЕНИЯ ОТВЕТА
+            const response = await fetch(SCRIPT_URL, { 
                 method: 'POST', 
                 body: JSON.stringify(payload) 
             }); 
+            const res = await response.json();
+            if(!res.success) console.error("Ошибка синхронизации:", res.error);
         } catch (e) { 
-            console.error(e); 
+            console.error("Ошибка сети при синхронизации:", e); 
         } finally { 
             showLoader(false); 
         }
-    }
-
-    // ФУНКЦИЯ ЗАГРУЗКИ ФАЙЛА (ЕДИНСТВЕННАЯ ИСПРАВЛЕННАЯ)
-    async function uploadDealFile(dealId) {
-        const fileInput = document.getElementById('dealFileInput');
-        if (!fileInput.files.length) return alert("Выберите файл!");
-        
-        const file = fileInput.files[0];
-        const reader = new FileReader();
-        
-        showLoader(true);
-
-        reader.onload = async function(e) {
-            try {
-                const base64 = e.target.result.split(',')[1];
-                const payload = { 
-                    action: 'uploadFile', 
-                    filename: file.name, 
-                    mimeType: file.type, 
-                    base64: base64 
-                };
-
-                const response = await fetch(SCRIPT_URL, { 
-                    method: 'POST', 
-                    body: JSON.stringify(payload) 
-                });
-
-                const res = await response.json();
-
-                if (res.success) {
-                    const idx = deals.findIndex(d => d.id == dealId);
-                    if (!deals[idx].files) deals[idx].files = [];
-                    
-                    deals[idx].files.push({ 
-                        name: res.fileName, 
-                        url: res.fileUrl, 
-                        id: res.fileId 
-                    });
-
-                    // Сохраняем в таблицу
-                    await sync('deals', deals);
-                    showDealPreview(dealId);
-                    alert("Готово! Файл прикреплен.");
-                } else {
-                    alert("Ошибка Google Script: " + JSON.stringify(res));
-                }
-            } catch (err) {
-                console.error("Upload error:", err);
-                alert("Ошибка загрузки");
-            } finally {
-                showLoader(false);
-            }
-        };
-        reader.readAsDataURL(file);
-    }
-
-    function deleteFile(dealId, fileId) {
-        if (!confirm("Удалить файл?")) return;
-        const idx = deals.findIndex(d => d.id == dealId);
-        deals[idx].files = deals[idx].files.filter(f => f.id !== fileId);
-        sync('deals', deals).then(() => showDealPreview(dealId));
     }
 
     function checkAccess(n) { const me = sessionStorage.getItem('crm_user'); if (me === 'admin') return true; const c = companies.find(x=>x.name===n); return !c || !c.isPrivate || c.manager===me || (c.sharedWith||"").split(',').includes(me); }
@@ -701,10 +662,12 @@
         if(r) { 
             document.getElementById('preview-calls').innerHTML = `
             <h3>${r.name}</h3>
-            <div class="preview-box"><label>Дата</label><span>${r.date}</span></div>
-            <div class="preview-box"><label>Менеджер</label><span>${r.manager}</span></div>
-            <div class="preview-box"><label>Статус</label><span>${r.status}</span></div>
-            <div class="preview-box" style="grid-column:span 2;"><label>Результат</label><p style="font-size:11px; margin-top:5px;">${r.topic}</p></div>`; 
+            <div class="preview-grid">
+                <div class="preview-box"><label>Дата</label><span>${r.date}</span></div>
+                <div class="preview-box"><label>Менеджер</label><span>${r.manager}</span></div>
+                <div class="preview-box"><label>Статус</label><span>${r.status}</span></div>
+                <div class="preview-box" style="grid-column:span 2;"><label>Результат</label><p style="font-size:11px; margin-top:5px;">${r.topic}</p></div>
+            </div>`; 
         } 
     }
 
@@ -752,7 +715,7 @@
             <div style="margin-top:5px;">${fHtml || '<small style="color:#999">Нет файлов</small>'}</div>
             <div class="upload-area">
                 <input type="file" id="dealFileInput" style="font-size:10px; width:150px;">
-                <button onclick="uploadDealFile(${d.id})" style="font-size:10px;">Загрузить</button>
+                <button onclick="uploadDealFile(${d.id})" style="font-size:10px; padding:2px 5px;">Загрузить</button>
             </div>
         </div>`;
     }
@@ -984,6 +947,67 @@
     }
     
     async function toggleAccess(cid, man, act) { const i = companies.findIndex(x=>x.id==cid); if(!man) return; let arr = (companies[i].sharedWith||"").split(',').filter(s=>s); if(act==='add' && !arr.includes(man)) arr.push(man); if(act==='remove') arr = arr.filter(s=>s!==man); companies[i].sharedWith = arr.join(','); await sync('companies', companies); showCompanyPreview(companies[i].name); }
+
+    // ФУНКЦИЯ ЗАГРУЗКИ ФАЙЛОВ
+    async function uploadDealFile(dealId) {
+        const fileInput = document.getElementById('dealFileInput');
+        if (!fileInput.files.length) return alert("Выберите файл!");
+        
+        const file = fileInput.files[0];
+        const reader = new FileReader();
+        
+        showLoader(true);
+
+        reader.onload = async function(e) {
+            try {
+                const base64 = e.target.result.split(',')[1];
+                const payload = { 
+                    action: 'uploadFile', 
+                    filename: file.name, 
+                    mimeType: file.type, 
+                    base64: base64 
+                };
+
+                const response = await fetch(SCRIPT_URL, { 
+                    method: 'POST', 
+                    body: JSON.stringify(payload) 
+                });
+
+                const res = await response.json();
+
+                if (res.success) {
+                    const idx = deals.findIndex(d => d.id == dealId);
+                    if (!deals[idx].files) deals[idx].files = [];
+                    
+                    deals[idx].files.push({ 
+                        name: res.fileName, 
+                        url: res.fileUrl, 
+                        id: res.fileId 
+                    });
+
+                    // Сохраняем в таблицу
+                    await sync('deals', deals);
+                    showDealPreview(dealId);
+                    alert("Готово! Файл прикреплен.");
+                } else {
+                    alert("Ошибка Google Script: " + JSON.stringify(res));
+                }
+            } catch (err) {
+                console.error("Upload error:", err);
+                alert("Ошибка загрузки");
+            } finally {
+                showLoader(false);
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function deleteFile(dealId, fileId) {
+        if (!confirm("Удалить файл?")) return;
+        const idx = deals.findIndex(d => d.id == dealId);
+        deals[idx].files = deals[idx].files.filter(f => f.id !== fileId);
+        sync('deals', deals).then(() => showDealPreview(dealId));
+    }
 
     function openTab(id) { document.querySelectorAll('.content, .tab-btn').forEach(x => x.classList.remove('active')); document.getElementById(id).classList.add('active'); document.getElementById('btn-'+id).classList.add('active'); if(id==='report') generateReport(); if(id==='stats') renderManagerStats(); if(id==='profile') loadProfile(); }
     function renderAll() { renderReminders(); renderRequests(); renderDeals(); renderCompanies(); renderPartners(); updateCounters(); updateDatalists(); }
