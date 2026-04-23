@@ -536,39 +536,48 @@
         } catch(e) { alert("Ошибка сохранения"); } finally { showLoader(false); }
     }
 
-    async function loadCloudData() {
+async function loadCloudData() {
         if (document.getElementById('editModal').style.display === 'block') return;
         showLoader(true);
         try {
             const r = await fetch(`${SCRIPT_URL}?action=getAllData`);
             const d = await r.json();
+            
+            if (d.error) {
+                console.error("Ошибка GAS:", d.error);
+                return;
+            }
+
             managers = d.managers || [];
             document.getElementById('compManager').innerHTML = '<option value="">Менеджер *</option>' + managers.map(m => `<option value="${m}">${m}</option>`).join('');
+            
             if (sessionStorage.getItem('crm_user') === 'admin') {
                 const adminOpts = '<option value="all">📈 Все менеджеры</option>' + managers.map(m => `<option value="${m}">${m}</option>`).join('');
-                document.getElementById('reportManagerFilter').innerHTML = adminOpts;
-                document.getElementById('statsManagerFilter').innerHTML = adminOpts;
+                if(document.getElementById('reportManagerFilter')) document.getElementById('reportManagerFilter').innerHTML = adminOpts;
+                if(document.getElementById('statsManagerFilter')) document.getElementById('statsManagerFilter').innerHTML = adminOpts;
             }
-            companies = d.companies.map(x => ({ id: x[0]||Date.now(), name: x[1]||"", contact: x[2]||"", phone: x[3]||"", product: x[4]||"", city: x[5]||"", email: x[6]||"", import: x[7]||"", export: x[8]||"", status: x[9]||"cold", createdAt: x[10]||"", activatedAt: x[11]||"", manager: x[12]||"", isPrivate: x[13]==="true"||x[13]===true, sharedWith: x[14]||"", website: x[15]||"" }));
-            requests = d.requests.map(x => ({ id: x[0]||Date.now(), company: x[1]||"", cargo: x[2]||"", transport: x[3]||"", weight: x[4]||"", vol: x[5]||"", value: x[6]||"", currency: x[7]||"", load: x[8]||"", unload: x[9]||"", desc: x[10]||"", createdAt: x[11]||"", status: x[12]||"active", comment: x[13]||"", container: x[14]||"", zip: x[15]||"", manager: x[16]||"", contQty: x[17]||"" }));
+
+            // Заполняем данные с проверкой на существование
+            companies = (d.companies || []).map(x => ({ id: x[0]||Date.now(), name: x[1]||"", contact: x[2]||"", phone: x[3]||"", product: x[4]||"", city: x[5]||"", email: x[6]||"", import: x[7]||"", export: x[8]||"", status: x[9]||"cold", createdAt: x[10]||"", activatedAt: x[11]||"", manager: x[12]||"", isPrivate: String(x[13])==="true", sharedWith: x[14]||"", website: x[15]||"" }));
             
-            deals = d.deals.map(x => {
+            requests = (d.requests || []).map(x => ({ id: x[0]||Date.now(), company: x[1]||"", cargo: x[2]||"", transport: x[3]||"", weight: x[4]||"", vol: x[5]||"", value: x[6]||"", currency: x[7]||"", load: x[8]||"", unload: x[9]||"", desc: x[10]||"", createdAt: x[11]||"", status: x[12]||"active", comment: x[13]||"", container: x[14]||"", zip: x[15]||"", manager: x[16]||"", contQty: x[17]||"" }));
+            
+            deals = (d.deals || []).map(x => {
                 let parsedFiles = [];
-                try {
-                    if (x[25] && x[25].trim() !== "" && x[25] !== "[]") parsedFiles = JSON.parse(x[25]);
-                } catch(e) { console.warn("Deal JSON parse error", x[1]); }
-                return { 
-                    id: x[0]||Date.now(), num: x[1]||"", company: x[2]||"", cargo: x[3]||"", trans: x[4]||"", weight: x[5]||"", vol: x[6]||"", value: x[7]||"", curr: x[8]||"", load: x[9]||"", zip: x[10]||"", unload: x[11]||"", info: x[12]||"", manager: x[13]||"", createdAt: x[14]||"", exp: x[15]||0, inc: x[16]||0, prof: x[17]||0, container: x[18]||"", sharedWith: x[19]||"", status: x[20]||"active", type: x[21]||"", contQty: x[22]||"", blNum: x[23]||"", awbNum: x[24]||"",
-                    files: parsedFiles 
-                };
+                try { if (x[25] && x[25] !== "[]") parsedFiles = JSON.parse(x[25]); } catch(e) {}
+                return { id: x[0]||Date.now(), num: x[1]||"", company: x[2]||"", cargo: x[3]||"", trans: x[4]||"", weight: x[5]||"", vol: x[6]||"", value: x[7]||"", curr: x[8]||"", load: x[9]||"", zip: x[10]||"", unload: x[11]||"", info: x[12]||"", manager: x[13]||"", createdAt: x[14]||"", exp: x[15]||0, inc: x[16]||0, prof: x[17]||0, container: x[18]||"", sharedWith: x[19]||"", status: x[20]||"active", type: x[21]||"", contQty: x[22]||"", blNum: x[23]||"", awbNum: x[24]||"", files: parsedFiles };
             });
             
-            reminders = d.reminders.map(x => ({ id: x[0]||Date.now(), name: x[1]||"", date: x[2]||"", topic: x[3]||"", manager: x[4]||"", status: x[5]||"active" }));
-            partners = d.partners.map(x => ({ id: x[0]||Date.now(), name: x[1]||"", status: x[2]||"агент", country: x[3]||"", contact: x[4]||"", phone: x[5]||"", email: x[6]||"", website: x[7]||"", desc: x[8]||"" }));
+            reminders = (d.reminders || []).map(x => ({ id: x[0]||Date.now(), name: x[1]||"", date: x[2]||"", topic: x[3]||"", manager: x[4]||"", status: x[5]||"active" }));
+            partners = (d.partners || []).map(x => ({ id: x[0]||Date.now(), name: x[1]||"", status: x[2]||"агент", country: x[3]||"", contact: x[4]||"", phone: x[5]||"", email: x[6]||"", website: x[7]||"", desc: x[8]||"" }));
+            
             renderAll(); 
             document.getElementById('sync-status').innerText = "Обновлено: " + new Date().toLocaleTimeString();
-        } catch (e) { console.error("Cloud load error:", e); } 
-        finally { showLoader(false); }
+        } catch (e) { 
+            console.error("Cloud load error:", e); 
+        } finally { 
+            showLoader(false); 
+        }
     }
 
     function formatRow(sh, o) {
