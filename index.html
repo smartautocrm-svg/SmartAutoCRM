@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>SmartAuto CRM PRO+ (v7.0) Full Functionality</title>
+    <title>SmartAuto CRM PRO+ (v8.9.2) Full Functionality</title>
     <!-- Подключаем библиотеки для графиков и PDF -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -468,7 +468,7 @@
         try {
             const r = await fetch(`${SCRIPT_URL}?action=login&email=${encodeURIComponent(e)}&password=${encodeURIComponent(p)}`);
             const res = await r.json();
-            if (res.success) { sessionStorage.setItem('crm_user', res.name); if(rem) { localStorage.setItem('crm_rem_email', e); localStorage.setItem('crm_rem_pass', p); } startApp(); } else alert("Ошибка входа");
+            if (res.success) { sessionStorage.setItem('crm_user', res.name); if(rem) { localStorage.setItem('crm_rem_email', e); localStorage.setItem('crm_rem_pass', p); } startApp(); } else alert("Ошибка входа: " + res.error);
         } catch (err) { alert("Ошибка сети"); } finally { showLoader(false); }
     }
 
@@ -477,8 +477,10 @@
         if(!n || !e || !p) return alert("Заполните поля");
         showLoader(true);
         try {
-            const r = await fetch(`${SCRIPT_URL}?action=register&email=${encodeURIComponent(e)}).json(); if(res.success) { alert("Успешно!"); toggleAuthMode(false); }
-        } catch(err) { alert("Ошибка"); } finally { showLoader(false); }
+            const r = await fetch(`${SCRIPT_URL}?action=register&email=${encodeURIComponent(e)}&password=${encodeURIComponent(p)}&name=${encodeURIComponent(n)}`);
+            const res = await r.json();
+            if(res.success) { alert("Успешно!"); toggleAuthMode(false); }
+        } catch(err) { alert("Ошибка регистрации"); } finally { showLoader(false); }
     }
 
     async function startApp() {
@@ -957,57 +959,29 @@
     
     async function toggleAccess(cid, man, act) { const i = companies.findIndex(x=>x.id==cid); if(!man) return; let arr = (companies[i].sharedWith||"").split(',').filter(s=>s); if(act==='add' && !arr.includes(man)) arr.push(man); if(act==='remove') arr = arr.filter(s=>s!==man); companies[i].sharedWith = arr.join(','); await sync('companies', companies); showCompanyPreview(companies[i].name); }
 
-    // ФУНКЦИЯ ЗАГРУЗКИ ФАЙЛОВ
     async function uploadDealFile(dealId) {
         const fileInput = document.getElementById('dealFileInput');
         if (!fileInput.files.length) return alert("Выберите файл!");
-        
         const file = fileInput.files[0];
         const reader = new FileReader();
-        
         showLoader(true);
-
         reader.onload = async function(e) {
             try {
                 const base64 = e.target.result.split(',')[1];
-                const payload = { 
-                    action: 'uploadFile', 
-                    filename: file.name, 
-                    mimeType: file.type, 
-                    base64: base64 
-                };
-
-                const response = await fetch(SCRIPT_URL, { 
-                    method: 'POST', 
-                    body: JSON.stringify(payload) 
-                });
-
+                const payload = { action: 'uploadFile', filename: file.name, mimeType: file.type, base64: base64 };
+                const response = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
                 const res = await response.json();
-
                 if (res.success) {
                     const idx = deals.findIndex(d => d.id == dealId);
                     if (idx === -1) throw new Error("Сделка не найдена");
                     if (!deals[idx].files) deals[idx].files = [];
-                    
-                    deals[idx].files.push({ 
-                        name: res.fileName, 
-                        url: res.fileUrl, 
-                        id: res.fileId 
-                    });
-
-                    // Сохраняем обновление
+                    deals[idx].files.push({ name: res.fileName, url: res.fileUrl, id: res.fileId });
                     await sync('deals', deals);
                     showDealPreview(dealId);
                     alert("Готово! Файл прикреплен.");
-                } else {
-                    alert("Ошибка Google Script: " + JSON.stringify(res));
-                }
-            } catch (err) {
-                console.error("Upload error:", err);
-                alert("Ошибка загрузки");
-            } finally {
-                showLoader(false);
-            }
+                } else { alert("Ошибка: " + res.error); }
+            } catch (err) { alert("Ошибка загрузки"); } 
+            finally { showLoader(false); }
         };
         reader.readAsDataURL(file);
     }
