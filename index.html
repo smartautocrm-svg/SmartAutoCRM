@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>SmartAuto CRM PRO+ (v7.0) Full Functionality</title>
-    <!-- Подключаем библиотеки для графиков и PDF -->
+    <!-- Библиотеки для графиков и PDF -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     
@@ -451,6 +451,7 @@
 <datalist id="allEntitiesData"></datalist>
 
 <script>
+    // ВСТАВЬ СВОЙ URL ЗДЕСЬ
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyQZBRHDwNVKxURCw2EA0QPiog3Ap2CP_mG4DQ5iZUjvgHAxOi4LSDwgcxXX0hgtZ_mtg/exec";
     
     let reminders = [], companies = [], partners = [], requests = [], managers = [], deals = [];
@@ -527,7 +528,7 @@
         if(!payload.name || !payload.email || !payload.pass) return alert("Поля Имя, Email и Пароль обязательны");
         showLoader(true);
         try {
-            await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) });
+            await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
             alert("Профиль успешно обновлен!");
             sessionStorage.setItem('crm_user', payload.name);
             location.reload();
@@ -573,80 +574,9 @@
         showLoader(true); let payload = { sheet: sh };
         if (isAppend) { payload.action = 'append'; payload.rowData = formatRow(sh, dt[dt.length - 1]); } 
         else { payload.action = 'clearAndSave'; payload.allData = dt.map(o => formatRow(sh, o)); }
-        try { await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify(payload) }); } catch (e) { console.error(e); } finally { showLoader(false); }
-    }
-
-    // НОВЫЕ ФУНКЦИИ ДЛЯ ФАЙЛОВ
-   async function uploadDealFile(dealId) {
-        const fileInput = document.getElementById('dealFileInput');
-        if (!fileInput || !fileInput.files.length) return alert("Выберите файл!");
-        
-        const file = fileInput.files[0];
-        const reader = new FileReader();
-        
-        showLoader(true);
-
-        reader.onload = async function(e) {
-            try {
-                const base64 = e.target.result.split(',')[1];
-                const payload = { 
-                    action: 'uploadFile', 
-                    filename: file.name, 
-                    mimeType: file.type, 
-                    base64: base64 
-                };
-
-                // Отправляем файл
-                const response = await fetch(SCRIPT_URL, { 
-                    method: 'POST', 
-                    body: JSON.stringify(payload) 
-                });
-
-                const res = await response.json();
-
-                if (res.success) {
-                    const idx = deals.findIndex(d => d.id == dealId);
-                    if (idx === -1) throw new Error("Сделка не найдена в списке");
-                    
-                    if (!deals[idx].files) deals[idx].files = [];
-                    
-                    deals[idx].files.push({ 
-                        name: res.fileName, 
-                        url: res.fileUrl, 
-                        id: res.fileId 
-                    });
-
-                    // Сохраняем обновленный список файлов в таблицу
-                    // ВАЖНО: Тут мы вызываем синхронизацию БЕЗ no-cors для надежности
-                    await fetch(SCRIPT_URL, {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            action: 'clearAndSave',
-                            sheet: 'deals',
-                            allData: deals.map(d => formatRow('deals', d))
-                        })
-                    });
-
-                    showDealPreview(dealId);
-                    alert("Готово! Файл прикреплен.");
-                } else {
-                    alert("Ошибка Google Drive: " + JSON.stringify(res));
-                }
-            } catch (err) {
-                console.error("Upload error:", err);
-                alert("Ошибка: " + err.message);
-            } finally {
-                showLoader(false);
-            }
-        };
-        reader.readAsDataURL(file);
-    }
-
-    function deleteFile(dealId, fileId) {
-        if (!confirm("Удалить файл?")) return;
-        const idx = deals.findIndex(d => d.id == dealId);
-        deals[idx].files = deals[idx].files.filter(f => f.id !== fileId);
-        sync('deals', deals).then(() => showDealPreview(dealId));
+        try { 
+            await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) }); 
+        } catch (e) { console.error(e); } finally { showLoader(false); }
     }
 
     function checkAccess(n) { const me = sessionStorage.getItem('crm_user'); if (me === 'admin') return true; const c = companies.find(x=>x.name===n); return !c || !c.isPrivate || c.manager===me || (c.sharedWith||"").split(',').includes(me); }
@@ -984,7 +914,7 @@
     
     async function toggleAccess(cid, man, act) { const i = companies.findIndex(x=>x.id==cid); if(!man) return; let arr = (companies[i].sharedWith||"").split(',').filter(s=>s); if(act==='add' && !arr.includes(man)) arr.push(man); if(act==='remove') arr = arr.filter(s=>s!==man); companies[i].sharedWith = arr.join(','); await sync('companies', companies); showCompanyPreview(companies[i].name); }
 
-    // ФУНКЦИИ ФАЙЛОВ
+    // ФУНКЦИЯ ЗАГРУЗКИ ФАЙЛОВ
     async function uploadDealFile(dealId) {
         const fileInput = document.getElementById('dealFileInput');
         if (!fileInput.files.length) return alert("Выберите файл");
@@ -995,16 +925,25 @@
             const base64 = e.target.result.split(',')[1];
             const payload = { action: 'uploadFile', filename: file.name, mimeType: file.type, base64: base64 };
             try {
+                // ВАЖНО: УДАЛИЛИ NO-CORS И ПЕРЕДАЕМ ПРЯМОЙ FETCH
                 const response = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
                 const res = await response.json();
                 if (res.success) {
                     const idx = deals.findIndex(d => d.id == dealId);
                     if (!deals[idx].files) deals[idx].files = [];
                     deals[idx].files.push({ name: res.fileName, url: res.fileUrl, id: res.fileId });
+                    
+                    // Сохраняем обновление в таблицу
                     await sync('deals', deals);
                     showDealPreview(dealId);
+                    alert("Файл успешно загружен!");
                 }
-            } catch (err) { alert("Ошибка загрузки"); } finally { showLoader(false); }
+            } catch (err) { 
+                console.error(err);
+                alert("Ошибка загрузки файла на Google Drive"); 
+            } finally { 
+                showLoader(false); 
+            }
         };
         reader.readAsDataURL(file);
     }
@@ -1014,38 +953,6 @@
         const idx = deals.findIndex(d => d.id == dealId);
         deals[idx].files = deals[idx].files.filter(f => f.id !== fileId);
         sync('deals', deals).then(() => showDealPreview(dealId));
-    }
-
-    function showDealPreview(id) {
-        const d = deals.find(x => x.id == id); if (!d) return;
-        let tDetails = '';
-        if (d.trans === 'море') tDetails = `<div class="preview-box"><label>Конт. (${d.container})</label><span>${d.contQty || 0} шт.</span></div><div class="preview-box"><label>Коносамент</label><span>${d.blNum || '-'}</span></div>`;
-        else if (d.trans === 'авиа') tDetails = `<div class="preview-box" style="grid-column:span 2;"><label>Авианакладная</label><span>${d.awbNum || '-'}</span></div>`;
-        
-        let fHtml = (d.files || []).map(f => `<div class="file-item"><a href="${f.url}" target="_blank">📄 ${f.name}</a><span class="file-delete" onclick="deleteFile(${d.id}, '${f.id}')">×</span></div>`).join('');
-
-        document.getElementById('preview-deals').innerHTML = `
-        <h3>№ ${d.num} - ${d.company}</h3>
-        <div class="preview-grid">
-            <div class="preview-box"><label>Прибыль</label><span style="color:var(--success);font-weight:bold;">${d.prof} USD</span></div>
-            <div class="preview-box"><label>Доход / Расход</label><span>${d.inc} / ${d.exp}</span></div>
-            <div class="preview-box"><label>Тип сделки</label><span>${d.type || '-'}</span></div>
-            <div class="preview-box"><label>Транспорт</label><span>${d.trans.toUpperCase()}</span></div>
-            <div class="preview-box"><label>Менеджер</label><span>${d.manager}</span></div>
-            <div class="preview-box"><label>Вес/Объем</label><span>${d.weight}кг / ${d.vol}м³</span></div>
-            ${tDetails}
-            <div class="preview-box" style="grid-column:span 2;"><label>Маршрут</label><span>${d.load} → ${d.unload}</span></div>
-            <div class="preview-box" style="grid-column:span 2;"><label>Инфо</label><span>${d.info || '-'}</span></div>
-        </div>
-        <button class="btn-pdf" onclick="generateInvoicePDF(${d.id})">📄 Згенерувати пропозицію</button>
-        <div class="file-list-container">
-            <strong>Файли сделки:</strong>
-            <div style="margin-top:5px;">${fHtml || '<small style="color:#999">Нет файлов</small>'}</div>
-            <div class="upload-area">
-                <input type="file" id="dealFileInput" style="font-size:10px; width:150px;">
-                <button onclick="uploadDealFile(${d.id})" style="font-size:10px; padding:2px 5px;">Загрузить</button>
-            </div>
-        </div>`;
     }
 
     function openTab(id) { document.querySelectorAll('.content, .tab-btn').forEach(x => x.classList.remove('active')); document.getElementById(id).classList.add('active'); document.getElementById('btn-'+id).classList.add('active'); if(id==='report') generateReport(); if(id==='stats') renderManagerStats(); if(id==='profile') loadProfile(); }
