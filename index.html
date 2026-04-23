@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>SmartAuto CRM PRO+ (v7.0) Full Functionality</title>
-    <!-- Библиотеки для графиков и PDF -->
+    <!-- Подключаем библиотеки для графиков и PDF -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     
@@ -451,7 +451,7 @@
 <datalist id="allEntitiesData"></datalist>
 
 <script>
-    // ВСТАВЬ СВОЙ URL ЗДЕСЬ
+    // СЮДА НУЖНО ВСТАВИТЬ ВАШ URL
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyQZBRHDwNVKxURCw2EA0QPiog3Ap2CP_mG4DQ5iZUjvgHAxOi4LSDwgcxXX0hgtZ_mtg/exec";
     
     let reminders = [], companies = [], partners = [], requests = [], managers = [], deals = [];
@@ -571,12 +571,83 @@
     }
 
     async function sync(sh, dt, isAppend = false) {
-        showLoader(true); let payload = { sheet: sh };
-        if (isAppend) { payload.action = 'append'; payload.rowData = formatRow(sh, dt[dt.length - 1]); } 
-        else { payload.action = 'clearAndSave'; payload.allData = dt.map(o => formatRow(sh, o)); }
+        showLoader(true); 
+        let payload = { action: isAppend ? 'append' : 'clearAndSave', sheet: sh };
+        if (isAppend) { payload.rowData = formatRow(sh, dt[dt.length - 1]); } 
+        else { payload.allData = dt.map(o => formatRow(sh, o)); }
+        
         try { 
-            await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) }); 
-        } catch (e) { console.error(e); } finally { showLoader(false); }
+            // КРИТИЧЕСКИЙ ФИКС: УДАЛЕН NO-CORS
+            await fetch(SCRIPT_URL, { 
+                method: 'POST', 
+                body: JSON.stringify(payload) 
+            }); 
+        } catch (e) { 
+            console.error(e); 
+        } finally { 
+            showLoader(false); 
+        }
+    }
+
+    // ФУНКЦИЯ ЗАГРУЗКИ ФАЙЛА (ЕДИНСТВЕННАЯ ИСПРАВЛЕННАЯ)
+    async function uploadDealFile(dealId) {
+        const fileInput = document.getElementById('dealFileInput');
+        if (!fileInput.files.length) return alert("Выберите файл!");
+        
+        const file = fileInput.files[0];
+        const reader = new FileReader();
+        
+        showLoader(true);
+
+        reader.onload = async function(e) {
+            try {
+                const base64 = e.target.result.split(',')[1];
+                const payload = { 
+                    action: 'uploadFile', 
+                    filename: file.name, 
+                    mimeType: file.type, 
+                    base64: base64 
+                };
+
+                const response = await fetch(SCRIPT_URL, { 
+                    method: 'POST', 
+                    body: JSON.stringify(payload) 
+                });
+
+                const res = await response.json();
+
+                if (res.success) {
+                    const idx = deals.findIndex(d => d.id == dealId);
+                    if (!deals[idx].files) deals[idx].files = [];
+                    
+                    deals[idx].files.push({ 
+                        name: res.fileName, 
+                        url: res.fileUrl, 
+                        id: res.fileId 
+                    });
+
+                    // Сохраняем в таблицу
+                    await sync('deals', deals);
+                    showDealPreview(dealId);
+                    alert("Готово! Файл прикреплен.");
+                } else {
+                    alert("Ошибка Google Script: " + JSON.stringify(res));
+                }
+            } catch (err) {
+                console.error("Upload error:", err);
+                alert("Ошибка загрузки");
+            } finally {
+                showLoader(false);
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function deleteFile(dealId, fileId) {
+        if (!confirm("Удалить файл?")) return;
+        const idx = deals.findIndex(d => d.id == dealId);
+        deals[idx].files = deals[idx].files.filter(f => f.id !== fileId);
+        sync('deals', deals).then(() => showDealPreview(dealId));
     }
 
     function checkAccess(n) { const me = sessionStorage.getItem('crm_user'); if (me === 'admin') return true; const c = companies.find(x=>x.name===n); return !c || !c.isPrivate || c.manager===me || (c.sharedWith||"").split(',').includes(me); }
@@ -672,8 +743,8 @@
             <div class="preview-box"><label>Менеджер</label><span>${d.manager}</span></div>
             <div class="preview-box"><label>Вес/Объем</label><span>${d.weight}кг / ${d.vol}м³</span></div>
             ${tDetails}
-            <div class="preview-box" style="grid-column:span 2;"><label>Маршрут</label><span>${d.load} → ${d.unload}</span></div>
-            <div class="preview-box" style="grid-column:span 2;"><label>Инфо</label><span>${d.info || '-'}</span></div>
+            <div class="preview-box" style="grid-column: span 2;"><label>Маршрут</label><span>${d.load} → ${d.unload}</span></div>
+            <div class="preview-box" style="grid-column: span 2;"><label>Инфо</label><span>${d.info || '-'}</span></div>
         </div>
         <button class="btn-pdf" onclick="generateInvoicePDF(${d.id})">📄 Згенерувати пропозицію</button>
         <div class="file-list-container">
@@ -681,7 +752,7 @@
             <div style="margin-top:5px;">${fHtml || '<small style="color:#999">Нет файлов</small>'}</div>
             <div class="upload-area">
                 <input type="file" id="dealFileInput" style="font-size:10px; width:150px;">
-                <button onclick="uploadDealFile(${d.id})" style="font-size:10px; padding:2px 5px;">Загрузить</button>
+                <button onclick="uploadDealFile(${d.id})" style="font-size:10px;">Загрузить</button>
             </div>
         </div>`;
     }
@@ -804,7 +875,7 @@
                 <input type="number" id="eDealW" value="${d.weight}"><input type="number" id="eDealV" value="${d.vol}"><input type="number" id="eDealVal" value="${d.value}"><input type="number" id="eDealExp" value="${d.exp}" oninput="calcEditProf()"><input type="number" id="eDealInc" value="${d.inc}" oninput="calcEditProf()"><input type="number" id="eDealProf" value="${d.prof}" readonly style="background:#f0f7ff;"><input type="text" id="eDealL" value="${d.load}" style="grid-column: span 2;"><input type="text" id="eDealU" value="${d.unload}" style="grid-column: span 2;"><textarea id="eDealI" style="grid-column: span 2;">${d.info}</textarea>`;
         } else if (type === 'partner') {
             const p = partners.find(x => x.id == id); title.innerText = "Правка партнера";
-            f.innerHTML = `<input type="text" id="ePartName" value="${p.name}"><select id="ePartStatus"><option value="агент" ${p.status==='агент'?'selected':''}>Агент</option><option value="перевозчик" ${p.status==='перевозчик'?'selected':''}>Перевозчик</option><option value="брокер" ${p.status==='брокер'?'selected':''}>Брокер</option></select><input type="text" id="ePartCountry" value="${p.country}"><input type="text" id="ePartContact" value="${p.contact}"><input type="text" id="ePartPhone" value="${p.phone}"><input type="email" id="ePartEmail" value="${p.email}"><input type="text" id="ePartWeb" value="${p.website}"><textarea id="ePartDesc" style="grid-column: span 2;">${p.desc}</textarea>`;
+            f.innerHTML = `<input type="text" id="ePartName" value="${p.name}"><select id="ePartStatus"><option value="агент" ${p.status==='агент'?'selected':''}>Агент</option><option value="перевозчик" ${p.status==='перевозчик'?'selected':''}>Перевозчик</option><option value="брокер" ${p.status==='брокер'?'selected':''}>Брокер</option></select><input type="text" id="ePartCountry" value="${p.country}"><input type="text" id="partPhone" value="${p.phone}"><input type="email" id="ePartEmail" value="${p.email}"><input type="text" id="ePartWeb" value="${p.website}"><textarea id="ePartDesc" style="grid-column: span 2;">${p.desc}</textarea>`;
         }
         document.getElementById('editModal').style.display = 'block';
     }
@@ -825,7 +896,7 @@
             const i = deals.findIndex(x => x.id == id); deals[i].num = document.getElementById('eDealNum').value; deals[i].company = document.getElementById('eDealComp').value; deals[i].cargo = document.getElementById('eDealCargo').value; deals[i].trans = document.getElementById('eDealTrans').value; deals[i].container = document.getElementById('eDealCont').value; deals[i].contQty = document.getElementById('eDealContQty').value; deals[i].blNum = document.getElementById('eDealBL').value; deals[i].awbNum = document.getElementById('eDealAWB').value; deals[i].weight = document.getElementById('eDealW').value; deals[i].vol = document.getElementById('eDealV').value; deals[i].value = document.getElementById('eDealVal').value; deals[i].exp = document.getElementById('eDealExp').value; deals[i].inc = document.getElementById('eDealInc').value; deals[i].prof = document.getElementById('eDealProf').value; deals[i].load = document.getElementById('eDealL').value; deals[i].unload = document.getElementById('eDealU').value; deals[i].info = document.getElementById('eDealI').value;
             await sync('deals', deals); renderDeals();
         } else if (type === 'partner') {
-            const i = partners.findIndex(x => x.id == id); partners[i].name = document.getElementById('ePartName').value; partners[i].status = document.getElementById('ePartStatus').value; partners[i].country = document.getElementById('ePartCountry').value; partners[i].contact = document.getElementById('ePartContact').value; partners[i].phone = document.getElementById('ePartPhone').value; partners[i].email = document.getElementById('ePartEmail').value; partners[i].website = document.getElementById('ePartWeb').value; partners[i].desc = document.getElementById('ePartDesc').value;
+            const i = partners.findIndex(x => x.id == id); partners[i].name = document.getElementById('ePartName').value; partners[i].status = document.getElementById('ePartStatus').value; partners[i].country = document.getElementById('ePartCountry').value; partners[i].contact = document.getElementById('ePartContact').value; partners[i].phone = document.getElementById('partPhone').value; partners[i].email = document.getElementById('ePartEmail').value; partners[i].website = document.getElementById('ePartWeb').value; partners[i].desc = document.getElementById('ePartDesc').value;
             await sync('partners', partners); renderPartners();
         }
         document.getElementById('editModal').style.display = 'none';
@@ -913,47 +984,6 @@
     }
     
     async function toggleAccess(cid, man, act) { const i = companies.findIndex(x=>x.id==cid); if(!man) return; let arr = (companies[i].sharedWith||"").split(',').filter(s=>s); if(act==='add' && !arr.includes(man)) arr.push(man); if(act==='remove') arr = arr.filter(s=>s!==man); companies[i].sharedWith = arr.join(','); await sync('companies', companies); showCompanyPreview(companies[i].name); }
-
-    // ФУНКЦИЯ ЗАГРУЗКИ ФАЙЛОВ
-    async function uploadDealFile(dealId) {
-        const fileInput = document.getElementById('dealFileInput');
-        if (!fileInput.files.length) return alert("Выберите файл");
-        const file = fileInput.files[0];
-        const reader = new FileReader();
-        showLoader(true);
-        reader.onload = async function(e) {
-            const base64 = e.target.result.split(',')[1];
-            const payload = { action: 'uploadFile', filename: file.name, mimeType: file.type, base64: base64 };
-            try {
-                // ВАЖНО: УДАЛИЛИ NO-CORS И ПЕРЕДАЕМ ПРЯМОЙ FETCH
-                const response = await fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) });
-                const res = await response.json();
-                if (res.success) {
-                    const idx = deals.findIndex(d => d.id == dealId);
-                    if (!deals[idx].files) deals[idx].files = [];
-                    deals[idx].files.push({ name: res.fileName, url: res.fileUrl, id: res.fileId });
-                    
-                    // Сохраняем обновление в таблицу
-                    await sync('deals', deals);
-                    showDealPreview(dealId);
-                    alert("Файл успешно загружен!");
-                }
-            } catch (err) { 
-                console.error(err);
-                alert("Ошибка загрузки файла на Google Drive"); 
-            } finally { 
-                showLoader(false); 
-            }
-        };
-        reader.readAsDataURL(file);
-    }
-
-    function deleteFile(dealId, fileId) {
-        if (!confirm("Удалить файл?")) return;
-        const idx = deals.findIndex(d => d.id == dealId);
-        deals[idx].files = deals[idx].files.filter(f => f.id !== fileId);
-        sync('deals', deals).then(() => showDealPreview(dealId));
-    }
 
     function openTab(id) { document.querySelectorAll('.content, .tab-btn').forEach(x => x.classList.remove('active')); document.getElementById(id).classList.add('active'); document.getElementById('btn-'+id).classList.add('active'); if(id==='report') generateReport(); if(id==='stats') renderManagerStats(); if(id==='profile') loadProfile(); }
     function renderAll() { renderReminders(); renderRequests(); renderDeals(); renderCompanies(); renderPartners(); updateCounters(); updateDatalists(); }
