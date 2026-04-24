@@ -308,13 +308,27 @@
 <div id="companies" class="content">
     <div class="top-section">
         <div class="card">
-            <h3>Новая компания</h3>
-            <div class="input-row">
-                <input type="text" id="compName" placeholder="Название *"><input type="text" id="compCity" placeholder="Город"><input type="text" id="compContact" placeholder="Контакт"><input type="text" id="compPhone" placeholder="Телефон"><input type="email" id="compEmail" placeholder="Email"><input type="text" id="compWebsite" placeholder="Сайт"><input type="text" id="compImp" placeholder="Импорт"><input type="text" id="compExp" placeholder="Экспорт"><select id="compManager" style="grid-column: span 2;"></select><select id="compStatus"><option value="cold">❄️ Холодный</option><option value="warm">🔥 Теплый</option><option value="active">🏆 Активный</option></select>
-                <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" id="compPrivate"> Приватная</div>
-            </div>
-            <button class="main" style="background:var(--success);" onclick="addCompany()">Создать компанию</button>
-        </div>
+    <h3>Новая компания</h3>
+    <div class="input-row">
+        <input type="text" id="compName" placeholder="Название *">
+        <input type="text" id="compProduct" placeholder="Груз *"> <!-- НОВОЕ ПОЛЕ -->
+        <input type="text" id="compCity" placeholder="Город">
+        <input type="text" id="compContact" placeholder="Контакт">
+        <input type="text" id="compPhone" placeholder="Телефон">
+        <input type="email" id="compEmail" placeholder="Email">
+        <input type="text" id="compWebsite" placeholder="Сайт">
+        <input type="text" id="compImp" placeholder="Импорт">
+        <input type="text" id="compExp" placeholder="Экспорт">
+        <select id="compManager" style="grid-column: span 2;"></select>
+        <select id="compStatus">
+            <option value="cold">❄️ Холодный</option>
+            <option value="warm">🔥 Теплый</option>
+            <option value="active">🏆 Активный</option>
+        </select>
+        <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" id="compPrivate"> Приватная</div>
+    </div>
+    <button class="main" style="background:var(--success);" onclick="addCompany()">Создать компанию</button>
+</div>
         <div class="card" id="preview-companies"></div>
     </div>
     <div class="bottom-section">
