@@ -1024,8 +1024,8 @@ function renderDeals() {
         updateCounters();
     }
 
-   // --- ФУНКЦИИ РЕДАКТИРОВАНИЯ ---
-   function openEdit(id, type) {
+  // --- ФУНКЦИИ РЕДАКТИРОВАНИЯ ---
+    function openEdit(id, type) {
         event.stopPropagation(); 
         document.getElementById('editId').value = id; 
         document.getElementById('editType').value = type;
@@ -1054,27 +1054,7 @@ function renderDeals() {
         } else if (type === 'tracking') {
             const t = tracking.find(x => x.id == id);
             title.innerText = "Правка трекинга";
-            f.innerHTML = `
-                <input type="text" id="eTrackNum" value="${t.num}">
-                <input type="text" id="eTrackCargo" value="${t.cargo}">
-                <input type="number" id="eTrackW" value="${t.weight}">
-                <input type="number" id="eTrackV" value="${t.vol}">
-                <input type="number" id="eTrackQty" value="${t.qty}">
-                <select id="eTrackPack">
-                    <option value="коробки" ${t.pack==='коробки'?'selected':''}>📦 Коробки</option>
-                    <option value="мешки" ${t.pack==='мешки'?'selected':''}>🥡 Мешки</option>
-                    <option value="паллеты" ${t.pack==='паллеты'?'selected':''}>🧱 Паллеты</option>
-                    <option value="бочки" ${t.pack==='бочки'?'selected':''}>🛢️ Бочки</option>
-                </select>
-                <select id="eTrackTrans" onchange="updateTrackStatusOptions('edit')">
-                    <option value="авто" ${t.trans==='авто'?'selected':''}>🚛 Авто</option>
-                    <option value="авиа" ${t.trans==='авиа'?'selected':''}>✈️ Авиа</option>
-                    <option value="море" ${t.trans==='море'?'selected':''}>🚢 Море</option>
-                    <option value="жд" ${t.trans==='жд'?'selected':''}>🚂 ЖД</option>
-                </select>
-                <select id="eTrackStatus" style="grid-column: span 2;"></select>
-                <input type="text" id="eTrackShare" value="${t.sharedWith || ''}" style="grid-column: span 2;" placeholder="Доступ через запятую">
-            `;
+            f.innerHTML = `<input type="text" id="eTrackNum" value="${t.num}"><input type="text" id="eTrackCargo" value="${t.cargo}"><input type="number" id="eTrackW" value="${t.weight}"><input type="number" id="eTrackV" value="${t.vol}"><input type="number" id="eTrackQty" value="${t.qty}"><select id="eTrackPack"><option value="коробки" ${t.pack==='коробки'?'selected':''}>📦 Коробки</option><option value="мешки" ${t.pack==='мешки'?'selected':''}>🥡 Мешки</option><option value="паллеты" ${t.pack==='паллеты'?'selected':''}>🧱 Паллеты</option><option value="бочки" ${t.pack==='бочки'?'selected':''}>🛢️ Бочки</option></select><select id="eTrackTrans" onchange="updateTrackStatusOptions('edit')"><option value="авто" ${t.trans==='авто'?'selected':''}>🚛 Авто</option><option value="авиа" ${t.trans==='авиа'?'selected':''}>✈️ Авиа</option><option value="море" ${t.trans==='море'?'selected':''}>🚢 Море</option><option value="жд" ${t.trans==='жд'?'selected':''}>🚂 ЖД</option></select><select id="eTrackStatus" style="grid-column: span 2;"></select><input type="text" id="eTrackShare" value="${t.sharedWith || ''}" style="grid-column: span 2;" placeholder="Доступ (имена через запятую)">`;
             setTimeout(() => updateTrackStatusOptions('edit', t.status), 50);
         }
         document.getElementById('editModal').style.display = 'block';
@@ -1109,8 +1089,7 @@ function renderDeals() {
             tracking[i].trans = document.getElementById('eTrackTrans').value;
             tracking[i].status = document.getElementById('eTrackStatus').value;
             tracking[i].sharedWith = document.getElementById('eTrackShare').value;
-            await sync('tracking', tracking);
-            renderTracking();
+            await sync('tracking', tracking); renderTracking();
         }
         document.getElementById('editModal').style.display = 'none';
     }
@@ -1121,6 +1100,46 @@ function renderDeals() {
     async function addDeal() { const n = document.getElementById('dealNum').value, t = document.getElementById('dealType').value; if(!n||!t)return alert("Поля!"); const newItem = { id: Date.now(), num: n, company: document.getElementById('dealComp').value, cargo: document.getElementById('dealCargo').value, trans: document.getElementById('dealTransport').value, weight: document.getElementById('dealWeight').value, vol: document.getElementById('dealVol').value, value: document.getElementById('dealVal').value, curr: "USD", load: document.getElementById('dealLoad').value, zip: "", unload: document.getElementById('dealUnload').value, info: document.getElementById('dealInfo').value, manager: sessionStorage.getItem('crm_user'), createdAt: new Date().toISOString(), exp: document.getElementById('dealExp').value, inc: document.getElementById('dealInc').value, prof: document.getElementById('dealProf').value, status: "active", type: t, container: document.getElementById('dealContainer').value, contQty: document.getElementById('dealContQty').value, blNum: document.getElementById('dealBL').value, awbNum: document.getElementById('dealAWB').value, files: [] }; deals.push(newItem); renderDeals(); await sync('deals', deals, true); ['dealNum', 'dealComp', 'dealCargo', 'dealWeight', 'dealVol', 'dealVal', 'dealExp', 'dealInc', 'dealProf', 'dealLoad', 'dealUnload', 'dealInfo', 'dealContQty', 'dealBL', 'dealAWB'].forEach(i=>document.getElementById(i).value=''); }
     async function addCompany() { const n = document.getElementById('compName').value; const p = document.getElementById('compProduct').value; const m = document.getElementById('compManager').value; const st = document.getElementById('compStatus').value; if (!n || !p || !m) return alert("Поля Название, Груз и Менеджер обязательны!"); const newItem = { id: Date.now(), name: n, product: p, manager: m, status: st, isPrivate: document.getElementById('compPrivate').checked, city: document.getElementById('compCity').value, contact: document.getElementById('compContact').value, phone: document.getElementById('compPhone').value, email: document.getElementById('compEmail').value, website: document.getElementById('compWebsite').value, import: document.getElementById('compImp').value, export: document.getElementById('compExp').value, createdAt: new Date().toISOString(), activatedAt: (st === 'active' ? new Date().toISOString() : ""), sharedWith: "" }; companies.push(newItem); renderCompanies(); await sync('companies', companies, true); ['compName', 'compProduct', 'compCity', 'compContact', 'compPhone', 'compEmail', 'compWebsite', 'compImp', 'compExp'].forEach(i => document.getElementById(i).value = ''); }
     async function addPartner() { const n = document.getElementById('partName').value; if(!n)return alert("Название?"); const newItem = { id: Date.now(), name: n, status: document.getElementById('partStatus').value, country: document.getElementById('partCountry').value, contact: document.getElementById('partContact').value, phone: document.getElementById('partPhone').value, email: document.getElementById('partEmail').value, website: document.getElementById('partWeb').value, desc: document.getElementById('partDesc').value }; partners.push(newItem); renderPartners(); await sync('partners', partners, true); ['partName', 'partCountry', 'partContact', 'partPhone', 'partEmail', 'partWeb', 'partDesc'].forEach(i=>document.getElementById(i).value=''); }
+    async function addTracking() { const num = document.getElementById('trackNum').value, cargo = document.getElementById('trackCargo').value; if (!num || !cargo) return alert("Заполните Номер и Груз!"); const newItem = { id: Date.now(), num: num, cargo: cargo, weight: document.getElementById('trackWeight').value, vol: document.getElementById('trackVol').value, qty: document.getElementById('trackQty').value, pack: document.getElementById('trackPack').value, trans: document.getElementById('trackTrans').value, status: document.getElementById('trackStatus').value, manager: sessionStorage.getItem('crm_user'), sharedWith: document.getElementById('trackShare').value }; tracking.push(newItem); renderTracking(); await sync('tracking', tracking, true); ['trackNum', 'trackCargo', 'trackWeight', 'trackVol', 'trackQty', 'trackShare'].forEach(i => document.getElementById(i).value = ''); }
+
+    // --- СИСТЕМНЫЕ ФУНКЦИИ ---
+    async function deleteItem(sh, id) { 
+        const me = sessionStorage.getItem('crm_user'); let itm = null;
+        if(sh==='requests') itm = requests.find(x=>x.id==id); else if(sh==='deals') itm = deals.find(x=>x.id==id); else if(sh==='companies') itm = companies.find(x=>x.id==id); else if(sh==='reminders') itm = reminders.find(x=>x.id==id); else if(sh==='partners') itm = partners.find(x=>x.id==id); else if(sh==='tracking') itm = tracking.find(x=>x.id==id);
+        if(!itm) return; if(me!=='admin' && itm.manager!==me) return alert("Нельзя удалять чужое!");
+        if(!confirm("Удалить?"))return; 
+        if(sh==='requests') requests=requests.filter(x=>x.id!=id); else if(sh==='deals') deals=deals.filter(x=>x.id!=id); else if(sh==='companies') companies=companies.filter(x=>x.id!=id); else if(sh==='reminders') reminders=reminders.filter(x=>x.id!=id); else if(sh==='partners') partners=partners.filter(x=>x.id!=id); else if(sh==='tracking') tracking=tracking.filter(x=>x.id!=id);
+        await sync(sh, (sh==='requests'?requests:sh==='deals'?deals:sh==='companies'?companies:sh==='partners'?partners:sh==='tracking'?tracking:reminders), false); loadCloudData(); 
+    }
+    
+    async function toggleAccess(cid, man, act) { const i = companies.findIndex(x=>x.id==cid); if(!man) return; let arr = (companies[i].sharedWith||"").split(',').filter(s=>s); if(act==='add' && !arr.includes(man)) arr.push(man); if(act==='remove') arr = arr.filter(s=>s!==man); companies[i].sharedWith = arr.join(','); await sync('companies', companies); showCompanyPreview(companies[i].name); }
+
+    function openTab(id) { 
+        document.querySelectorAll('.content, .tab-btn').forEach(x => x.classList.remove('active')); 
+        document.getElementById(id).classList.add('active'); 
+        document.getElementById('btn-'+id).classList.add('active'); 
+        if(id==='report') generateReport(); 
+        if(id==='stats') renderManagerStats(); 
+        if(id==='profile') loadProfile();
+        if(id==='tracking') { renderTracking(); updateTrackStatusOptions('admin'); }
+    }
+
+    function renderAll() { renderReminders(); renderRequests(); renderDeals(); renderCompanies(); renderPartners(); renderTracking(); updateCounters(); updateDatalists(); }
+
+    function updateCounters() { 
+        document.getElementById('count-calls').innerText = reminders.length; 
+        document.getElementById('count-requests').innerText = requests.length; 
+        document.getElementById('count-deals').innerText = deals.length; 
+        document.getElementById('count-companies').innerText = companies.length; 
+        document.getElementById('count-partners').innerText = partners.length; 
+        if(document.getElementById('count-tracking')) document.getElementById('count-tracking').innerText = tracking.length;
+    }
+
+    function updateDatalists() { document.getElementById('allEntitiesData').innerHTML = companies.map(c => `<option value="${c.name}">`).join(''); }
+    function calcDealProfit() { const i = parseFloat(document.getElementById('dealInc').value||0), e = parseFloat(document.getElementById('dealExp').value||0); document.getElementById('dealProf').value=(i-e).toFixed(2); }
+    function calcEditProf() { const i = parseFloat(document.getElementById('eDealInc').value||0), e = parseFloat(document.getElementById('eDealExp').value||0); document.getElementById('eDealProf').value=(i-e).toFixed(2); }
+    function updateSecondaryFilter() { const p = document.getElementById('sortComp').value, s = document.getElementById('secondarySelect'); if (!p) { s.style.display = 'none'; renderCompanies(); return; } s.style.display = 'inline-block'; s.innerHTML = p === 'manager' ? '<option value="">Все</option>' + managers.map(m => `<option value="${m}">${m}</option>`).join('') : '<option value="">Все</option><option value="cold">Холодный</option><option value="warm">Теплый</option><option value="active">Активный</option>'; renderCompanies(); }
+    function clearCallFilters() { document.getElementById('searchCallComp').value = ''; document.getElementById('searchCallDate').value = ''; renderReminders(); }
 
     // --- СТАТИСТИКА И ОТЧЕТЫ ---
     function renderManagerStats() {
@@ -1188,7 +1207,7 @@ function renderDeals() {
         document.getElementById('reportData').innerHTML = h + '</tbody></table>'; 
     }
 
-    // --- ФУНКЦИИ ТРЕКИНГА ---
+    // --- ЛОГИКА ТРЕКИНГА ---
     function checkTrackingAccess(item) {
         const me = sessionStorage.getItem('crm_user');
         if (me === 'admin') return true;
@@ -1236,18 +1255,12 @@ function renderDeals() {
         }
     }
 
-    async function addTracking() {
-        const num = document.getElementById('trackNum').value, cargo = document.getElementById('trackCargo').value;
-        if (!num || !cargo) return alert("Заполните Номер и Груз!");
-        const newItem = { id: Date.now(), num: num, cargo: cargo, weight: document.getElementById('trackWeight').value, vol: document.getElementById('trackVol').value, qty: document.getElementById('trackQty').value, pack: document.getElementById('trackPack').value, trans: document.getElementById('trackTrans').value, status: document.getElementById('trackStatus').value, manager: sessionStorage.getItem('crm_user'), sharedWith: document.getElementById('trackShare').value };
-        tracking.push(newItem); renderTracking(); await sync('tracking', tracking, true);
-        ['trackNum', 'trackCargo', 'trackWeight', 'trackVol', 'trackQty', 'trackShare'].forEach(i => document.getElementById(i).value = '');
-    }
-
     function showTrackPreview(id) {
         const t = tracking.find(x => x.id == id); if (!t) return;
         document.getElementById('preview-tracking').innerHTML = `<h3>Детали: ${t.num}</h3><div class="preview-grid"><div class="preview-box"><label>Груз</label><span>${t.cargo}</span></div><div class="preview-box"><label>Статус</label><span style="color:var(--primary); font-weight:bold;">${t.status}</span></div><div class="preview-box"><label>Вес/Объем</label><span>${t.weight}кг / ${t.vol}м³</span></div><div class="preview-box"><label>Упаковка</label><span>${t.qty} (${t.pack})</span></div><div class="preview-box"><label>Транспорт</label><span>${t.trans.toUpperCase()}</span></div></div>`;
     }
+
+    window.onload = startApp;
 </script>
 </body>
-</html>
+</html> 
