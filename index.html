@@ -211,6 +211,7 @@
     <button class="tab-btn" id="btn-partners" onclick="openTab('partners')">🤝 Партнеры <span class="tab-counter" id="count-partners">0</span></button>
     <button class="tab-btn" id="btn-report" onclick="openTab('report')">📊 Отчет</button>
     <button class="tab-btn" id="btn-stats" onclick="openTab('stats')">📈 Статистика</button>
+    <button class="tab-btn" id="btn-tracking" onclick="openTab('tracking')">🛰️ Трекинг <span class="tab-counter" id="count-tracking">0</span></button>
     <button class="tab-btn" id="btn-profile" onclick="openTab('profile')">👤 Профиль</button>
     <div style="margin-left: auto; padding: 5px 10px; color: #999; font-size: 9px; text-align: right;">
         <span id="user-display" style="color:var(--primary); font-weight:bold;"></span><br>
@@ -430,6 +431,61 @@
         <div id="statsContent"></div>
     </div>
 </div>
+    
+    <!-- ВКЛАДКА ТРЕКИНГ -->
+<div id="tracking" class="content">
+    <!-- ЗОНА АДМИНА / МЕНЕДЖЕРА С ДОСТУПОМ -->
+    <div id="tracking-admin-zone" style="display:none; height: 100%; flex-direction: column;">
+        <div class="top-section">
+            <div class="card">
+                <h3>Управление трекингом</h3>
+                <div class="input-row">
+                    <input type="text" id="trackNum" placeholder="Трекинг номер *">
+                    <input type="text" id="trackCargo" placeholder="Груз *">
+                    <input type="number" id="trackWeight" placeholder="Вес (кг)">
+                    <input type="number" id="trackVol" placeholder="Объем (м³)">
+                    <input type="number" id="trackQty" placeholder="Кол-во мест">
+                    <select id="trackPack">
+                        <option value="коробки">📦 Коробки</option>
+                        <option value="мешки">🥡 Мешки</option>
+                        <option value="паллеты">🧱 Паллеты</option>
+                        <option value="бочки">🛢️ Бочки</option>
+                    </select>
+                    <select id="trackTrans" onchange="updateTrackStatusOptions('admin')">
+                        <option value="авто">🚛 Авто</option>
+                        <option value="авиа">✈️ Авиа</option>
+                        <option value="море">🚢 Море</option>
+                        <option value="жд">🚂 ЖД</option>
+                    </select>
+                    <select id="trackStatus" style="grid-column: span 2; font-weight: bold; color: var(--primary);"></select>
+                    <input type="text" id="trackShare" placeholder="Дать доступ (имя через запятую)" style="grid-column: span 2;">
+                </div>
+                <button class="main" style="background:var(--primary);" onclick="addTracking()">Сохранить груз</button>
+            </div>
+            <div class="card" id="preview-tracking"></div>
+        </div>
+        <div class="bottom-section">
+            <div class="controls-bar">
+                <input type="text" id="searchTrackAdmin" placeholder="Поиск по номеру..." oninput="renderTracking()">
+            </div>
+            <div class="scroll-list" id="trackingListAdmin"></div>
+        </div>
+    </div>
+
+    <!-- ЗОНА ОБЫЧНОГО ПОЛЬЗОВАТЕЛЯ (ТОЛЬКО ПОИСК) -->
+    <div id="tracking-user-zone" style="display:none; padding: 40px; text-align: center; background: white; height: 100%;">
+        <div style="max-width: 500px; margin: 0 auto;">
+            <img src="https://cdn-icons-png.flaticon.com/512/683/683214.png" style="width: 80px; margin-bottom: 20px;">
+            <h2>Отслеживание груза</h2>
+            <p style="color: #666; margin-bottom: 30px;">Введите трекинг-номер для получения информации о статусе груза.</p>
+            <div style="display: flex; gap: 10px;">
+                <input type="text" id="publicTrackSearch" placeholder="Номер трекинга..." style="height: 45px; font-size: 16px;">
+                <button class="main" style="width: 120px; height: 45px;" onclick="searchPublicTracking()">Найти</button>
+            </div>
+            <div id="publicTrackResult" style="margin-top: 30px; text-align: left;"></div>
+        </div>
+    </div>
+</div>
 
 <!-- ВКЛАДКА ПРОФИЛЬ -->
 <div id="profile" class="content">
@@ -478,7 +534,7 @@
     // СЮДА НУЖНО ВСТАВИТЬ ВАШ URL
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx7FOBG0711CMW05oPvuq2wXP4WuiVyBY-nSAKgPOaHLKMZugEbiRMyzsF8BFq2DXrgeg/exec";
     
-    let reminders = [], companies = [], partners = [], requests = [], managers = [], deals = [];
+    let reminders = [], companies = [], partners = [], requests = [], managers = [], deals = [], tracking = [];
     const statusMap = { cold: {label:'❄️ Холодный'}, warm: {label:'🔥 Теплый'}, active: {label:'🏆 Активный'} };
     let charts = { dyn: null, type: null, perf: null };
 
@@ -628,7 +684,20 @@ async function loadCloudData() {
                     files: parsedFiles 
                 };
             });
-            
+            // Обработка данных трекинга из таблицы
+            tracking = (d.tracking || []).map(x => ({ 
+                id: x[0] || Date.now(),      // Столбец A (ID)
+                num: x[1] || "",             // Столбец B (Номер трекинга)
+                cargo: x[2] || "",           // Столбец C (Груз)
+                weight: x[3] || "",          // Столбец D (Вес)
+                vol: x[4] || "",             // Столбец E (Объем)
+                qty: x[5] || "",             // Столбец F (Кол-во мест)
+                pack: x[6] || "",            // Столбец G (Тип упаковки)
+                trans: x[7] || "",           // Столбец H (Транспорт)
+                status: x[8] || "",          // Столбец I (Статус)
+                manager: x[9] || "",         // Столбец J (Кто создал)
+                sharedWith: x[10] || ""      // Столбец K (Кому дан доступ)
+            }));
             reminders = (d.reminders || []).map(x => ({ id: x[0]||Date.now(), name: x[1]||"", date: x[2]||"", topic: x[3]||"", manager: x[4]||"", status: x[5]||"active" }));
             partners = (d.partners || []).map(x => ({ id: x[0]||Date.now(), name: x[1]||"", status: x[2]||"агент", country: x[3]||"", contact: x[4]||"", phone: x[5]||"", email: x[6]||"", website: x[7]||"", desc: x[8]||"" }));
             
@@ -647,6 +716,7 @@ async function loadCloudData() {
         if (sh === 'deals') return [o.id, o.num, o.company, o.cargo, o.trans, o.weight, o.vol, o.value, o.curr, o.load, o.zip, o.unload, o.info, o.manager, o.createdAt, o.exp, o.inc, o.prof, o.container, o.sharedWith || "", o.status, o.type, o.contQty || "", o.blNum || "", o.awbNum || "", JSON.stringify(o.files || [])];
         if (sh === 'reminders') return [o.id, o.name, o.date, o.topic, o.manager, o.status];
         if (sh === 'partners') return [o.id, o.name, o.status, o.country, o.contact, o.phone, o.email, o.website, o.desc];
+        if (sh === 'tracking') return [o.id, o.num, o.cargo, o.weight, o.vol, o.qty, o.pack, o.trans, o.status, o.manager, o.sharedWith || ""];
         return [];
     }
 
@@ -1163,6 +1233,133 @@ function renderDeals() {
     function clearCallFilters() { document.getElementById('searchCallComp').value = ''; document.getElementById('searchCallDate').value = ''; renderReminders(); }
     
     window.onload = startApp;
+    
+    function checkTrackingAccess(item) {
+    const me = sessionStorage.getItem('crm_user');
+    if (me === 'admin') return true;
+    if (item && (item.manager === me || (item.sharedWith || "").split(',').includes(me))) return true;
+    return false;
+}
+    function updateTrackStatusOptions(prefix, selectedValue = "") {
+    // Определяем, с какой формой работаем: новой (admin) или редактированием (edit)
+    const transInput = document.getElementById(prefix === 'admin' ? 'trackTrans' : 'eTrackTrans');
+    if (!transInput) return;
+    const trans = transInput.value;
+    const statusSelect = document.getElementById(prefix === 'admin' ? 'trackStatus' : 'eTrackStatus');
+    
+    // Базовые статусы
+    let options = [
+        {v: "прибыл на склад", t: "📦 прибыл на склад"},
+        {v: "готовится к отправке", t: "⏳ готовится к отправке"}
+    ];
+
+    // Добавляем специфические для транспорта статусы
+    if (trans === 'авиа') options.push({v: "прилетел в аэропорт", t: "✈️ прилетел в аэропорт"});
+    if (trans === 'море') options.push({v: "пришел в порт", t: "🚢 пришел в порт"});
+
+    // Добавляем финальные статусы
+    options = options.concat([
+        {v: "прибыл на склад в Польше", t: "🇵🇱 прибыл на склад в Польше"},
+        {v: "прибыл на склад в Украине", t: "🇺🇦 прибыл на склад в Украине"},
+        {v: "готовится к отправке клиенту", t: "🚚 готовится к отправке клиенту"}
+    ]);
+
+    // Заполняем выпадающий список
+    statusSelect.innerHTML = options.map(o => `<option value="${o.v}" ${selectedValue === o.v ? 'selected' : ''}>${o.t}</option>`).join('');
+}
+    function renderTracking() {
+    const me = sessionStorage.getItem('crm_user');
+    // Проверяем, есть ли у пользователя доступ хоть к чему-то
+    const hasAnyAccess = (me === 'admin' || tracking.some(t => (t.sharedWith || "").split(',').includes(me)));
+    
+    if (hasAnyAccess) {
+        document.getElementById('tracking-admin-zone').style.display = 'flex';
+        document.getElementById('tracking-user-zone').style.display = 'none';
+        
+        const s = document.getElementById('searchTrackAdmin').value.toLowerCase();
+        let f = tracking.filter(t => checkTrackingAccess(t) && t.num.toLowerCase().includes(s));
+        
+        document.getElementById('trackingListAdmin').innerHTML = f.map(t => `
+            <div class="list-item" onclick="showTrackPreview(${t.id})">
+                <div class="item-main">
+                    <h4>${t.num} — ${t.cargo}</h4>
+                    <p>Статус: <b>${t.status}</b> | ${t.weight}кг / ${t.vol}м³</p>
+                </div>
+                <div class="item-actions">
+                    <button class="action-btn" onclick="openEdit(${t.id},'tracking')">✎</button>
+                    <button class="action-btn btn-delete" onclick="deleteItem('tracking',${t.id})">×</button>
+                </div>
+            </div>`).join('');
+    } else {
+        // Обычный вид: только поиск
+        document.getElementById('tracking-admin-zone').style.display = 'none';
+        document.getElementById('tracking-user-zone').style.display = 'block';
+    }
+    updateCounters();
+}
+    function searchPublicTracking() {
+    const num = document.getElementById('publicTrackSearch').value.trim().toLowerCase();
+    if (!num) return;
+    
+    const res = tracking.find(t => t.num.toLowerCase() === num);
+    const container = document.getElementById('publicTrackResult');
+    
+    if (res) {
+        container.innerHTML = `
+            <div class="card" style="border: 2px solid var(--primary); padding: 15px; margin-top: 20px;">
+                <h3 style="color:var(--primary); margin-bottom: 10px;">📦 Информация по грузу ${res.num}</h3>
+                <div class="preview-grid">
+                    <div class="preview-box"><label>Груз</label><span>${res.cargo}</span></div>
+                    <div class="preview-box"><label>Статус</label><span style="color:var(--success); font-weight:bold;">${res.status.toUpperCase()}</span></div>
+                    <div class="preview-box"><label>Вес / Объем</label><span>${res.weight} кг / ${res.vol} м³</span></div>
+                    <div class="preview-box"><label>Мест</label><span>${res.qty} (${res.pack})</span></div>
+                    <div class="preview-box"><label>Вид транспорта</label><span>${res.trans.toUpperCase()}</span></div>
+                </div>
+            </div>`;
+    } else {
+        container.innerHTML = `<div style="color:var(--danger); padding: 20px; text-align: center; font-weight: bold;">❌ Трекинг-номер не найден. Проверьте правильность или обратитесь к администратору.</div>`;
+    }
+}
+    async function addTracking() {
+    const num = document.getElementById('trackNum').value;
+    const cargo = document.getElementById('trackCargo').value;
+    if (!num || !cargo) return alert("Заполните Номер и Груз!");
+
+    const newItem = {
+        id: Date.now(),
+        num: num,
+        cargo: cargo,
+        weight: document.getElementById('trackWeight').value,
+        vol: document.getElementById('trackVol').value,
+        qty: document.getElementById('trackQty').value,
+        pack: document.getElementById('trackPack').value,
+        trans: document.getElementById('trackTrans').value,
+        status: document.getElementById('trackStatus').value,
+        manager: sessionStorage.getItem('crm_user'),
+        sharedWith: document.getElementById('trackShare').value
+    };
+
+    tracking.push(newItem);
+    renderTracking();
+    await sync('tracking', tracking, true);
+    
+    // Очистка полей
+    ['trackNum', 'trackCargo', 'trackWeight', 'trackVol', 'trackQty', 'trackShare'].forEach(i => document.getElementById(i).value = '');
+}
+
+function showTrackPreview(id) {
+    const t = tracking.find(x => x.id == id);
+    if (!t) return;
+    document.getElementById('preview-tracking').innerHTML = `
+        <h3>Детали: ${t.num}</h3>
+        <div class="preview-grid">
+            <div class="preview-box"><label>Груз</label><span>${t.cargo}</span></div>
+            <div class="preview-box"><label>Статус</label><span style="color:var(--primary); font-weight:bold;">${t.status}</span></div>
+            <div class="preview-box"><label>Вес/Объем</label><span>${t.weight}кг / ${t.vol}м³</span></div>
+            <div class="preview-box"><label>Упаковка</label><span>${t.qty} (${t.pack})</span></div>
+            <div class="preview-box"><label>Транспорт</label><span>${t.trans.toUpperCase()}</span></div>
+        </div>`;
+}
 </script>
 </body>
 </html>
