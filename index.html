@@ -299,7 +299,11 @@
         <div class="card" id="preview-deals"><div style="color:#ccc; text-align:center; margin-top:50px;">Выберите сделку</div></div>
     </div>
     <div class="bottom-section">
-        <div class="controls-bar"><input type="text" id="searchDeals" placeholder="Поиск..." oninput="renderDeals()"></div>
+        <div class="controls-bar">
+    <input type="text" id="searchDeals" placeholder="Поиск..." oninput="renderDeals()">
+    <!-- Фильтр для админа -->
+    <select id="adminDealManagerFilter" style="display:none; min-width: 150px;" onchange="renderDeals()"></select>
+</div>
         <div class="scroll-list" id="dealsList"></div>
     </div>
 </div>
@@ -525,7 +529,10 @@
         }
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('user-display').innerText = user;
-        if (user === 'admin') { document.querySelectorAll('#admin-report-selector, #admin-stats-selector').forEach(el=>el.style.display='flex'); }
+        if (user === 'admin') { 
+    document.querySelectorAll('#admin-report-selector, #admin-stats-selector').forEach(el=>el.style.display='flex'); 
+    document.getElementById('adminDealManagerFilter').style.display = 'inline-block'; //
+}
         const currentYear = new Date().getFullYear();
         let yearHtml = `<option value="all">Все годы</option>`;
         for(let y = currentYear; y >= 2023; y--) { yearHtml += `<option value="${y}">${y} год</option>`; }
@@ -592,8 +599,10 @@ async function loadCloudData() {
                 const adminOpts = '<option value="all">📈 Все менеджеры</option>' + managers.map(m => `<option value="${m}">${m}</option>`).join('');
                 const repF = document.getElementById('reportManagerFilter');
                 const staF = document.getElementById('statsManagerFilter');
+                const dealF = document.getElementById('adminDealManagerFilter');
                 if(repF) repF.innerHTML = adminOpts;
                 if(staF) staF.innerHTML = adminOpts;
+                if(dealF) dealF.innerHTML = adminOpts;
             }
 
             // Безопасный маппинг данных
@@ -863,10 +872,41 @@ async function loadCloudData() {
     async function finishRequest(e, id) { e.stopPropagation(); if(!confirm("Завершить запрос?")) return; const i = requests.findIndex(x=>x.id==id); if(i>-1) { requests[i].status = 'completed'; renderRequests(); await sync('requests', requests); } }
     
     function renderDeals() {
-        const s = document.getElementById('searchDeals').value.toLowerCase();
-        document.getElementById('dealsList').innerHTML = deals.filter(d => checkDealAccess(d) && d.company.toLowerCase().includes(s)).map(d => `<div class="list-item ${d.status==='completed'?'completed':''}" onclick="showDealPreview(${d.id})"><div class="item-main"><h4>№ ${d.num} | ${d.company}</h4><p>${d.type || '-'} | ${d.manager}</p></div><div class="item-actions">${d.status!=='completed'?'<button class="action-btn" style="color:var(--success)" onclick="finishDeal(event,'+d.id+')">✅</button>':''}<button class="action-btn" onclick="openEdit(${d.id},'deal')">✎</button><button class="action-btn btn-delete" onclick="deleteItem('deals',${d.id})">×</button></div></div>`).join('');
-        updateCounters();
-    }
+    const s = document.getElementById('searchDeals').value.toLowerCase();
+    const me = sessionStorage.getItem('crm_user');
+    
+    // Получаем значение фильтра (если мы админ)
+    const adminFilter = document.getElementById('adminDealManagerFilter').value || 'all';
+
+    document.getElementById('dealsList').innerHTML = deals.filter(d => {
+        // 1. Проверка поиска (по компании или номеру сделки)
+        const matchesSearch = d.company.toLowerCase().includes(s) || d.num.toLowerCase().includes(s);
+        
+        // 2. Проверка доступа (свои сделки или те, которыми поделились)
+        const matchesAccess = checkDealAccess(d);
+        
+        // 3. Фильтрация по менеджеру (только для админа)
+        let matchesManager = true;
+        if (me === 'admin' && adminFilter !== 'all') {
+            matchesManager = (d.manager === adminFilter);
+        }
+
+        return matchesSearch && matchesAccess && matchesManager;
+    }).map(d => `
+        <div class="list-item ${d.status==='completed'?'completed':''}" onclick="showDealPreview(${d.id})">
+            <div class="item-main">
+                <h4>№ ${d.num} | ${d.company}</h4>
+                <p>${d.type || '-'} | ${d.manager}</p>
+            </div>
+            <div class="item-actions">
+                ${d.status!=='completed'?'<button class="action-btn" style="color:var(--success)" onclick="finishDeal(event,'+d.id+')">✅</button>':''}
+                <button class="action-btn" onclick="openEdit(${d.id},'deal')">✎</button>
+                <button class="action-btn btn-delete" onclick="deleteItem('deals',${d.id})">×</button>
+            </div>
+        </div>`).join('');
+    
+    updateCounters();
+}
     async function finishDeal(e, id) { e.stopPropagation(); if(!confirm("Завершить сделку?")) return; const i = deals.findIndex(x=>x.id==id); if(i>-1) { deals[i].status = 'completed'; renderDeals(); await sync('deals', deals); } }
     
     function renderCompanies() {
