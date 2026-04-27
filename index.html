@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>SmartAuto CRM PRO+ (v8.9.2) Full Functionality</title>
+    <title>SmartAuto CRM PRO+ (v9.1.2) - Stable</title>
     <!-- Подключаем библиотеки для графиков и PDF -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -213,9 +213,7 @@
     <button class="tab-btn" id="btn-stats" onclick="openTab('stats')">📈 Статистика</button>
     <button class="tab-btn" id="btn-tracking" onclick="openTab('tracking')">🛰️ Трекинг <span class="tab-counter" id="count-tracking">0</span></button>
     <button class="tab-btn" id="btn-profile" onclick="openTab('profile')">👤 Профиль</button>
-    <div style="margin-left: auto; padding: 5px 10px; color: #999; font-size: 9px; text-align: right; display: flex; align-items: center; gap: 15px;">
-    <button onclick="toggleHelp(true)" style="background: var(--warning); color: white; border: none; border-radius: 50%; width: 22px; height: 22px; cursor: pointer; font-weight: bold; font-size: 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);" title="Инструкция">?</button>
-    <div>
+    <div style="margin-left: auto; padding: 5px 10px; color: #999; font-size: 9px; text-align: right;">
         <span id="user-display" style="color:var(--primary); font-weight:bold;"></span><br>
         <span id="sync-status">Загрузка...</span> | <a href="#" onclick="logout()" style="color:var(--danger); text-decoration:none;">Выход</a>
     </div>
@@ -572,7 +570,8 @@ function forInput(v) {
     function showLoader(s) { document.getElementById('loader').style.display = s ? 'block' : 'none'; }
     function logout() { sessionStorage.clear(); location.reload(); }
     function toggleHelp(show) {
-    document.getElementById('helpModal').style.display = show ? 'block' : 'none';
+    const modal = document.getElementById('helpModal');
+    if (modal) modal.style.display = show ? 'block' : 'none';
 }
     function toggleAuthMode(isReg) { document.getElementById('auth-login-fields').style.display = isReg ? 'none' : 'block'; document.getElementById('auth-reg-fields').style.display = isReg ? 'block' : 'none'; }
 
@@ -1141,7 +1140,7 @@ function renderDeals() {
         } else if (type === 'tracking') {
             const t = tracking.find(x => x.id == id);
             title.innerText = "Правка трекинга";
-            f.innerHTML = `<input type="text" id="eTrackNum" value="${t.num}"><input type="text" id="eTrackCargo" value="${t.cargo}"><input type="number" id="eTrackW" value="${t.weight}"><input type="number" id="eTrackV" value="${t.vol}"><input type="number" id="eTrackQty" value="${t.qty}"><select id="eTrackPack"><option value="коробки" ${t.pack==='коробки'?'selected':''}>📦 Коробки</option><option value="мешки" ${t.pack==='мешки'?'selected':''}>🥡 Мешки</option><option value="паллеты" ${t.pack==='паллеты'?'selected':''}>🧱 Паллеты</option><option value="бочки" ${t.pack==='бочки'?'selected':''}>🛢️ Бочки</option></select><select id="eTrackTrans" onchange="updateTrackStatusOptions('edit')"><option value="авто" ${t.trans==='авто'?'selected':''}>🚛 Авто</option><option value="авиа" ${t.trans==='авиа'?'selected':''}>✈️ Авиа</option><option value="море" ${t.trans==='море'?'selected':''}>🚢 Море</option><option value="жд" ${t.trans==='жд'?'selected':''}>🚂 ЖД</option></select><select id="eTrackStatus" style="grid-column: span 2;"></select><input type="text" id="eTrackShare" value="${t.sharedWith || ''}" style="grid-column: span 2;" placeholder="Доступ (имена через запятую)">`;
+            f.innerHTML = `<input type="text" id="eTrackNum" value="${t.num}"><input type="text" id="eTrackCargo" value="${t.cargo}"><input type="number" id="eTrackW" value="${t.weight}"><input type="number" id="eTrackV" value="${t.vol}"><input type="number" id="eTrackQty" value="${t.qty}"><select id="eTrackPack"><option value="коробки" ${t.pack==='коробки'?'selected':''}>📦 Коробки</option><option value="мешки" ${t.pack==='мешки'?'selected':''}>🥡 Мешки</option><option value="паллеты" ${t.pack==='паллеты'?'selected':''}>🧱 Паллеты</option><option value=" бочки" ${t.pack==='бочки'?'selected':''}>🛢️ Бочки</option></select><select id="eTrackTrans" onchange="updateTrackStatusOptions('edit')"><option value="авто" ${t.trans==='авто'?'selected':''}>🚛 Авто</option><option value="авиа" ${t.trans==='авиа'?'selected':''}>✈️ Авиа</option><option value="море" ${t.trans==='море'?'selected':''}>🚢 Море</option><option value="жд" ${t.trans==='жд'?'selected':''}>🚂 ЖД</option></select><select id="eTrackStatus" style="grid-column: span 2;"></select><input type="text" id="eTrackShare" value="${t.sharedWith || ''}" style="grid-column: span 2;" placeholder="Доступ (имена через запятую)">`;
             setTimeout(() => updateTrackStatusOptions('edit', t.status), 50);
         }
         document.getElementById('editModal').style.display = 'block';
@@ -1161,7 +1160,7 @@ async function saveEdit() {
         reminders[i].topic = document.getElementById('eRemTopic').value;
         updatedItem = reminders[i];
         renderReminders();
-} else if (type === 'company') {
+    } else if (type === 'company') {
         sheetName = 'companies';
         const i = companies.findIndex(x => x.id == id);
         const oldSt = companies[i].status;
