@@ -569,10 +569,6 @@ function forInput(v) {
 
     function showLoader(s) { document.getElementById('loader').style.display = s ? 'block' : 'none'; }
     function logout() { sessionStorage.clear(); location.reload(); }
-    function toggleHelp(show) {
-    const modal = document.getElementById('helpModal');
-    if (modal) modal.style.display = show ? 'block' : 'none';
-}
     function toggleAuthMode(isReg) { document.getElementById('auth-login-fields').style.display = isReg ? 'none' : 'block'; document.getElementById('auth-reg-fields').style.display = isReg ? 'block' : 'none'; }
 
    async function handleLogin() {
@@ -1439,57 +1435,5 @@ const debouncedRenderCompanies = debounce(() => renderCompanies());
 const debouncedRenderRequests = debounce(() => renderRequests());
     
 </script>
-    <!-- МОДАЛЬНОЕ ОКНО: ИНСТРУКЦИЯ -->
-<div id="helpModal" class="modal-overlay" onclick="if(event.target===this) toggleHelp(false)">
-    <div class="modal-content" style="width: 700px; max-width: 90vw; padding: 25px;">
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--primary); padding-bottom: 10px; margin-bottom: 20px;">
-            <h2 style="margin: 0; color: var(--primary);">📖 Руководство SmartAuto CRM PRO+</h2>
-            <button onclick="toggleHelp(false)" style="background:none; border:none; font-size: 24px; cursor:pointer;">&times;</button>
-        </div>
-        
-        <div style="line-height: 1.6; color: #333; font-size: 13px;">
-            <section style="margin-bottom: 20px;">
-                <h3 style="color: var(--active);">📞 Активность (Звонки и задачи)</h3>
-                <p>Предназначена для планирования рабочего дня. Добавляйте напоминания о звонках. 
-                <br>• <b>Цвет:</b> Если задача не выполнена более 3-х дней, она подсвечивается красным ("ПРОСРОЧЕНО").
-                <br>• <b>Завершение:</b> Нажимайте на "✅", чтобы задача ушла в архив (скрыть завершенные можно фильтром).</p>
-            </section>
-
-            <section style="margin-bottom: 20px;">
-                <h3 style="color: #673ab7;">📦 Запросы</h3>
-                <p>Здесь фиксируются все первичные обращения клиентов. 
-                <br>• <b>Транспорт:</b> При выборе "Море" или "Авиа" появляются спец. поля для контейнеров или авианакладных.
-                <br>• <b>Статус:</b> Запрос считается "Горячим" (красным), если он не обработан более 2-х дней.</p>
-            </section>
-
-            <section style="margin-bottom: 20px;">
-                <h3 style="color: var(--success);">💰 Сделки и PDF</h3>
-                <p>Центральный узел логистики. 
-                <br>• <b>Финансы:</b> Введите Доходы и Расходы — прибыль рассчитается автоматически.
-                <br>• <b>Документы:</b> Внутри сделки можно загружать файлы (инвойсы, CMR) прямо на Google Диск.
-                <br>• <b>Предложение:</b> Кнопка "Згенерувати пропозицію" создаст готовый PDF-файл для клиента на украинском языке.</p>
-            </section>
-
-            <section style="margin-bottom: 20px;">
-                <h3 style="color: var(--primary);">🏢 Компании и «Забытые клиенты»</h3>
-                <p>База ваших контрагентов. 
-                <br>• <b>Приватность:</b> Галочка "Приватная" скроет компанию от других менеджеров (кроме админа).
-                <br>• <b>⚠️ В работу:</b> Если по клиенту (Холодный/Теплый) не было активности более 10 дней, система пометит его тегом "В работу", чтобы вы не теряли контакт.</p>
-            </section>
-
-            <section style="margin-bottom: 20px;">
-                <h3 style="color: var(--warning);">🛰️ Трекинг</h3>
-                <p>Менеджер создает трекинг-номер и обновляет статусы (на складе, в пути и т.д.).
-                <br>• <b>Для клиентов:</b> Клиент может зайти в CRM (без логина) и в поле "Трекинг" просто ввести номер, чтобы увидеть, где его груз.</p>
-            </section>
-
-            <div style="background: #fff3e0; padding: 15px; border-left: 4px solid var(--warning); border-radius: 4px;">
-                <b>💡 Важно о синхронизации:</b> Система сохраняет данные точечно. Если два менеджера редактируют разные сделки одновременно — данные не потеряются. Обновление базы происходит автоматически каждые 5 минут или при переключении вкладок.
-            </div>
-        </div>
-        
-        <button class="main" style="margin-top: 25px;" onclick="toggleHelp(false)">Понятно, в работу!</button>
-    </div>
-</div>
 </body>
 </html> 
