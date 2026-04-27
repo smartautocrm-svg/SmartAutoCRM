@@ -631,7 +631,7 @@ function forInput(v) {
         let yearHtml = `<option value="all">Все годы</option>`;
         for(let y = currentYear; y >= 2023; y--) { yearHtml += `<option value="${y}">${y} год</option>`; }
         document.querySelectorAll('#reportYearFilter, #statsYearFilter').forEach(el=>el.innerHTML=yearHtml);
-        await loadCloudData(); setInterval(loadCloudData, 300000);
+        await loadCloudData(); setInterval(loadCloudData, 60000);
     }
 
     async function loadProfile() {
