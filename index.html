@@ -950,8 +950,7 @@ function renderReminders() {
         const isOverdue = r.status !== 'completed' && (now - new Date(r.date)) > limitMs;
         return `<div class="list-item ${r.status==='completed'?'completed':''} ${isOverdue?'overdue':''}" onclick="showCallPreview(${r.id})">
             <div class="item-main">
-                <h4>${r.name} ${isOverdue?'<span class="overdue-tag">ПРОСРОЧЕНО</span>':''}</h4>
-                <p>${dtFmt(r.date)} | ${r.manager}</p>
+                <h4>${r.name} ${isOverdue?'<span class="overdue-tag">ПРОСРОЧЕНО</span>':''}</h4><p>${dtFmt(r.date)} | ${r.manager}</p>
             </div>
             <div class="item-actions">
                 ${r.status!=='completed'?'<button class="action-btn" style="color:var(--success)" onclick="finishRem(event,'+r.id+')">✅</button>':''}
