@@ -296,7 +296,10 @@
                 <input type="text" id="dealBL" style="display:none;" placeholder="№ Коносамента">
                 <input type="text" id="dealAWB" style="display:none;" placeholder="№ Авианакладной">
                 <input type="number" id="dealWeight" placeholder="Вес"><input type="number" id="dealVol" placeholder="Объем"><input type="number" id="dealVal" placeholder="Инвойс">
-                <input type="number" id="dealExp" placeholder="Расходы" oninput="calcDealProfit()"><input type="number" id="dealInc" placeholder="Доходы" oninput="calcDealProfit()"><input type="number" id="dealProf" placeholder="Прибыль" readonly style="background:#f0f7ff; color:var(--success); font-weight:bold;">
+<input type="number" id="dealExp" placeholder="Расходы" oninput="calcDealProfit()">
+<input type="number" id="dealInc" placeholder="Доходы" oninput="calcDealProfit()">
+<input type="number" id="dealProf" placeholder="Прибыль" readonly style="background:#f0f7ff; color:var(--success); font-weight:bold;">
+<input type="text" id="dealMargin" placeholder="Маржа %" readonly style="background:#fff3e0; color:var(--warning); font-weight:bold;">
                 <input type="text" id="dealLoad" placeholder="Погрузка" style="grid-column: span 3;"><input type="text" id="dealUnload" placeholder="Выгрузка" style="grid-column: span 3;"><textarea id="dealInfo" style="grid-column: span 3;" placeholder="Инфо..."></textarea>
             </div>
             <button class="main" style="background:var(--active);" onclick="addDeal()">Создать сделку</button>
@@ -699,15 +702,20 @@ async function loadCloudData() {
         
         requests = (d.requests || []).map(x => ({ id: x[0], company: String(x[1]||""), cargo: String(x[2]||""), transport: String(x[3]||""), weight: x[4], vol: x[5], value: x[6], currency: x[7], load: String(x[8]||""), unload: String(x[9]||""), desc: String(x[10]||""), createdAt: x[11], status: x[12], comment: x[13], container: x[14], zip: x[15], manager: String(x[16]||""), contQty: x[17] }));
         
-        deals = (d.deals || []).map(x => {
-            let parsedFiles = [];
-            try { if (x[25] && typeof x[25] === 'string' && x[25].trim() !== "") { parsedFiles = JSON.parse(x[25]); } } catch(e) {}
-            return { 
-                id: x[0], num: String(x[1]||""), company: String(x[2]||""), cargo: String(x[3]||""), trans: String(x[4]||""), weight: x[5], vol: x[6], value: x[7], curr: x[8], load: x[9], zip: x[10], unload: x[11], info: x[12], manager: String(x[13]||""), createdAt: x[14], 
-                exp: Number(x[15]||0), inc: Number(x[16]||0), prof: Number(x[17]||0), 
-                container: x[18], sharedWith: x[19], status: x[20], type: x[21], contQty: x[22], blNum: x[23], awbNum: x[24], files: parsedFiles 
-            };
-        });
+deals = (d.deals || []).map(x => {
+    let parsedFiles = [];
+    try { if (x[25] && typeof x[25] === 'string' && x[25].trim() !== "") { parsedFiles = JSON.parse(x[25]); } } catch(e) {}
+    return { 
+        id: x[0], num: String(x[1]||""), company: String(x[2]||""), cargo: String(x[3]||""), 
+        trans: String(x[4]||""), weight: x[5], vol: x[6], value: x[7], curr: x[8], 
+        load: x[9], zip: x[10], unload: x[11], info: x[12], manager: String(x[13]||""), 
+        createdAt: x[14], exp: Number(x[15]||0), inc: Number(x[16]||0), 
+        prof: Number(x[17]||0), container: x[18], sharedWith: x[19], 
+        status: x[20], type: x[21], contQty: x[22], blNum: x[23], awbNum: x[24], 
+        files: parsedFiles,
+        margin: x[26] || "0%"
+    };
+});
 
         tracking = (d.tracking || []).map(x => ({ id: x[0], num: String(x[1]||""), cargo: String(x[2]||""), weight: x[3], vol: x[4], qty: x[5], pack: x[6], trans: x[7], status: x[8], manager: x[9], sharedWith: x[10] }));
         
@@ -727,7 +735,7 @@ async function loadCloudData() {
     function formatRow(sh, o) {
         if (sh === 'companies') return [o.id, o.name, o.contact, o.phone, o.product || "", o.city || "", o.email || "", o.import || "", o.export || "", o.status, o.createdAt, o.activatedAt || "", o.manager, o.isPrivate, o.sharedWith || "", o.website || ""];
         if (sh === 'requests') return [o.id, o.company, o.cargo, o.transport, o.weight, o.vol, o.value, o.currency, o.load, o.unload, o.desc, o.createdAt, o.status, o.comment, o.container, o.zip, o.manager, o.contQty || ""];
-        if (sh === 'deals') return [o.id, o.num, o.company, o.cargo, o.trans, o.weight, o.vol, o.value, o.curr, o.load, o.zip, o.unload, o.info, o.manager, o.createdAt, o.exp, o.inc, o.prof, o.container, o.sharedWith || "", o.status, o.type, o.contQty || "", o.blNum || "", o.awbNum || "", JSON.stringify(o.files || [])];
+        if (sh === 'deals') return [o.id, o.num, o.company, o.cargo, o.trans, o.weight, o.vol, o.value, o.curr, o.load, o.zip, o.unload, o.info, o.manager, o.createdAt, o.exp, o.inc, o.prof, o.container, o.sharedWith || "", o.status, o.type, o.contQty || "", o.blNum || "", o.awbNum || "", JSON.stringify(o.files || []), o.margin];
         if (sh === 'reminders') return [o.id, o.name, o.date, o.topic, o.manager, o.status];
         if (sh === 'partners') return [o.id, o.name, o.status, o.country, o.contact, o.phone, o.email, o.website, o.desc];
         if (sh === 'tracking') return [o.id, o.num, o.cargo, o.weight, o.vol, o.qty, o.pack, o.trans, o.status, o.manager, o.sharedWith || ""];
@@ -1053,18 +1061,23 @@ function renderDeals() {
         }
 
         return matchesSearch && matchesAccess && matchesManager && matchesStatus;
-    }).map(d => `
+    }).map(d => {
+        // Подготавливаем отображение маржи, если она есть
+        const marginInfo = d.margin ? `<span style="color:var(--warning); font-weight:bold;"> (${d.margin})</span>` : "";
+        
+        return `
         <div class="list-item ${d.status==='completed'?'completed':''}" onclick="showDealPreview(${d.id})">
             <div class="item-main">
                 <h4>№ ${d.num} | ${d.company}</h4>
-                <p>${d.type || '-'} | ${d.manager}</p>
+                <p>${d.type || '-'} | Прибыль: <b>${d.prof}$</b>${marginInfo} | ${d.manager}</p>
             </div>
             <div class="item-actions">
                 ${d.status!=='completed'?'<button class="action-btn" style="color:var(--success)" onclick="finishDeal(event,'+d.id+')">✅</button>':''}
                 <button class="action-btn" onclick="openEdit(${d.id},'deal')">✎</button>
                 <button class="action-btn btn-delete" onclick="deleteItem('deals',${d.id})">×</button>
             </div>
-        </div>`).join('');
+        </div>`;
+    }).join('');
     
     updateCounters();
 }
@@ -1124,12 +1137,26 @@ function renderDeals() {
             f.innerHTML = `<input type="text" id="eReqComp" value="${r.company}" list="allEntitiesData"><input type="text" id="eReqCargo" value="${r.cargo}"><select id="eReqTrans" onchange="checkTransportFields('eReq')"><option value="авто" ${r.transport==='авто'?'selected':''}>Авто</option><option value="авиа" ${r.transport==='авиа'?'selected':''}>Авиа</option><option value="море" ${r.transport==='море'?'selected':''}>Море</option><option value="ж/д" ${r.transport==='ж/д'?'selected':''}>Ж/Д</option></select><select id="eReqCont" style="display:${r.transport==='море'?'block':'none'}"><option value="20GP" ${r.container==='20GP'?'selected':''}>20GP</option><option value="40HC" ${r.container==='40HC'?'selected':''}>40HC</option></select><input type="number" id="eReqContQty" value="${r.contQty}" style="display:${r.transport==='море'?'block':'none'}" placeholder="Кол-во конт."><input type="number" id="eReqW" value="${r.weight}"><input type="number" id="eReqV" value="${r.vol}"><input type="number" id="eReqVal" value="${r.value}"><select id="eReqCurr"><option value="USD" ${r.currency==='USD'?'selected':''}>USD</option><option value="EUR" ${r.currency==='EUR'?'selected':''}>EUR</option></select><input type="text" id="eReqLoad" value="${r.load}"><input type="text" id="eReqZip" value="${r.zip}"><input type="text" id="eReqUnload" value="${r.unload}"><textarea id="eReqDesc" style="grid-column: span 2;">${r.desc}</textarea>`;
         } else if (type === 'deal') {
             const d = deals.find(x => x.id == id); title.innerText = "Правка сделки";
-            f.innerHTML = `<input type="text" id="eDealNum" value="${d.num}"><input type="text" id="eDealComp" value="${d.company}" list="allEntitiesData"><input type="text" id="eDealCargo" value="${d.cargo}"><select id="eDealTrans" onchange="checkTransportFields('eDeal')"><option value="авто" ${d.trans==='авто'?'selected':''}>Авто</option><option value="море" ${d.trans==='море'?'selected':''}>Море</option><option value="авиа" ${d.trans==='авиа'?'selected':''}>Авиа</option><option value="ж/д" ${d.trans==='ж/д'?'selected':''}>Ж/Д</option></select>
-                <select id="eDealCont" style="display:${d.trans==='море'?'block':'none'}"><option value="20GP" ${d.container==='20GP'?'selected':''}>20GP</option><option value="40HC" ${d.container==='40HC'?'selected':''}>40HC</option></select>
-                <input type="number" id="eDealContQty" value="${d.contQty}" style="display:${d.trans==='море'?'block':'none'}" placeholder="Кол-во">
-                <input type="text" id="eDealBL" value="${d.blNum}" style="display:${d.trans==='море'?'block':'none'}" placeholder="№ BL">
-                <input type="text" id="eDealAWB" value="${d.awbNum}" style="display:${d.trans==='авиа'?'block':'none'}" placeholder="№ AWB">
-                <input type="number" id="eDealW" value="${d.weight}"><input type="number" id="eDealV" value="${d.vol}"><input type="number" id="eDealVal" value="${d.value}"><input type="number" id="eDealExp" value="${d.exp}" oninput="calcEditProf()"><input type="number" id="eDealInc" value="${d.inc}" oninput="calcEditProf()"><input type="number" id="eDealProf" value="${d.prof}" readonly style="background:#f0f7ff;"><input type="text" id="eDealL" value="${d.load}" style="grid-column: span 2;"><input type="text" id="eDealU" value="${d.unload}" style="grid-column: span 2;"><textarea id="eDealI" style="grid-column: span 2;">${d.info}</textarea>`;
+            f.innerHTML = `
+                <input type="text" id="eDealNum" value="${d.num}">
+                <input type="text" id="eDealComp" value="${d.company}" list="allEntitiesData">
+                <input type="text" id="eDealCargo" value="${d.cargo}">
+                <select id="eDealTrans" onchange="checkTransportFields('eDeal')">
+                    <option value="авто" ${d.trans==='авто'?'selected':''}>Авто</option>
+                    <option value="море" ${d.trans==='море'?'selected':''}>Море</option>
+                    <option value="авиа" ${d.trans==='авиа'?'selected':''}>Авиа</option>
+                    <option value="ж/д" ${d.trans==='ж/д'?'selected':''}>Ж/Д</option>
+                </select>
+                <input type="number" id="eDealW" value="${d.weight}">
+                <input type="number" id="eDealV" value="${d.vol}">
+                <input type="number" id="eDealVal" value="${d.value}">
+                <input type="number" id="eDealExp" value="${d.exp}" oninput="calcEditProf()">
+                <input type="number" id="eDealInc" value="${d.inc}" oninput="calcEditProf()">
+                <input type="number" id="eDealProf" value="${d.prof}" readonly style="background:#f0f7ff;">
+                <input type="text" id="eDealMargin" value="${d.margin || '0%'}" readonly style="background:#fff3e0; font-weight:bold;">
+                <input type="text" id="eDealL" value="${d.load}" style="grid-column: span 2;">
+                <input type="text" id="eDealU" value="${d.unload}" style="grid-column: span 2;">
+                <textarea id="eDealI" style="grid-column: span 2;">${d.info}</textarea>`;
         } else if (type === 'partner') {
             const p = partners.find(x => x.id == id); title.innerText = "Правка партнера";
             f.innerHTML = `<input type="text" id="ePartName" value="${p.name}"><select id="ePartStatus"><option value="агент" ${p.status==='агент'?'selected':''}>Агент</option><option value="перевозчик" ${p.status==='перевозчик'?'selected':''}>Перевозчик</option><option value="брокер" ${p.status==='брокер'?'selected':''}>Брокер</option></select><input type="text" id="ePartCountry" value="${p.country}"><input type="text" id="partPhone" value="${p.phone}"><input type="email" id="ePartEmail" value="${p.email}"><input type="text" id="ePartWeb" value="${p.website}"><textarea id="ePartDesc" style="grid-column: span 2;">${p.desc}</textarea>`;
@@ -1156,25 +1183,28 @@ async function saveEdit() {
         reminders[i].topic = document.getElementById('eRemTopic').value;
         updatedItem = reminders[i];
         renderReminders();
-    } else if (type === 'company') {
+} else if (type === 'company') {
         sheetName = 'companies';
         const i = companies.findIndex(x => x.id == id);
         const oldSt = companies[i].status;
-        const newSt = document.getElementById('eCompStatus').value; // Добавили 'e'
+        const newSt = document.getElementById('eCompStatus').value;
         if (newSt === 'active' && oldSt !== 'active') companies[i].activatedAt = new Date().toISOString();
         
         companies[i].name = document.getElementById('eCompName').value;
-        companies[i].product = document.getElementById('eCompProduct').value; // Добавили 'e'
-        companies[i].city = document.getElementById('eCompCity').value; // Добавили 'e'
-        companies[i].contact = document.getElementById('eCompContact').value; // Добавили 'e'
-        companies[i].phone = document.getElementById('eCompPhone').value; // Добавили 'e'
-        companies[i].email = document.getElementById('eCompEmail').value; // Добавили 'e'
-        companies[i].website = document.getElementById('eCompWeb').value; // Добавили 'e'
-        companies[i].import = document.getElementById('eCompImp').value; // Добавили 'e'
-        companies[i].export = document.getElementById('eCompExp').value; // Добавили 'e'
-        companies[i].manager = document.getElementById('eCompMan').value; // Добавили 'e'
+        companies[i].product = document.getElementById('eCompProduct').value;
+        companies[i].city = document.getElementById('eCompCity').value;
+        companies[i].contact = document.getElementById('eCompContact').value;
+        companies[i].phone = document.getElementById('eCompPhone').value;
+        companies[i].email = document.getElementById('eCompEmail').value;
+        companies[i].website = document.getElementById('eCompWeb').value;
+        companies[i].import = document.getElementById('eCompImp').value;
+        companies[i].export = document.getElementById('eCompExp').value;
+        
+        // ИСПРАВЛЕННЫЕ ID:
+        companies[i].manager = document.getElementById('eCompMan').value; 
         companies[i].status = newSt;
-        companies[i].isPrivate = document.getElementById('eCompPriv').checked; // Добавили 'e'
+        companies[i].isPrivate = document.getElementById('eCompPriv').checked;
+        
         updatedItem = companies[i];
         renderCompanies();
     } else if (type === 'request') {
@@ -1215,6 +1245,7 @@ async function saveEdit() {
         deals[i].load = document.getElementById('eDealL').value;
         deals[i].unload = document.getElementById('eDealU').value;
         deals[i].info = document.getElementById('eDealI').value;
+        deals[i].margin = document.getElementById('eDealMargin').value;
         updatedItem = deals[i];
         renderDeals();
     } else if (type === 'partner') {
@@ -1365,8 +1396,27 @@ async function saveEdit() {
     }
 
     function updateDatalists() { document.getElementById('allEntitiesData').innerHTML = companies.map(c => `<option value="${c.name}">`).join(''); }
-    function calcDealProfit() { const i = parseFloat(document.getElementById('dealInc').value||0), e = parseFloat(document.getElementById('dealExp').value||0); document.getElementById('dealProf').value=(i-e).toFixed(2); }
-    function calcEditProf() { const i = parseFloat(document.getElementById('eDealInc').value||0), e = parseFloat(document.getElementById('eDealExp').value||0); document.getElementById('eDealProf').value=(i-e).toFixed(2); }
+    function calcDealProfit() {
+    const inc = parseFloat(document.getElementById('dealInc').value || 0);
+    const exp = parseFloat(document.getElementById('dealExp').value || 0);
+    const prof = inc - exp;
+    document.getElementById('dealProf').value = prof.toFixed(2);
+    
+    // Расчет маржи
+    const margin = inc > 0 ? (prof / inc * 100) : 0;
+    document.getElementById('dealMargin').value = margin.toFixed(1) + '%';
+}
+
+function calcEditProf() {
+    const inc = parseFloat(document.getElementById('eDealInc').value || 0);
+    const exp = parseFloat(document.getElementById('eDealExp').value || 0);
+    const prof = inc - exp;
+    document.getElementById('eDealProf').value = prof.toFixed(2);
+    
+    // Расчет маржи для редактирования
+    const margin = inc > 0 ? (prof / inc * 100) : 0;
+    document.getElementById('eDealMargin').value = margin.toFixed(1) + '%';
+}
     function updateSecondaryFilter() { const p = document.getElementById('sortComp').value, s = document.getElementById('secondarySelect'); if (!p) { s.style.display = 'none'; renderCompanies(); return; } s.style.display = 'inline-block'; s.innerHTML = p === 'manager' ? '<option value="">Все</option>' + managers.map(m => `<option value="${m}">${m}</option>`).join('') : '<option value="">Все</option><option value="cold">Холодный</option><option value="warm">Теплый</option><option value="active">Активный</option>'; renderCompanies(); }
     function clearCallFilters() { document.getElementById('searchCallComp').value = ''; document.getElementById('searchCallDate').value = ''; renderReminders(); }
 
