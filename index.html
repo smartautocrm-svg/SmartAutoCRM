@@ -801,11 +801,11 @@ async function sync(sh, dt, mode = 'saveAll') {
         reader.readAsDataURL(file);
     }
 
- function deleteFile(dealId, fileId) {
+function deleteFile(dealId, fileId) {
     if (!confirm("Удалить файл?")) return;
     const idx = deals.findIndex(d => d.id == dealId);
     deals[idx].files = deals[idx].files.filter(f => f.id !== fileId);
-    // Точечное обновление
+    // Точечное обновление только одной сделки через 'update'
     sync('deals', deals[idx], 'update').then(() => showDealPreview(dealId));
 }
 
@@ -1256,7 +1256,67 @@ async function saveEdit() {
     async function addReminder() { const n = document.getElementById('callName').value; if(!n)return alert("Имя?"); const newItem = { id: Date.now(), name: n, date: document.getElementById('callTime').value, topic: document.getElementById('callTopic').value, manager: sessionStorage.getItem('crm_user'), status: "active" }; reminders.push(newItem); renderReminders(); await sync('reminders', reminders, 'append'); ['callName', 'callTime', 'callTopic'].forEach(i=>document.getElementById(i).value=''); }
     async function addRequest() { const c = document.getElementById('reqComp').value; if(!c)return alert("Клиент?"); const newItem = { id: Date.now(), company: c, cargo: document.getElementById('reqCargo').value, transport: document.getElementById('reqTransport').value, weight: document.getElementById('reqWeight').value, vol: document.getElementById('reqVol').value, value: document.getElementById('reqValue').value, currency: document.getElementById('reqCurrency').value, load: document.getElementById('reqLoad').value, zip: document.getElementById('reqZip').value, unload: document.getElementById('reqUnload').value, desc: document.getElementById('reqDesc').value, createdAt: new Date().toISOString(), status: "active", manager: sessionStorage.getItem('crm_user'), container: document.getElementById('reqContainer').value, contQty: document.getElementById('reqContQty').value }; requests.push(newItem); renderRequests(); await sync('requests', requests, 'append'); ['reqComp', 'reqCargo', 'reqWeight', 'reqVol', 'reqValue', 'reqLoad', 'reqZip', 'reqUnload', 'reqDesc', 'reqContQty'].forEach(i=>document.getElementById(i).value=''); }
     async function addDeal() { const n = document.getElementById('dealNum').value, t = document.getElementById('dealType').value; if(!n||!t)return alert("Поля!"); const newItem = { id: Date.now(), num: n, company: document.getElementById('dealComp').value, cargo: document.getElementById('dealCargo').value, trans: document.getElementById('dealTransport').value, weight: document.getElementById('dealWeight').value, vol: document.getElementById('dealVol').value, value: document.getElementById('dealVal').value, curr: "USD", load: document.getElementById('dealLoad').value, zip: "", unload: document.getElementById('dealUnload').value, info: document.getElementById('dealInfo').value, manager: sessionStorage.getItem('crm_user'), createdAt: new Date().toISOString(), exp: document.getElementById('dealExp').value, inc: document.getElementById('dealInc').value, prof: document.getElementById('dealProf').value, status: "active", type: t, container: document.getElementById('dealContainer').value, contQty: document.getElementById('dealContQty').value, blNum: document.getElementById('dealBL').value, awbNum: document.getElementById('dealAWB').value, files: [] }; deals.push(newItem); renderDeals(); await sync('deals', deals, 'append'); ['dealNum', 'dealComp', 'dealCargo', 'dealWeight', 'dealVol', 'dealVal', 'dealExp', 'dealInc', 'dealProf', 'dealLoad', 'dealUnload', 'dealInfo', 'dealContQty', 'dealBL', 'dealAWB'].forEach(i=>document.getElementById(i).value=''); }
-    async function addCompany() { const n = document.getElementById('compName').value; const p = document.getElementById('compProduct').value; const m = document.getElementById('compManager').value; const st = document.getElementById('compStatus').value; if (!n || !p || !m) return alert("Поля Название, Груз и Менеджер обязательны!"); const newItem = { id: Date.now(), name: n, product: p, manager: m, status: st, isPrivate: document.getElementById('compPrivate').checked, city: document.getElementById('compCity').value, contact: document.getElementById('compContact').value, phone: document.getElementById('compPhone').value, email: document.getElementById('compEmail').value, website: document.getElementById('compWebsite').value, import: document.getElementById('compImp').value, export: document.getElementById('compExp').value, createdAt: new Date().toISOString(), activatedAt: (st === 'active' ? new Date().toISOString() : ""), sharedWith: "" }; companies.push(newItem); renderCompanies(); await sync('companies', companies, 'append'); ['compName', 'compProduct', 'compCity', 'compContact', 'compPhone', 'compEmail', 'compWebsite', 'compImp', 'compExp'].forEach(i => document.getElementById(i).value = ''); }
+   async function addCompany() {
+    const n = document.getElementById('compName').value.trim();
+    const p = document.getElementById('compProduct').value.trim();
+    const m = document.getElementById('compManager').value;
+    const st = document.getElementById('compStatus').value;
+    const phone = document.getElementById('compPhone').value.trim();
+
+    if (!n || !p || !m) return alert("Поля Название, Груз и Менеджер обязательны!");
+
+    // --- БЛОК ПРОВЕРКИ ДУБЛИКАТОВ ---
+    
+    // 1. Проверка по названию (без учета регистра)
+    const duplicateName = companies.find(c => c.name.toLowerCase() === n.toLowerCase());
+    
+    // 2. Проверка по телефону (только если телефон введен)
+    let duplicatePhone = null;
+    if (phone) {
+        // Убираем из номеров лишние символы (пробелы, тире, скобки) для точного сравнения
+        const cleanNewPhone = phone.replace(/\D/g, '');
+        duplicatePhone = companies.find(c => {
+            if (!c.phone) return false;
+            return c.phone.replace(/\D/g, '') === cleanNewPhone;
+        });
+    }
+
+    if (duplicateName) {
+        return alert(`❌ ОШИБКА: Компания "${n}" уже есть в базе!\nМенеджер: ${duplicateName.manager}\nСтатус: ${statusMap[duplicateName.status].label}`);
+    }
+
+    if (duplicatePhone) {
+        return alert(`❌ ОШИБКА: Телефон ${phone} уже закреплен за компанией "${duplicatePhone.name}"!\nМенеджер: ${duplicatePhone.manager}`);
+    }
+
+    // --- КОНЕЦ БЛОКА ПРОВЕРКИ ---
+
+    const newItem = { 
+        id: Date.now(), 
+        name: n, 
+        product: p, 
+        manager: m, 
+        status: st, 
+        isPrivate: document.getElementById('compPrivate').checked, 
+        city: document.getElementById('compCity').value, 
+        contact: document.getElementById('compContact').value, 
+        phone: phone, 
+        email: document.getElementById('compEmail').value, 
+        website: document.getElementById('compWebsite').value, 
+        import: document.getElementById('compImp').value, 
+        export: document.getElementById('compExp').value, 
+        createdAt: new Date().toISOString(), 
+        activatedAt: (st === 'active' ? new Date().toISOString() : ""), 
+        sharedWith: "" 
+    };
+
+    companies.push(newItem); 
+    renderCompanies(); 
+    await sync('companies', companies, 'append'); 
+    
+    // Очистка полей
+    ['compName', 'compProduct', 'compCity', 'compContact', 'compPhone', 'compEmail', 'compWebsite', 'compImp', 'compExp'].forEach(i => document.getElementById(i).value = '');
+}
     async function addPartner() { const n = document.getElementById('partName').value; if(!n)return alert("Название?"); const newItem = { id: Date.now(), name: n, status: document.getElementById('partStatus').value, country: document.getElementById('partCountry').value, contact: document.getElementById('partContact').value, phone: document.getElementById('partPhone').value, email: document.getElementById('partEmail').value, website: document.getElementById('partWeb').value, desc: document.getElementById('partDesc').value }; partners.push(newItem); renderPartners(); await sync('partners', partners, 'append'); ['partName', 'partCountry', 'partContact', 'partPhone', 'partEmail', 'partWeb', 'partDesc'].forEach(i=>document.getElementById(i).value=''); }
     async function addTracking() { const num = document.getElementById('trackNum').value, cargo = document.getElementById('trackCargo').value; if (!num || !cargo) return alert("Заполните Номер и Груз!"); const newItem = { id: Date.now(), num: num, cargo: cargo, weight: document.getElementById('trackWeight').value, vol: document.getElementById('trackVol').value, qty: document.getElementById('trackQty').value, pack: document.getElementById('trackPack').value, trans: document.getElementById('trackTrans').value, status: document.getElementById('trackStatus').value, manager: sessionStorage.getItem('crm_user'), sharedWith: document.getElementById('trackShare').value }; tracking.push(newItem); renderTracking(); await sync('tracking', tracking, 'append'); ['trackNum', 'trackCargo', 'trackWeight', 'trackVol', 'trackQty', 'trackShare'].forEach(i => document.getElementById(i).value = ''); }
 
