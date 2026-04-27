@@ -533,6 +533,26 @@
 <script>
     // СЮДА НУЖНО ВСТАВИТЬ ВАШ URL
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx7FOBG0711CMW05oPvuq2wXP4WuiVyBY-nSAKgPOaHLKMZugEbiRMyzsF8BFq2DXrgeg/exec";
+
+    // --- ФУНКЦИИ ФОРМАТИРОВАНИЯ (ДОБАВИТЬ) ---
+function dtFmt(v) { 
+    if (!v) return ""; 
+    const d = new Date(v); 
+    if (isNaN(d.getTime())) return v; 
+    return d.toLocaleDateString('ru-RU') + ' ' + d.toLocaleTimeString('ru-RU', {hour:'2-digit', minute:'2-digit'}); 
+}
+function dFmt(v) { 
+    if (!v) return ""; 
+    const d = new Date(v); 
+    if (isNaN(d.getTime())) return v; 
+    return d.toLocaleDateString('ru-RU'); 
+}
+function forInput(v) { 
+    if (!v) return ""; 
+    const d = new Date(v); 
+    if (isNaN(d.getTime())) return ""; 
+    return d.toISOString().slice(0, 16); 
+}
     
     let reminders = [], companies = [], partners = [], requests = [], managers = [], deals = [], tracking = [];
     const statusMap = { cold: {label:'❄️ Холодный'}, warm: {label:'🔥 Теплый'}, active: {label:'🏆 Активный'} };
@@ -639,76 +659,67 @@
     }
 
 async function loadCloudData() {
-        if (document.getElementById('editModal').style.display === 'block') return;
-        showLoader(true);
-        try {
-            const r = await fetch(`${SCRIPT_URL}?action=getAllData`);
-            const d = await r.json();
-            
-            if (!d || d.error) {
-                console.error("GAS Error:", d ? d.error : "No response");
-                showLoader(false);
-                return;
-            }
-
-            managers = d.managers || [];
-            const mSelect = document.getElementById('compManager');
-            if (mSelect) {
-                mSelect.innerHTML = '<option value="">Менеджер *</option>' + managers.map(m => `<option value="${m}">${m}</option>`).join('');
-            }
-            
-            if (sessionStorage.getItem('crm_user') === 'admin') {
-                const adminOpts = '<option value="all">📈 Все менеджеры</option>' + managers.map(m => `<option value="${m}">${m}</option>`).join('');
-                const repF = document.getElementById('reportManagerFilter');
-                const staF = document.getElementById('statsManagerFilter');
-                const dealF = document.getElementById('adminDealManagerFilter');
-                if(repF) repF.innerHTML = adminOpts;
-                if(staF) staF.innerHTML = adminOpts;
-                if(dealF) dealF.innerHTML = adminOpts;
-            }
-
-            // Безопасный маппинг данных
-            companies = (d.companies || []).map(x => ({ id: x[0]||Date.now(), name: x[1]||"", contact: x[2]||"", phone: x[3]||"", product: x[4]||"", city: x[5]||"", email: x[6]||"", import: x[7]||"", export: x[8]||"", status: x[9]||"cold", createdAt: x[10]||"", activatedAt: x[11]||"", manager: x[12]||"", isPrivate: String(x[13])==="true", sharedWith: x[14]||"", website: x[15]||"" }));
-            
-            requests = (d.requests || []).map(x => ({ id: x[0]||Date.now(), company: x[1]||"", cargo: x[2]||"", transport: x[3]||"", weight: x[4]||"", vol: x[5]||"", value: x[6]||"", currency: x[7]||"", load: x[8]||"", unload: x[9]||"", desc: x[10]||"", createdAt: x[11]||"", status: x[12]||"active", comment: x[13]||"", container: x[14]||"", zip: x[15]||"", manager: x[16]||"", contQty: x[17]||"" }));
-            
-            deals = (d.deals || []).map(x => {
-                let parsedFiles = [];
-                try {
-                    if (x[25] && typeof x[25] === 'string' && x[25].trim() !== "" && x[25] !== "[]") {
-                        parsedFiles = JSON.parse(x[25]);
-                    }
-                } catch(e) { console.warn("Files JSON error in deal:", x[1]); }
-                return { 
-                    id: x[0]||Date.now(), num: x[1]||"", company: x[2]||"", cargo: x[3]||"", trans: x[4]||"", weight: x[5]||"", vol: x[6]||"", value: x[7]||"", curr: x[8]||"", load: x[9]||"", zip: x[10]||"", unload: x[11]||"", info: x[12]||"", manager: x[13]||"", createdAt: x[14]||"", exp: x[15]||0, inc: x[16]||0, prof: x[17]||0, container: x[18]||"", sharedWith: x[19]||"", status: x[20]||"active", type: x[21]||"", contQty: x[22]||"", blNum: x[23]||"", awbNum: x[24]||"",
-                    files: parsedFiles 
-                };
-            });
-            // Обработка данных трекинга из таблицы
-            tracking = (d.tracking || []).map(x => ({ 
-                id: x[0] || Date.now(),      // Столбец A (ID)
-                num: x[1] || "",             // Столбец B (Номер трекинга)
-                cargo: x[2] || "",           // Столбец C (Груз)
-                weight: x[3] || "",          // Столбец D (Вес)
-                vol: x[4] || "",             // Столбец E (Объем)
-                qty: x[5] || "",             // Столбец F (Кол-во мест)
-                pack: x[6] || "",            // Столбец G (Тип упаковки)
-                trans: x[7] || "",           // Столбец H (Транспорт)
-                status: x[8] || "",          // Столбец I (Статус)
-                manager: x[9] || "",         // Столбец J (Кто создал)
-                sharedWith: x[10] || ""      // Столбец K (Кому дан доступ)
-            }));
-            reminders = (d.reminders || []).map(x => ({ id: x[0]||Date.now(), name: x[1]||"", date: x[2]||"", topic: x[3]||"", manager: x[4]||"", status: x[5]||"active" }));
-            partners = (d.partners || []).map(x => ({ id: x[0]||Date.now(), name: x[1]||"", status: x[2]||"агент", country: x[3]||"", contact: x[4]||"", phone: x[5]||"", email: x[6]||"", website: x[7]||"", desc: x[8]||"" }));
-            
-            renderAll(); 
-            document.getElementById('sync-status').innerText = "Обновлено: " + new Date().toLocaleTimeString();
-        } catch (e) { 
-            console.error("Критическая ошибка загрузки:", e); 
-        } finally { 
-            showLoader(false); 
+    if (document.getElementById('editModal').style.display === 'block') return;
+    showLoader(true);
+    try {
+        const r = await fetch(`${SCRIPT_URL}?action=getAllData`);
+        const d = await r.json();
+        
+        if (!d || d.error) {
+            console.error("GAS Error:", d ? d.error : "No response");
+            showLoader(false);
+            return;
         }
+
+        // 1. Настройка менеджеров и фильтров
+        managers = d.managers || [];
+        const mSelect = document.getElementById('compManager');
+        if (mSelect) {
+            mSelect.innerHTML = '<option value="">Менеджер *</option>' + managers.map(m => `<option value="${m}">${m}</option>`).join('');
+        }
+        
+        if (sessionStorage.getItem('crm_user') === 'admin') {
+            const adminOpts = '<option value="all">📈 Все менеджеры</option>' + managers.map(m => `<option value="${m}">${m}</option>`).join('');
+            ['reportManagerFilter', 'statsManagerFilter', 'adminDealManagerFilter'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.innerHTML = adminOpts;
+            });
+        }
+
+        // 2. Маппинг данных (превращаем данные из таблицы в объекты JS)
+        companies = (d.companies || []).map(x => ({ id: x[0], name: x[1], contact: x[2], phone: x[3], product: x[4], city: x[5], email: x[6], import: x[7], export: x[8], status: x[9], createdAt: x[10], activatedAt: x[11], manager: x[12], isPrivate: String(x[13]) === "true", sharedWith: x[14], website: x[15] }));
+        
+        requests = (d.requests || []).map(x => ({ id: x[0], company: x[1], cargo: x[2], transport: x[3], weight: x[4], vol: x[5], value: x[6], currency: x[7], load: x[8], unload: x[9], desc: x[10], createdAt: x[11], status: x[12], comment: x[13], container: x[14], zip: x[15], manager: x[16], contQty: x[17] }));
+        
+        deals = (d.deals || []).map(x => {
+            let parsedFiles = [];
+            try { 
+                if (x[25] && typeof x[25] === 'string' && x[25].trim() !== "" && x[25] !== "[]") {
+                    parsedFiles = JSON.parse(x[25]); 
+                }
+            } catch(e) { console.warn("Files JSON error in deal:", x[1]); }
+            return { 
+                id: x[0], num: x[1], company: x[2], cargo: x[3], trans: x[4], weight: x[5], vol: x[6], value: x[7], curr: x[8], load: x[9], zip: x[10], unload: x[11], info: x[12], manager: x[13], createdAt: x[14], 
+                exp: Number(x[15]||0), inc: Number(x[16]||0), prof: Number(x[17]||0), 
+                container: x[18], sharedWith: x[19], status: x[20], type: x[21], contQty: x[22], blNum: x[23], awbNum: x[24], files: parsedFiles 
+            };
+        });
+
+        tracking = (d.tracking || []).map(x => ({ id: x[0], num: x[1], cargo: x[2], weight: x[3], vol: x[4], qty: x[5], pack: x[6], trans: x[7], status: x[8], manager: x[9], sharedWith: x[10] }));
+        
+        reminders = (d.reminders || []).map(x => ({ id: x[0], name: x[1], date: x[2], topic: x[3], manager: x[4], status: x[5] }));
+        
+        partners = (d.partners || []).map(x => ({ id: x[0], name: x[1], status: x[2], country: x[3], contact: x[4], phone: x[5], email: x[6], website: x[7], desc: x[8] }));
+        
+        // 3. Финальное обновление интерфейса
+        renderAll(); 
+        document.getElementById('sync-status').innerText = "Обновлено: " + new Date().toLocaleTimeString();
+    } catch (e) { 
+        console.error("Критическая ошибка загрузки:", e); 
+    } finally { 
+        showLoader(false); 
     }
+}
 
     function formatRow(sh, o) {
         if (sh === 'companies') return [o.id, o.name, o.contact, o.phone, o.product || "", o.city || "", o.email || "", o.import || "", o.export || "", o.status, o.createdAt, o.activatedAt || "", o.manager, o.isPrivate, o.sharedWith || "", o.website || ""];
