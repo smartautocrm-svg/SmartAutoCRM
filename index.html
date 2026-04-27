@@ -937,20 +937,31 @@ function renderReminders() {
     const s = document.getElementById('searchCallComp').value.toLowerCase(), 
           d = document.getElementById('searchCallDate').value, 
           me = sessionStorage.getItem('crm_user'),
-          hideDone = document.getElementById('hideDoneCalls').checked; // НОВОЕ
+          hideDone = document.getElementById('hideDoneCalls').checked;
 
     const limitMs = 3 * 24 * 60 * 60 * 1000, now = new Date();
     
-    let f = reminders.filter(r => r.name.toLowerCase().includes(s) && (!d || r.date.split('T')[0] === d));
+    let f = reminders.filter(r => r.name.toLowerCase().includes(s) && (!d || dFmt(r.date) === dFmt(d)));
     
     if (me !== 'admin') f = f.filter(r => r.manager === me);
-    if (hideDone) f = f.filter(r => r.status !== 'completed'); // Фильтрация завершенных
+    if (hideDone) f = f.filter(r => r.status !== 'completed');
 
     f.sort((a,b) => new Date(b.date) - new Date(a.date));
     
     document.getElementById('remindersList').innerHTML = f.map(r => {
         const isOverdue = r.status !== 'completed' && (now - new Date(r.date)) > limitMs;
-        return `<div class="list-item ${r.status==='completed'?'completed':''} ${isOverdue?'overdue':''}" onclick="showCallPreview(${r.id})"><div class="item-main"><h4>${r.name} ${isOverdue?'<span class="overdue-tag">ПРОСРОЧЕНО</span>':''}</h4><p>${dtFmt(r.date)} | ${r.manager}</p></div><div class="item-actions">${r.status!=='completed'?'<button class="action-btn" style="color:var(--success)" onclick="finishRem(event,'+r.id+')">✅</button>':''}<button class="action-btn" onclick="openEdit(${r.id},'reminder')">✎</button><button class="action-btn btn-delete" onclick="deleteItem('reminders',${r.id})">×</button></div></div>`;
+        // ТУТ МЫ ПРИМЕНЯЕМ dtFmt(r.date)
+        return `<div class="list-item ${r.status==='completed'?'completed':''} ${isOverdue?'overdue':''}" onclick="showCallPreview(${r.id})">
+            <div class="item-main">
+                <h4>${r.name} ${isOverdue?'<span class="overdue-tag">ПРОСРОЧЕНО</span>':''}</h4>
+                <p>${dtFmt(r.date)} | ${r.manager}</p>
+            </div>
+            <div class="item-actions">
+                ${r.status!=='completed'?'<button class="action-btn" style="color:var(--success)" onclick="finishRem(event,'+r.id+')">✅</button>':''}
+                <button class="action-btn" onclick="openEdit(${r.id},'reminder')">✎</button>
+                <button class="action-btn btn-delete" onclick="deleteItem('reminders',${r.id})">×</button>
+            </div>
+        </div>`;
     }).join('');
     updateCounters();
 }
@@ -958,17 +969,28 @@ function renderReminders() {
     
 function renderRequests() {
     const s = document.getElementById('searchReq').value.toLowerCase(),
-          hideDone = document.getElementById('hideDoneRequests').checked; // НОВОЕ
+          hideDone = document.getElementById('hideDoneRequests').checked;
           
     const limitMs = 2 * 24 * 60 * 60 * 1000, now = new Date();
     
     document.getElementById('requestsList').innerHTML = requests.filter(r => {
         const matchesSearch = checkAccess(r.company) && (r.company.toLowerCase().includes(s) || r.cargo.toLowerCase().includes(s));
-        const matchesStatus = hideDone ? r.status !== 'completed' : true; // Фильтрация завершенных
+        const matchesStatus = hideDone ? r.status !== 'completed' : true;
         return matchesSearch && matchesStatus;
     }).map(r => {
         const isOverdue = r.status !== 'completed' && (now - new Date(r.createdAt)) > limitMs;
-        return `<div class="list-item ${r.status === 'completed' ? 'completed' : ''} ${isOverdue?'overdue':''}" onclick="showRequestPreview(${r.id})"><div class="item-main"><h4>${r.company} ${isOverdue?'<span class="overdue-tag">ГОРЯЧИЙ / ЗАБЫТ</span>':''}</h4><p>${r.cargo} | Создан: ${dFmt(r.createdAt)} | ${r.manager}</p></div><div class="item-actions">${r.status!=='completed'?'<button class="action-btn" style="color:var(--success)" onclick="finishRequest(event,'+r.id+')">✅</button>':''}<button class="action-btn" onclick="openEdit(${r.id},'request')">✎</button><button class="action-btn btn-delete" onclick="deleteItem('requests',${r.id})">×</button></div></div>`;
+        // ТУТ МЫ ПРИМЕНЯЕМ dFmt(r.createdAt)
+        return `<div class="list-item ${r.status === 'completed' ? 'completed' : ''} ${isOverdue?'overdue':''}" onclick="showRequestPreview(${r.id})">
+            <div class="item-main">
+                <h4>${r.company} ${isOverdue?'<span class="overdue-tag">ГОРЯЧИЙ / ЗАБЫТ</span>':''}</h4>
+                <p>${r.cargo} | Создан: ${dFmt(r.createdAt)} | ${r.manager}</p>
+            </div>
+            <div class="item-actions">
+                ${r.status!=='completed'?'<button class="action-btn" style="color:var(--success)" onclick="finishRequest(event,'+r.id+')">✅</button>':''}
+                <button class="action-btn" onclick="openEdit(${r.id},'request')">✎</button>
+                <button class="action-btn btn-delete" onclick="deleteItem('requests',${r.id})">×</button>
+            </div>
+        </div>`;
     }).join('');
     updateCounters();
 }
