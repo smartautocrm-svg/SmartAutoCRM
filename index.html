@@ -260,7 +260,7 @@
         <div class="card" id="preview-requests"><div style="color:#ccc; text-align:center; margin-top:50px;">Выберите запрос</div></div>
     </div>
     <div class="bottom-section">
-        <div class="controls-bar"><input type="text" id="searchReq" placeholder="Поиск..." oninput="renderRequests()"><label style="font-size: 10px; display: flex; align-items: center; gap: 4px; white-space: nowrap;">
+        <div class="controls-bar"><input type="text" id="searchReq" placeholder="Поиск..." oninput="debouncedRenderRequests()"><label style="font-size: 10px; display: flex; align-items: center; gap: 4px; white-space: nowrap;">
         <input type="checkbox" id="hideDoneRequests" onchange="renderRequests()" style="width: auto;"> Скрыть завершенные
     </label></div>
         <div class="scroll-list" id="requestsList"></div>
@@ -305,7 +305,7 @@
     </div>
     <div class="bottom-section">
         <div class="controls-bar">
-    <input type="text" id="searchDeals" placeholder="Поиск..." oninput="renderDeals()">
+    <input type="text" id="searchDeals" placeholder="Поиск..." oninput="debouncedRenderDeals()">
     <!-- Фильтр для админа -->
     <select id="adminDealManagerFilter" style="display:none; min-width: 150px;" onchange="renderDeals()"></select><label style="font-size: 10px; display: flex; align-items: center; gap: 4px; white-space: nowrap;">
         <input type="checkbox" id="hideDoneDeals" onchange="renderDeals()" style="width: auto;"> Скрыть завершенные
@@ -344,10 +344,10 @@
     </div>
     <div class="bottom-section">
         <div class="controls-bar">
-            <input type="text" id="searchComp" placeholder="Название..." oninput="renderCompanies()">
-            <input type="text" id="filterCity" placeholder="Город..." oninput="renderCompanies()">
-            <input type="text" id="filterImport" placeholder="Импорт..." oninput="renderCompanies()">
-            <input type="text" id="filterExport" placeholder="Экспорт..." oninput="renderCompanies()">
+            <input type="text" id="searchComp" placeholder="Название..." oninput="debouncedRenderCompanies()">
+            <input type="text" id="filterCity" placeholder="Город..." oninput="debouncedRenderCompanies()">
+            <input type="text" id="filterImport" placeholder="Импорт..." oninput="debouncedRenderCompanies()">
+            <input type="text" id="filterExport" placeholder="Экспорт..." oninput="debouncedRenderCompanies()">
             <select id="sortComp" onchange="updateSecondaryFilter()"><option value="">Фильтр</option><option value="manager">Менеджер</option><option value="status">Статус</option></select>
             <select id="secondarySelect" style="display:none;" onchange="renderCompanies()"></select>
         </div>
@@ -533,6 +533,15 @@
 <script>
     // СЮДА НУЖНО ВСТАВИТЬ ВАШ URL
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx7FOBG0711CMW05oPvuq2wXP4WuiVyBY-nSAKgPOaHLKMZugEbiRMyzsF8BFq2DXrgeg/exec";
+
+    // Функция-задержка, чтобы поиск не тормозил
+function debounce(func, timeout = 300) {
+    let timer;
+    return (...args) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => { func.apply(this, args); }, timeout);
+    };
+}
 
     // --- ФУНКЦИИ ФОРМАТИРОВАНИЯ (ДОБАВИТЬ) ---
 function dtFmt(v) { 
@@ -1147,25 +1156,25 @@ async function saveEdit() {
         reminders[i].topic = document.getElementById('eRemTopic').value;
         updatedItem = reminders[i];
         renderReminders();
-    } else if (type === 'company') {
+} else if (type === 'company') {
         sheetName = 'companies';
         const i = companies.findIndex(x => x.id == id);
         const oldSt = companies[i].status;
-        const newSt = document.getElementById('compStatus').value;
+        const newSt = document.getElementById('eCompStatus').value; // Добавили 'e'
         if (newSt === 'active' && oldSt !== 'active') companies[i].activatedAt = new Date().toISOString();
         
         companies[i].name = document.getElementById('eCompName').value;
-        companies[i].product = document.getElementById('compProduct').value;
-        companies[i].city = document.getElementById('compCity').value;
-        companies[i].contact = document.getElementById('compContact').value;
-        companies[i].phone = document.getElementById('compPhone').value;
-        companies[i].email = document.getElementById('compEmail').value;
-        companies[i].website = document.getElementById('compWebsite').value;
-        companies[i].import = document.getElementById('compImp').value;
-        companies[i].export = document.getElementById('compExp').value;
-        companies[i].manager = document.getElementById('compManager').value;
+        companies[i].product = document.getElementById('eCompProduct').value; // Добавили 'e'
+        companies[i].city = document.getElementById('eCompCity').value; // Добавили 'e'
+        companies[i].contact = document.getElementById('eCompContact').value; // Добавили 'e'
+        companies[i].phone = document.getElementById('eCompPhone').value; // Добавили 'e'
+        companies[i].email = document.getElementById('eCompEmail').value; // Добавили 'e'
+        companies[i].website = document.getElementById('eCompWeb').value; // Добавили 'e'
+        companies[i].import = document.getElementById('eCompImp').value; // Добавили 'e'
+        companies[i].export = document.getElementById('eCompExp').value; // Добавили 'e'
+        companies[i].manager = document.getElementById('eCompMan').value; // Добавили 'e'
         companies[i].status = newSt;
-        companies[i].isPrivate = document.getElementById('compPrivate').checked;
+        companies[i].isPrivate = document.getElementById('eCompPriv').checked; // Добавили 'e'
         updatedItem = companies[i];
         renderCompanies();
     } else if (type === 'request') {
@@ -1421,6 +1430,10 @@ async function saveEdit() {
     }
 
     window.onload = startApp;
+const debouncedRenderDeals = debounce(() => renderDeals());
+const debouncedRenderCompanies = debounce(() => renderCompanies());
+const debouncedRenderRequests = debounce(() => renderRequests());
+    
 </script>
 </body>
 </html> 
