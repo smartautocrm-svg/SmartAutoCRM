@@ -1325,25 +1325,34 @@ function renderCompanies() {
         } else if (type === 'deal') {
             const d = deals.find(x => x.id == id); title.innerText = "Правка сделки";
             f.innerHTML = `
-                <input type="text" id="eDealNum" value="${d.num}">
-                <input type="text" id="eDealComp" value="${d.company}" list="allEntitiesData">
-                <input type="text" id="eDealCargo" value="${d.cargo}">
+                <input type="text" id="eDealNum" value="${d.num}" placeholder="№ Сделки">
+                <input type="text" id="eDealComp" value="${d.company}" list="allEntitiesData" placeholder="Клиент">
+                <input type="text" id="eDealCargo" value="${d.cargo}" placeholder="Груз">
                 <select id="eDealTrans" onchange="checkTransportFields('eDeal')">
-                    <option value="авто" ${d.trans==='авто'?'selected':''}>Авто</option>
-                    <option value="море" ${d.trans==='море'?'selected':''}>Море</option>
-                    <option value="авиа" ${d.trans==='авиа'?'selected':''}>Авиа</option>
-                    <option value="ж/д" ${d.trans==='ж/д'?'selected':''}>Ж/Д</option>
+                    <option value="авто" ${d.trans==='авто'?'selected':''}>🚛 Авто</option>
+                    <option value="море" ${d.trans==='море'?'selected':''}>🚢 Море</option>
+                    <option value="авиа" ${d.trans==='авиа'?'selected':''}>✈️ Авиа</option>
+                    <option value="ж/д" ${d.trans==='ж/д'?'selected':''}>🚂 Ж/Д</option>
                 </select>
-                <input type="number" id="eDealW" value="${d.weight}">
-                <input type="number" id="eDealV" value="${d.vol}">
-                <input type="number" id="eDealVal" value="${d.value}">
-                <input type="number" id="eDealExp" value="${d.exp}" oninput="calcEditProf()">
-                <input type="number" id="eDealInc" value="${d.inc}" oninput="calcEditProf()">
-                <input type="number" id="eDealProf" value="${d.prof}" readonly style="background:#f0f7ff;">
+                <!-- Добавляем скрытые поля, чтобы saveEdit не ломался -->
+                <select id="eDealCont" style="display:none;"><option value="20GP" ${d.container==='20GP'?'selected':''}>20GP</option><option value="40HC" ${d.container==='40HC'?'selected':''}>40HC</option></select>
+                <input type="number" id="eDealContQty" value="${d.contQty || ''}" style="display:none;" placeholder="Кол-во конт.">
+                <input type="text" id="eDealBL" value="${d.blNum || ''}" style="display:none;" placeholder="№ Коносамента">
+                <input type="text" id="eDealAWB" value="${d.awbNum || ''}" style="display:none;" placeholder="№ Авианакладной">
+
+                <input type="number" id="eDealW" value="${d.weight}" placeholder="Вес">
+                <input type="number" id="eDealV" value="${d.vol}" placeholder="Объем">
+                <input type="number" id="eDealVal" value="${d.value}" placeholder="Инвойс">
+                <input type="number" id="eDealExp" value="${d.exp}" oninput="calcEditProf()" placeholder="Расходы">
+                <input type="number" id="eDealInc" value="${d.inc}" oninput="calcEditProf()" placeholder="Доходы">
+                <input type="number" id="eDealProf" value="${d.prof}" readonly style="background:#f0f7ff;" placeholder="Прибыль">
                 <input type="text" id="eDealMargin" value="${d.margin || '0%'}" readonly style="background:#fff3e0; font-weight:bold;">
-                <input type="text" id="eDealL" value="${d.load}" style="grid-column: span 2;">
-                <input type="text" id="eDealU" value="${d.unload}" style="grid-column: span 2;">
+                <input type="text" id="eDealL" value="${d.load}" style="grid-column: span 2;" placeholder="Загрузка">
+                <input type="text" id="eDealU" value="${d.unload}" style="grid-column: span 2;" placeholder="Выгрузка">
                 <textarea id="eDealI" style="grid-column: span 2;">${d.info}</textarea>`;
+            
+            // Сразу после создания полей проверяем, что показать (контейнеры или авианакладные)
+            setTimeout(() => checkTransportFields('eDeal'), 50);
         } else if (type === 'partner') {
             const p = partners.find(x => x.id == id); title.innerText = "Правка партнера";
             f.innerHTML = `<input type="text" id="ePartName" value="${p.name}"><select id="ePartStatus"><option value="агент" ${p.status==='агент'?'selected':''}>Агент</option><option value="перевозчик" ${p.status==='перевозчик'?'selected':''}>Перевозчик</option><option value="брокер" ${p.status==='брокер'?'selected':''}>Брокер</option></select><input type="text" id="ePartCountry" value="${p.country}"><input type="text" id="partPhone" value="${p.phone}"><input type="email" id="ePartEmail" value="${p.email}"><input type="text" id="ePartWeb" value="${p.website}"><textarea id="ePartDesc" style="grid-column: span 2;">${p.desc}</textarea>`;
@@ -1419,10 +1428,13 @@ async function saveEdit() {
         deals[i].company = document.getElementById('eDealComp').value;
         deals[i].cargo = document.getElementById('eDealCargo').value;
         deals[i].trans = document.getElementById('eDealTrans').value;
-        deals[i].container = document.getElementById('eDealCont').value;
-        deals[i].contQty = document.getElementById('eDealContQty').value;
-        deals[i].blNum = document.getElementById('eDealBL').value;
-        deals[i].awbNum = document.getElementById('eDealAWB').value;
+        
+        // Используем ?.value или пустую строку, если элемента нет на экране
+        deals[i].container = document.getElementById('eDealCont')?.value || "";
+        deals[i].contQty = document.getElementById('eDealContQty')?.value || "";
+        deals[i].blNum = document.getElementById('eDealBL')?.value || "";
+        deals[i].awbNum = document.getElementById('eDealAWB')?.value || "";
+        
         deals[i].weight = document.getElementById('eDealW').value;
         deals[i].vol = document.getElementById('eDealV').value;
         deals[i].value = document.getElementById('eDealVal').value;
@@ -1433,6 +1445,7 @@ async function saveEdit() {
         deals[i].unload = document.getElementById('eDealU').value;
         deals[i].info = document.getElementById('eDealI').value;
         deals[i].margin = document.getElementById('eDealMargin').value;
+        
         updatedItem = deals[i];
         renderDeals();
     } else if (type === 'partner') {
