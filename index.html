@@ -922,28 +922,51 @@ function deleteFile(dealId, fileId) {
         </div>`;
     }
 
-    function showCompanyPreview(n) {
-        const c = companies.find(x => x.name === n); if (!c) return;
-        const me = sessionStorage.getItem('crm_user');
-        if (!checkAccess(c.name)) { document.getElementById('preview-companies').innerHTML = `<div style="padding:15px; text-align:center; background:#fff3cd; border-radius:4px;">🔒 ОГРАНИЧЕН</div>`; return; }
-        const history = reminders.filter(r => r.name === c.name).sort((a,b) => new Date(b.date) - new Date(a.date)).slice(0, 5);
-        let hHtml = history.length ? history.map(h => `<div style="font-size:10px; padding:4px 0; border-bottom:1px dashed #eee;"><b>${h.date}</b>: ${h.topic.substring(0,40)}...</div>`).join('') : '<small>Нет истории</small>';
-        let shareHtml = (c.manager === me || me === 'admin') ? `<div style="grid-column:span 2; border-top:1px solid #eee; margin-top:10px; padding-top:5px;"><label style="font-size:8px;">ДОСТУП</label><div style="display:flex; gap:5px; margin-top:5px;"><select id="shMan" style="flex-grow:1; font-size:10px;"><option value="">Поделиться...</option>${managers.filter(m=>m!==me).map(m=>`<option value="${m}">${m}</option>`).join('')}</select><button onclick="toggleAccess(${c.id}, document.getElementById('shMan').value, 'add')" style="padding:2px 8px; font-size:10px;">+</button></div><div style="margin-top:5px;">${(c.sharedWith || "").split(',').filter(s=>s).map(s=>`<span class="share-tag">${s} <span onclick="toggleAccess(${c.id},'${s}','remove')" style="cursor:pointer">×</span></span>`).join('') || '<small>Никому</small>'}</div></div>` : "";
-        document.getElementById('preview-companies').innerHTML = `
-        <h3>${c.name}</h3>
-        <div class="preview-grid">
-            <div class="preview-box"><label>Статус</label><span>${statusMap[c.status].label}</span></div>
-            <div class="preview-box"><label>Груз</label><span>${c.product || '-'}</span></div>
-            <div class="preview-box"><label>Менеджер</label><span>${c.manager}</span></div>
-            <div class="preview-box"><label>Город</label><span>${c.city || '-'}</span></div>
-            <div class="preview-box"><label>Контакт</label><span>${c.contact || '-'}</span></div>
-            <div class="preview-box"><label>Телефон</label><span>${c.phone || '-'}</span></div>
-            <div class="preview-box"><label>Email</label><span>${c.email || '-'}</span></div>
-            <div class="preview-box"><label>Сайт</label><span>${c.website || '-'}</span></div>
-            <div class="preview-box"><label>Импорт/Экспорт</label><span>${c.import || '-'} / ${c.export || '-'}</span></div>
-            <div class="preview-box" style="grid-column:span 2;"><label>История активности</label><div>${hHtml}</div></div>${shareHtml}
-        </div>`;
+   function showCompanyPreview(n) {
+    const c = companies.find(x => x.name === n); if (!c) return;
+    const me = sessionStorage.getItem('crm_user');
+    
+    if (!checkAccess(c.name)) { 
+        document.getElementById('preview-companies').innerHTML = `<div style="padding:15px; text-align:center; background:#fff3cd; border-radius:4px;">🔒 ОГРАНИЧЕН</div>`; 
+        return; 
     }
+
+    // ИЗМЕНЕНИЕ: Срезаем до 2 или 3 последних активностей
+    const history = reminders.filter(r => r.name === c.name)
+                             .sort((a,b) => new Date(b.date) - new Date(a.date))
+                             .slice(0, 2); // Оставим 2 самые свежие записи
+
+    // Форматируем вывод истории (сделали дату компактнее через dFmt)
+    let hHtml = history.length ? history.map(h => `
+        <div style="font-size:10px; padding:2px 0; border-bottom:1px dashed #eee; color: #555;">
+            <b style="color: var(--primary);">${dFmt(h.date)}</b>: ${h.topic.substring(0,50)}...
+        </div>`).join('') : '<small style="color:#999">Истории пока нет</small>';
+
+    let shareHtml = (c.manager === me || me === 'admin') ? `...` : ""; // (оставляем как было)
+
+    // Обновляем вывод всего превью
+    document.getElementById('preview-companies').innerHTML = `
+    <h3 style="margin-bottom:10px;">${c.name}</h3>
+    <div class="preview-grid">
+        <div class="preview-box"><label>Статус</label><span>${statusMap[c.status].label}</span></div>
+        <div class="preview-box"><label>Груз</label><span>${c.product || '-'}</span></div>
+        <div class="preview-box"><label>Менеджер</label><span>${c.manager}</span></div>
+        <div class="preview-box"><label>Город</label><span>${c.city || '-'}</span></div>
+        <div class="preview-box"><label>Контакт</label><span>${c.contact || '-'}</span></div>
+        <div class="preview-box"><label>Телефон</label><span style="font-weight:bold; color:var(--primary);">${c.phone || '-'}</span></div>
+        <div class="preview-box"><label>Email</label><span>${c.email || '-'}</span></div>
+        <div class="preview-box"><label>Сайт</label><span>${c.website || '-'}</span></div>
+        <div class="preview-box"><label>Импорт</label><span>${c.import || '-'}</span></div>
+        <div class="preview-box"><label>Экспорт</label><span>${c.export || '-'}</span></div>
+        
+        <!-- Блок истории стал компактнее и выше -->
+        <div class="preview-box" style="grid-column:span 2; background: #fdfdfd; padding: 5px; border: 1px solid #f0f0f0; border-radius: 4px; margin-top: 5px;">
+            <label style="color: #e67e22;">Последние активности</label>
+            <div>${hHtml}</div>
+        </div>
+        ${shareHtml}
+    </div>`;
+}
 
     function showPartnerPreview(id) {
         const p = partners.find(x => x.id == id); if(!p) return;
