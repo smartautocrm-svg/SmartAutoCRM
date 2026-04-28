@@ -1563,25 +1563,33 @@ async function saveEdit() {
     function renderAll() { renderReminders(); renderRequests(); renderDeals(); renderCompanies(); renderPartners(); renderTracking(); updateCounters(); updateDatalists(); }
 
     function updateCounters() { 
-        document.getElementById('count-calls').innerText = reminders.length; 
-        document.getElementById('count-requests').innerText = requests.length; 
-        document.getElementById('count-deals').innerText = deals.length; 
-        document.getElementById('count-companies').innerText = companies.length; 
-        document.getElementById('count-partners').innerText = partners.length; 
-        if(document.getElementById('count-tracking')) document.getElementById('count-tracking').innerText = tracking.length;
-    }
+        const me = sessionStorage.getItem('crm_user');
 
-    function updateDatalists() { document.getElementById('allEntitiesData').innerHTML = companies.map(c => `<option value="${c.name}">`).join(''); }
-    function calcDealProfit() {
-    const inc = parseFloat(document.getElementById('dealInc').value || 0);
-    const exp = parseFloat(document.getElementById('dealExp').value || 0);
-    const prof = inc - exp;
-    document.getElementById('dealProf').value = prof.toFixed(2);
-    
-    // Расчет маржи
-    const margin = inc > 0 ? (prof / inc * 100) : 0;
-    document.getElementById('dealMargin').value = margin.toFixed(1) + '%';
-}
+        // 1. Считаем только свои активности (если не админ)
+        const myReminders = reminders.filter(r => me === 'admin' || r.manager === me);
+        document.getElementById('count-calls').innerText = myReminders.length; 
+
+        // 2. Считаем только запросы по компаниям, к которым есть доступ
+        const myRequests = requests.filter(r => checkAccess(r.company));
+        document.getElementById('count-requests').innerText = myRequests.length; 
+
+        // 3. Считаем только свои сделки (или те, которыми с нами поделились)
+        const myDeals = deals.filter(d => checkDealAccess(d));
+        document.getElementById('count-deals').innerText = myDeals.length; 
+
+        // 4. Считаем компании, к которым есть доступ
+        const myCompanies = companies.filter(c => checkAccess(c.name));
+        document.getElementById('count-companies').innerText = myCompanies.length; 
+
+        // Партнеры обычно общие для всех, но если нужно тоже ограничить - добавь фильтр по менеджеру
+        document.getElementById('count-partners').innerText = partners.length; 
+
+        // Трекинг
+        if(document.getElementById('count-tracking')) {
+            const myTracking = tracking.filter(t => checkTrackingAccess(t));
+            document.getElementById('count-tracking').innerText = myTracking.length;
+        }
+    }
 
 function calcEditProf() {
     const inc = parseFloat(document.getElementById('eDealInc').value || 0);
