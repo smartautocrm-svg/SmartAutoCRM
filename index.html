@@ -356,7 +356,11 @@
         <div class="controls-bar">
     <input type="text" id="searchDeals" placeholder="Поиск..." oninput="debouncedRenderDeals()">
     <!-- Фильтр для админа -->
-    <select id="adminDealManagerFilter" style="display:none; min-width: 150px;" onchange="renderDeals()"></select><label style="font-size: 10px; display: flex; align-items: center; gap: 4px; white-space: nowrap;">
+    <select id="adminDealManagerFilter" style="display:none; min-width: 150px;" onchange="renderDeals()"></select><select id="filterPaid" onchange="renderDeals()" style="min-width: 120px; background: #e8f5e9; font-weight: bold; border-color: #c8e6c9;">
+        <option value="all">💳 Все оплаты</option>
+        <option value="unpaid">❌ Неоплаченные</option>
+        <option value="paid">✅ Оплаченные</option>
+    </select><label style="font-size: 10px; display: flex; align-items: center; gap: 4px; white-space: nowrap;">
         <input type="checkbox" id="hideDoneDeals" onchange="renderDeals()" style="width: auto;"> Скрыть завершенные
     </label>
 </div>
@@ -788,15 +792,18 @@ async function loadCloudData() {
             let parsedFiles = [];
             try { if (x[25] && typeof x[25] === 'string' && x[25].trim() !== "") { parsedFiles = JSON.parse(x[25]); } } catch(e) {}
             return { 
-                id: x[0], num: String(x[1]||""), company: String(x[2]||""), cargo: String(x[3]||""), 
-                trans: String(x[4]||""), weight: x[5], vol: x[6], value: x[7], curr: x[8], 
-                load: x[9], zip: x[10], unload: x[11], info: x[12], manager: String(x[13]||""), 
-                createdAt: x[14], exp: Number(x[15]||0), inc: Number(x[16]||0), 
-                prof: Number(x[17]||0), container: x[18], sharedWith: x[19], 
-                status: x[20], type: x[21], contQty: x[22], blNum: x[23], awbNum: x[24], 
-                files: parsedFiles,
-                margin: x[26] || "0%",
-                stage: x[27] || "docs"
+        id: x[0], num: String(x[1]||""), company: String(x[2]||""), cargo: String(x[3]||""), 
+        trans: String(x[4]||""), weight: x[5], vol: x[6], value: x[7], curr: x[8], 
+        load: x[9], zip: x[10], unload: x[11], info: x[12], manager: String(x[13]||""), 
+        createdAt: x[14], exp: Number(x[15]||0), inc: Number(x[16]||0), 
+        prof: Number(x[17]||0), container: x[18], sharedWith: x[19], 
+        status: x[20], type: x[21], contQty: x[22], blNum: x[23], awbNum: x[24], 
+        files: parsedFiles,
+        margin: x[26] || "0%",
+        stage: x[27] || "docs",
+        // НОВЫЕ ПОЛЯ:
+        isPaid: x[28] === true || x[28] === 'true', 
+        payDate: x[29] || ""                         
             };
         });
 
@@ -817,12 +824,14 @@ async function loadCloudData() {
     function formatRow(sh, o) {
         if (sh === 'companies') return [o.id, o.name, o.contact, o.phone, o.product || "", o.city || "", o.email || "", o.import || "", o.export || "", o.status, o.createdAt, o.activatedAt || "", o.manager, o.isPrivate, o.sharedWith || "", o.website || ""];
         if (sh === 'requests') return [o.id, o.company, o.cargo, o.transport, o.weight, o.vol, o.value, o.currency, o.load, o.unload, o.desc, o.createdAt, o.status, o.comment, o.container, o.zip, o.manager, o.contQty || ""];
-        if (sh === 'deals') return [
+       if (sh === 'deals') return [
     o.id, o.num, o.company, o.cargo, o.trans, o.weight, o.vol, o.value, o.curr, 
     o.load, o.zip, o.unload, o.info, o.manager, o.createdAt, o.exp, o.inc, 
     o.prof, o.container, o.sharedWith || "", o.status, o.type, o.contQty || "", 
     o.blNum || "", o.awbNum || "", JSON.stringify(o.files || []), o.margin, 
-    o.stage || "docs" // Новая 28-я колонка (индекс 27)
+    o.stage || "docs",
+    o.isPaid || false, 
+    o.payDate || ""    
 ];
         if (sh === 'reminders') return [o.id, o.name, o.date, o.topic, o.manager, o.status];
         if (sh === 'partners') return [o.id, o.name, o.status, o.country, o.contact, o.phone, o.email, o.website, o.desc];
@@ -1180,8 +1189,10 @@ function renderDeals() {
     const me = sessionStorage.getItem('crm_user');
     const adminFilter = document.getElementById('adminDealManagerFilter').value || 'all';
     const hideDone = document.getElementById('hideDoneDeals').checked;
+    
+    // Получаем значение нашего нового фильтра
+    const paidFilter = document.getElementById('filterPaid').value;
 
-    // 1. Фильтруем массив сделок
     let f = deals.filter(d => {
         const companyText = String(d.company || "").toLowerCase();
         const numText = String(d.num || "").toLowerCase();
@@ -1189,54 +1200,83 @@ function renderDeals() {
         const matchesAccess = checkDealAccess(d);
         const matchesStatus = hideDone ? d.status !== 'completed' : true;
         
-        let matchesManager = true;
-        if (me === 'admin' && adminFilter !== 'all') {
-            matchesManager = (d.manager === adminFilter);
-        }
+        let matchesManager = (me === 'admin' && adminFilter !== 'all') ? (d.manager === adminFilter) : true;
 
-        return matchesSearch && matchesAccess && matchesManager && matchesStatus;
+        // ЛОГИКА ФИЛЬТРА ОПЛАТЫ:
+        let matchesPaid = true;
+        if (paidFilter === 'paid') matchesPaid = d.isPaid === true;
+        if (paidFilter === 'unpaid') matchesPaid = d.isPaid === false;
+
+        return matchesSearch && matchesAccess && matchesManager && matchesStatus && matchesPaid;
     });
 
-    // 2. Логика "Загрузить еще"
     const totalFound = f.length;
     const limitedList = f.slice(0, listLimits.deals);
 
-    // 3. Генерируем HTML
     let html = limitedList.map(d => {
-        // Определяем данные этапа (из stageMap, который мы добавили в Шаге 1)
         const stage = (d.stage && stageMap[d.stage]) ? stageMap[d.stage] : stageMap.docs;
         const marginInfo = d.margin ? `<span style="color:var(--warning); font-weight:bold;"> (${d.margin})</span>` : "";
         
+        // ОПРЕДЕЛЯЕМ ДОЛГ: Этап "Выгружен" и галочка "Оплачено" не стоит
+        const isDebt = (d.stage === 'unloaded' && !d.isPaid);
+        const debtStyle = isDebt ? 'border-left: 5px solid var(--danger); background: #fff5f5;' : '';
+        
         return `
-        <div class="list-item ${d.status==='completed'?'completed':''}" onclick="showDealPreview(${d.id})">
+        <div class="list-item ${d.status==='completed'?'completed':''}" style="${debtStyle}" onclick="showDealPreview(${d.id})">
             <div class="item-main">
                 <div style="display:flex; align-items:center; gap:8px; margin-bottom: 3px;">
                     <h4 style="margin:0;">№ ${d.num} | ${d.company}</h4>
-                    <!-- КРАСИВЫЙ БЕЙДЖ ЭТАПА -->
-                    <span style="font-size:8px; text-transform:uppercase; padding:1px 6px; border-radius:10px; color:white; background:${stage.color}; font-weight:bold; white-space:nowrap;">
+                    <span style="font-size:8px; text-transform:uppercase; padding:1px 6px; border-radius:10px; color:white; background:${stage.color}; font-weight:bold;">
                         ${stage.label}
                     </span>
+                    <!-- МЕТКИ ОПЛАТЫ РЯДОМ С НОМЕРОМ -->
+                    ${d.isPaid ? `<span style="font-size:8px; color:var(--success); font-weight:bold;">✅ ОПЛАЧЕНО</span>` : ""}
+                    ${isDebt ? `<span style="font-size:8px; color:var(--danger); font-weight:bold;">⚠️ ЖДЕМ ОПЛАТУ!</span>` : ""}
                 </div>
                 <p>${d.type || '-'} | Прибыль: <b>${d.prof}$</b>${marginInfo} | ${d.manager}</p>
             </div>
             <div class="item-actions">
-                ${d.status!=='completed'?'<button class="action-btn" style="color:var(--success)" onclick="finishDeal(event,${d.id})">✅</button>':''}
+                <!-- КНОПКА ОПЛАТЫ ($) -->
+                <button class="action-btn" 
+                        style="color:${d.isPaid ? 'var(--success)' : '#ccc'}; font-size:18px; font-weight:bold; margin-right:5px;" 
+                        onclick="togglePaidStatus(event, ${d.id})" 
+                        title="${d.isPaid ? 'Оплачено (нажми для сброса)' : 'Пометить как оплачено'}">
+                    $
+                </button>
                 <button class="action-btn" onclick="openEdit(${d.id},'deal')">✎</button>
                 <button class="action-btn btn-delete" onclick="deleteItem('deals',${d.id})">×</button>
             </div>
         </div>`;
     }).join('');
     
-    // 4. Добавляем кнопку "Загрузить еще", если нужно
     if (totalFound > listLimits.deals) {
-        html += `<div class="load-more-container">
-            <button class="btn-load-more" onclick="loadMore('deals')">Загрузить еще (осталось ${totalFound - listLimits.deals})</button>
-        </div>`;
+        html += `<div class="load-more-container"><button class="btn-load-more" onclick="loadMore('deals')">Загрузить еще (осталось ${totalFound - listLimits.deals})</button></div>`;
     }
 
     document.getElementById('dealsList').innerHTML = html;
     updateCounters();
 }
+    async function togglePaidStatus(e, id) {
+        e.stopPropagation(); // ВАЖНО: чтобы при клике на кнопку не открывалось превью сделки
+        const i = deals.findIndex(x => x.id == id);
+        if (i === -1) return;
+
+        if (deals[i].isPaid) {
+            // Если сделка уже оплачена, при клике спрашиваем - сбросить ли статус
+            if (!confirm("Сделка уже помечена как оплаченная. Сбросить статус оплаты?")) return;
+            deals[i].isPaid = false;
+            deals[i].payDate = "";
+        } else {
+            // Если не оплачена - помечаем как оплаченную и ставим дату
+            deals[i].isPaid = true;
+            deals[i].payDate = new Date().toLocaleDateString('ru-RU'); 
+        }
+
+        renderDeals(); // Сразу перерисовываем список, чтобы кнопка стала зеленой
+        
+        // Отправляем точечное обновление в Google Таблицу
+        await sync('deals', deals[i], 'update'); 
+    }
    async function finishDeal(e, id) { 
     e.stopPropagation(); 
     if(!confirm("Завершить сделку?")) return; 
