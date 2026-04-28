@@ -324,6 +324,13 @@
                     <option value="экспорт">📤 Экспорт</option>
                     <option value="trucking">🚛 Trucking</option>
                 </select>
+                <select id="dealStage">
+    <option value="docs">📝 Оформление</option>
+    <option value="transit">🚛 В пути</option>
+    <option value="customs">🛃 Таможня</option>
+    <option value="unloaded">🏁 Выгружен/Оплата</option>
+    <option value="closed">✅ Закрыта</option>
+</select>
                 <select id="dealTransport" onchange="checkTransportFields('deal')">
                     <option value="авто">🚛 Авто</option>
                     <option value="море">🚢 Море</option>
@@ -636,6 +643,13 @@ function forInput(v) {
         if (type === 'partners') renderPartners();
     }
     const statusMap = { cold: {label:'❄️ Холодный'}, warm: {label:'🔥 Теплый'}, active: {label:'🏆 Активный'} };
+    const stageMap = {
+        docs: { label: '📝 Оформление', color: '#1a73e8' },
+        transit: { label: '🚛 В пути', color: '#f29900' },
+        customs: { label: '🛃 Таможня', color: '#673ab7' },
+        unloaded: { label: '🏁 Выгружен/Оплата', color: '#e67e22' },
+        closed: { label: '✅ Закрыта', color: '#2e7d32' }
+    };
     let charts = { dyn: null, type: null, perf: null };
 
     function showLoader(s) { document.getElementById('loader').style.display = s ? 'block' : 'none'; }
@@ -781,7 +795,8 @@ deals = (d.deals || []).map(x => {
         prof: Number(x[17]||0), container: x[18], sharedWith: x[19], 
         status: x[20], type: x[21], contQty: x[22], blNum: x[23], awbNum: x[24], 
         files: parsedFiles,
-        margin: x[26] || "0%"
+        margin: x[26] || "0%",
+        stage: x[27] || "docs" // ЧИТАЕМ ЭТАП ИЗ ТАБЛИЦЫ (Колонка AB)
     };
 });
 
@@ -803,7 +818,13 @@ deals = (d.deals || []).map(x => {
     function formatRow(sh, o) {
         if (sh === 'companies') return [o.id, o.name, o.contact, o.phone, o.product || "", o.city || "", o.email || "", o.import || "", o.export || "", o.status, o.createdAt, o.activatedAt || "", o.manager, o.isPrivate, o.sharedWith || "", o.website || ""];
         if (sh === 'requests') return [o.id, o.company, o.cargo, o.transport, o.weight, o.vol, o.value, o.currency, o.load, o.unload, o.desc, o.createdAt, o.status, o.comment, o.container, o.zip, o.manager, o.contQty || ""];
-        if (sh === 'deals') return [o.id, o.num, o.company, o.cargo, o.trans, o.weight, o.vol, o.value, o.curr, o.load, o.zip, o.unload, o.info, o.manager, o.createdAt, o.exp, o.inc, o.prof, o.container, o.sharedWith || "", o.status, o.type, o.contQty || "", o.blNum || "", o.awbNum || "", JSON.stringify(o.files || []), o.margin];
+        if (sh === 'deals') return [
+    o.id, o.num, o.company, o.cargo, o.trans, o.weight, o.vol, o.value, o.curr, 
+    o.load, o.zip, o.unload, o.info, o.manager, o.createdAt, o.exp, o.inc, 
+    o.prof, o.container, o.sharedWith || "", o.status, o.type, o.contQty || "", 
+    o.blNum || "", o.awbNum || "", JSON.stringify(o.files || []), o.margin, 
+    o.stage || "docs" // Новая 28-я колонка (индекс 27)
+];
         if (sh === 'reminders') return [o.id, o.name, o.date, o.topic, o.manager, o.status];
         if (sh === 'partners') return [o.id, o.name, o.status, o.country, o.contact, o.phone, o.email, o.website, o.desc];
         if (sh === 'tracking') return [o.id, o.num, o.cargo, o.weight, o.vol, o.qty, o.pack, o.trans, o.status, o.manager, o.sharedWith || ""];
@@ -1161,6 +1182,7 @@ function renderDeals() {
     const adminFilter = document.getElementById('adminDealManagerFilter').value || 'all';
     const hideDone = document.getElementById('hideDoneDeals').checked;
 
+    // 1. Фильтруем массив сделок
     let f = deals.filter(d => {
         const companyText = String(d.company || "").toLowerCase();
         const numText = String(d.num || "").toLowerCase();
@@ -1175,31 +1197,42 @@ function renderDeals() {
 
         return matchesSearch && matchesAccess && matchesManager && matchesStatus;
     });
-    
-    // --- НОВАЯ ЛОГИКА ОГРАНИЧЕНИЯ ---
+
+    // 2. Логика "Загрузить еще"
     const totalFound = f.length;
     const limitedList = f.slice(0, listLimits.deals);
 
+    // 3. Генерируем HTML
     let html = limitedList.map(d => {
+        // Определяем данные этапа (из stageMap, который мы добавили в Шаге 1)
+        const stage = stageMap[d.stage] || stageMap.docs;
         const marginInfo = d.margin ? `<span style="color:var(--warning); font-weight:bold;"> (${d.margin})</span>` : "";
         
         return `
         <div class="list-item ${d.status==='completed'?'completed':''}" onclick="showDealPreview(${d.id})">
             <div class="item-main">
-                <h4>№ ${d.num} | ${d.company}</h4>
+                <div style="display:flex; align-items:center; gap:8px; margin-bottom: 3px;">
+                    <h4 style="margin:0;">№ ${d.num} | ${d.company}</h4>
+                    <!-- КРАСИВЫЙ БЕЙДЖ ЭТАПА -->
+                    <span style="font-size:8px; text-transform:uppercase; padding:1px 6px; border-radius:10px; color:white; background:${stage.color}; font-weight:bold; white-space:nowrap;">
+                        ${stage.label}
+                    </span>
+                </div>
                 <p>${d.type || '-'} | Прибыль: <b>${d.prof}$</b>${marginInfo} | ${d.manager}</p>
             </div>
             <div class="item-actions">
-                ${d.status!=='completed'?'<button class="action-btn" style="color:var(--success)" onclick="finishDeal(event,'+d.id+')">✅</button>':''}
+                ${d.status!=='completed'?'<button class="action-btn" style="color:var(--success)" onclick="finishDeal(event,${d.id})">✅</button>':''}
                 <button class="action-btn" onclick="openEdit(${d.id},'deal')">✎</button>
                 <button class="action-btn btn-delete" onclick="deleteItem('deals',${d.id})">×</button>
             </div>
         </div>`;
     }).join('');
     
-    // Кнопка
+    // 4. Добавляем кнопку "Загрузить еще", если нужно
     if (totalFound > listLimits.deals) {
-        html += `<div class="load-more-container"><button class="btn-load-more" onclick="loadMore('deals')">Загрузить еще (осталось ${totalFound - listLimits.deals})</button></div>`;
+        html += `<div class="load-more-container">
+            <button class="btn-load-more" onclick="loadMore('deals')">Загрузить еще (осталось ${totalFound - listLimits.deals})</button>
+        </div>`;
     }
 
     document.getElementById('dealsList').innerHTML = html;
@@ -1328,13 +1361,20 @@ function renderCompanies() {
                 <input type="text" id="eDealNum" value="${d.num}" placeholder="№ Сделки">
                 <input type="text" id="eDealComp" value="${d.company}" list="allEntitiesData" placeholder="Клиент">
                 <input type="text" id="eDealCargo" value="${d.cargo}" placeholder="Груз">
+                
+                <!-- ВЫБОР ЭТАПА (Добавляем эту часть) -->
+                <label style="font-size:9px; color:var(--primary); grid-column: span 2;">ТЕКУЩИЙ ЭТАП:</label>
+                <select id="eDealStage" style="grid-column: span 2; font-weight:bold; border: 1px solid var(--primary); background: #f0f7ff;">
+                    ${Object.keys(stageMap).map(k => `<option value="${k}" ${d.stage===k?'selected':''}>${stageMap[k].label}</option>`).join('')}
+                </select>
+
                 <select id="eDealTrans" onchange="checkTransportFields('eDeal')">
                     <option value="авто" ${d.trans==='авто'?'selected':''}>🚛 Авто</option>
                     <option value="море" ${d.trans==='море'?'selected':''}>🚢 Море</option>
                     <option value="авиа" ${d.trans==='авиа'?'selected':''}>✈️ Авиа</option>
                     <option value="ж/д" ${d.trans==='ж/д'?'selected':''}>🚂 Ж/Д</option>
                 </select>
-                <!-- Добавляем скрытые поля, чтобы saveEdit не ломался -->
+
                 <select id="eDealCont" style="display:none;"><option value="20GP" ${d.container==='20GP'?'selected':''}>20GP</option><option value="40HC" ${d.container==='40HC'?'selected':''}>40HC</option></select>
                 <input type="number" id="eDealContQty" value="${d.contQty || ''}" style="display:none;" placeholder="Кол-во конт.">
                 <input type="text" id="eDealBL" value="${d.blNum || ''}" style="display:none;" placeholder="№ Коносамента">
@@ -1351,7 +1391,6 @@ function renderCompanies() {
                 <input type="text" id="eDealU" value="${d.unload}" style="grid-column: span 2;" placeholder="Выгрузка">
                 <textarea id="eDealI" style="grid-column: span 2;">${d.info}</textarea>`;
             
-            // Сразу после создания полей проверяем, что показать (контейнеры или авианакладные)
             setTimeout(() => checkTransportFields('eDeal'), 50);
         } else if (type === 'partner') {
             const p = partners.find(x => x.id == id); title.innerText = "Правка партнера";
@@ -1445,6 +1484,7 @@ async function saveEdit() {
         deals[i].unload = document.getElementById('eDealU').value;
         deals[i].info = document.getElementById('eDealI').value;
         deals[i].margin = document.getElementById('eDealMargin').value;
+        deals[i].stage = document.getElementById('eDealStage').value;
         
         updatedItem = deals[i];
         renderDeals();
@@ -1520,7 +1560,45 @@ async function saveEdit() {
 
         document.getElementById('dealNum').focus();
     }
-    async function addDeal() { const n = document.getElementById('dealNum').value, t = document.getElementById('dealType').value; if(!n||!t)return alert("Поля!"); const newItem = { id: Date.now(), num: n, company: document.getElementById('dealComp').value, cargo: document.getElementById('dealCargo').value, trans: document.getElementById('dealTransport').value, weight: document.getElementById('dealWeight').value, vol: document.getElementById('dealVol').value, value: document.getElementById('dealVal').value, curr: "USD", load: document.getElementById('dealLoad').value, zip: "", unload: document.getElementById('dealUnload').value, info: document.getElementById('dealInfo').value, manager: sessionStorage.getItem('crm_user'), createdAt: new Date().toISOString(), exp: document.getElementById('dealExp').value, inc: document.getElementById('dealInc').value, prof: document.getElementById('dealProf').value, status: "active", type: t, container: document.getElementById('dealContainer').value, contQty: document.getElementById('dealContQty').value, blNum: document.getElementById('dealBL').value, awbNum: document.getElementById('dealAWB').value, files: [] }; deals.push(newItem); renderDeals(); await sync('deals', deals, 'append'); ['dealNum', 'dealComp', 'dealCargo', 'dealWeight', 'dealVol', 'dealVal', 'dealExp', 'dealInc', 'dealProf', 'dealLoad', 'dealUnload', 'dealInfo', 'dealContQty', 'dealBL', 'dealAWB'].forEach(i=>document.getElementById(i).value=''); }
+    async function addDeal() { 
+        const n = document.getElementById('dealNum').value, t = document.getElementById('dealType').value; 
+        if(!n||!t)return alert("Заполните Номер и Тип сделки!"); 
+
+        const newItem = { 
+            id: Date.now(), 
+            num: n, 
+            company: document.getElementById('dealComp').value, 
+            cargo: document.getElementById('dealCargo').value, 
+            trans: document.getElementById('dealTransport').value, 
+            weight: document.getElementById('dealWeight').value, 
+            vol: document.getElementById('dealVol').value, 
+            value: document.getElementById('dealVal').value, 
+            curr: "USD", 
+            load: document.getElementById('dealLoad').value, 
+            zip: "", 
+            unload: document.getElementById('dealUnload').value, 
+            info: document.getElementById('dealInfo').value, 
+            manager: sessionStorage.getItem('crm_user'), 
+            createdAt: new Date().toISOString(), 
+            exp: document.getElementById('dealExp').value, 
+            inc: document.getElementById('dealInc').value, 
+            prof: document.getElementById('dealProf').value, 
+            status: "active", 
+            type: t, 
+            container: document.getElementById('dealContainer').value, 
+            contQty: document.getElementById('dealContQty').value, 
+            blNum: document.getElementById('dealBL').value, 
+            awbNum: document.getElementById('dealAWB').value, 
+            files: [],
+            margin: document.getElementById('dealMargin').value,
+            stage: document.getElementById('dealStage').value // НОВОЕ ПОЛЕ
+        }; 
+
+        deals.push(newItem); 
+        renderDeals(); 
+        await sync('deals', deals, 'append'); 
+        // ... (очистка полей остается как была)
+    }
    async function addCompany() {
     const n = document.getElementById('compName').value.trim();
     const p = document.getElementById('compProduct').value.trim();
