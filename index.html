@@ -943,7 +943,7 @@ function deleteFile(dealId, fileId) {
         } 
     }
 
-    function showRequestPreview(id) {
+function showRequestPreview(id) {
         const r = requests.find(x => x.id == id); 
         if (!r || !checkAccess(r.company)) return;
         document.getElementById('preview-requests').innerHTML = `
@@ -957,7 +957,10 @@ function deleteFile(dealId, fileId) {
             <div class="preview-box"><label>Дата создания</label><span>${dFmt(r.createdAt)}</span></div>
             <div class="preview-box" style="grid-column:span 2;"><label>Маршрут</label><span>${r.load} → ${r.unload}</span></div>
             <div class="preview-box" style="grid-column:span 2;"><label>Детали</label><span>${r.desc || '-'}</span></div>
-        </div>`;
+        </div>
+        <!-- НОВАЯ КНОПКА -->
+        <button class="main" style="background:var(--active); margin-top:15px; height: 32px;" onclick="convertToDeal(${r.id})">💰 Создать сделку из запроса</button>
+        `;
     }
 
     function showDealPreview(id) {
@@ -1462,6 +1465,31 @@ async function saveEdit() {
     // --- ФУНКЦИИ ДОБАВЛЕНИЯ ---
     async function addReminder() { const n = document.getElementById('callName').value; if(!n)return alert("Имя?"); const newItem = { id: Date.now(), name: n, date: document.getElementById('callTime').value, topic: document.getElementById('callTopic').value, manager: sessionStorage.getItem('crm_user'), status: "active" }; reminders.push(newItem); renderReminders(); await sync('reminders', reminders, 'append'); ['callName', 'callTime', 'callTopic'].forEach(i=>document.getElementById(i).value=''); }
     async function addRequest() { const c = document.getElementById('reqComp').value; if(!c)return alert("Клиент?"); const newItem = { id: Date.now(), company: c, cargo: document.getElementById('reqCargo').value, transport: document.getElementById('reqTransport').value, weight: document.getElementById('reqWeight').value, vol: document.getElementById('reqVol').value, value: document.getElementById('reqValue').value, currency: document.getElementById('reqCurrency').value, load: document.getElementById('reqLoad').value, zip: document.getElementById('reqZip').value, unload: document.getElementById('reqUnload').value, desc: document.getElementById('reqDesc').value, createdAt: new Date().toISOString(), status: "active", manager: sessionStorage.getItem('crm_user'), container: document.getElementById('reqContainer').value, contQty: document.getElementById('reqContQty').value }; requests.push(newItem); renderRequests(); await sync('requests', requests, 'append'); ['reqComp', 'reqCargo', 'reqWeight', 'reqVol', 'reqValue', 'reqLoad', 'reqZip', 'reqUnload', 'reqDesc', 'reqContQty'].forEach(i=>document.getElementById(i).value=''); }
+    function convertToDeal(reqId) {
+        const r = requests.find(x => x.id == reqId);
+        if (!r) return;
+
+        openTab('deals');
+
+        document.getElementById('dealComp').value = r.company || "";
+        document.getElementById('dealCargo').value = r.cargo || "";
+        document.getElementById('dealTransport').value = r.transport || "авто";
+        
+        if (r.transport === 'море') {
+            document.getElementById('dealContainer').value = r.container || "";
+            document.getElementById('dealContQty').value = r.contQty || "";
+        }
+        
+        document.getElementById('dealWeight').value = r.weight || "";
+        document.getElementById('dealVol').value = r.vol || "";
+        document.getElementById('dealVal').value = r.value || "";
+        document.getElementById('dealLoad').value = r.load || "";
+        document.getElementById('dealUnload').value = r.unload || "";
+        document.getElementById('dealInfo').value = r.desc || "";
+
+        checkTransportFields('deal');
+        document.getElementById('dealNum').focus();
+    }
     async function addDeal() { const n = document.getElementById('dealNum').value, t = document.getElementById('dealType').value; if(!n||!t)return alert("Поля!"); const newItem = { id: Date.now(), num: n, company: document.getElementById('dealComp').value, cargo: document.getElementById('dealCargo').value, trans: document.getElementById('dealTransport').value, weight: document.getElementById('dealWeight').value, vol: document.getElementById('dealVol').value, value: document.getElementById('dealVal').value, curr: "USD", load: document.getElementById('dealLoad').value, zip: "", unload: document.getElementById('dealUnload').value, info: document.getElementById('dealInfo').value, manager: sessionStorage.getItem('crm_user'), createdAt: new Date().toISOString(), exp: document.getElementById('dealExp').value, inc: document.getElementById('dealInc').value, prof: document.getElementById('dealProf').value, status: "active", type: t, container: document.getElementById('dealContainer').value, contQty: document.getElementById('dealContQty').value, blNum: document.getElementById('dealBL').value, awbNum: document.getElementById('dealAWB').value, files: [] }; deals.push(newItem); renderDeals(); await sync('deals', deals, 'append'); ['dealNum', 'dealComp', 'dealCargo', 'dealWeight', 'dealVol', 'dealVal', 'dealExp', 'dealInc', 'dealProf', 'dealLoad', 'dealUnload', 'dealInfo', 'dealContQty', 'dealBL', 'dealAWB'].forEach(i=>document.getElementById(i).value=''); }
    async function addCompany() {
     const n = document.getElementById('compName').value.trim();
