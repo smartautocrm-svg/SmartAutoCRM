@@ -140,6 +140,27 @@
         .pdf-footer { margin-top: 50px; border-top: 1px solid #dee2e6; padding-top: 15px; font-size: 11px; color: #6c757d; }
         
         .share-tag { background: #e8f0fe; color: #1a73e8; padding: 2px 6px; border-radius: 10px; font-size: 9px; margin-right: 4px; border: 1px solid #d2e3fc; }
+        /* Стили для кнопки "Загрузить еще" */
+        .load-more-container { 
+            text-align: center; 
+            padding: 15px; 
+            background: #f8f9fa; 
+        }
+        .btn-load-more { 
+            background: #fff; 
+            border: 1px solid var(--primary); 
+            color: var(--primary); 
+            padding: 6px 20px; 
+            border-radius: 20px; 
+            cursor: pointer; 
+            font-size: 11px; 
+            font-weight: bold; 
+            transition: 0.2s; 
+        }
+        .btn-load-more:hover { 
+            background: var(--primary); 
+            color: #fff; 
+        }
     </style>
 </head>
 <body>
@@ -595,6 +616,25 @@ function forInput(v) {
 }
     
     let reminders = [], companies = [], partners = [], requests = [], managers = [], deals = [], tracking = [];
+    let listLimits = { 
+        calls: 30, 
+        requests: 30, 
+        deals: 30, 
+        companies: 30, 
+        partners: 30 
+    };
+
+    // Функция, которая срабатывает при нажатии на кнопку "Загрузить еще"
+    function loadMore(type) {
+        listLimits[type] += 30; // Увеличиваем лимит на 30
+        
+        // Перерисовываем нужную вкладку
+        if (type === 'calls') renderReminders();
+        if (type === 'requests') renderRequests();
+        if (type === 'deals') renderDeals();
+        if (type === 'companies') renderCompanies();
+        if (type === 'partners') renderPartners();
+    }
     const statusMap = { cold: {label:'❄️ Холодный'}, warm: {label:'🔥 Теплый'}, active: {label:'🏆 Активный'} };
     let charts = { dyn: null, type: null, perf: null };
 
@@ -1007,7 +1047,6 @@ function renderReminders() {
 
     const limitMs = 3 * 24 * 60 * 60 * 1000, now = new Date();
     
-    // Используем String(), чтобы поиск не ломался на числах
     let f = reminders.filter(r => {
         const nameText = String(r.name || "").toLowerCase();
         return nameText.includes(s) && (!d || dFmt(r.date) === dFmt(d));
@@ -1018,7 +1057,11 @@ function renderReminders() {
 
     f.sort((a,b) => new Date(b.date) - new Date(a.date));
     
-    document.getElementById('remindersList').innerHTML = f.map(r => {
+    // --- НОВАЯ ЛОГИКА ОГРАНИЧЕНИЯ ---
+    const totalFound = f.length; // Запоминаем сколько всего нашли
+    const limitedList = f.slice(0, listLimits.calls); // Отрезаем список до нашего лимита
+    
+    let html = limitedList.map(r => {
         const isOverdue = r.status !== 'completed' && (now - new Date(r.date)) > limitMs;
         return `<div class="list-item ${r.status==='completed'?'completed':''} ${isOverdue?'overdue':''}" onclick="showCallPreview(${r.id})">
             <div class="item-main">
@@ -1031,6 +1074,13 @@ function renderReminders() {
             </div>
         </div>`;
     }).join('');
+    
+    // Если записей больше, чем текущий лимит — добавляем кнопку в конец
+    if (totalFound > listLimits.calls) {
+        html += `<div class="load-more-container"><button class="btn-load-more" onclick="loadMore('calls')">Загрузить еще (осталось ${totalFound - listLimits.calls})</button></div>`;
+    }
+
+    document.getElementById('remindersList').innerHTML = html;
     updateCounters();
 }
    async function finishRem(e, id) { 
@@ -1048,13 +1098,19 @@ function renderRequests() {
           
     const limitMs = 2 * 24 * 60 * 60 * 1000, now = new Date();
     
-    document.getElementById('requestsList').innerHTML = requests.filter(r => {
+    let f = requests.filter(r => {
         const companyText = String(r.company || "").toLowerCase();
         const cargoText = String(r.cargo || "").toLowerCase();
         const matchesSearch = checkAccess(r.company) && (companyText.includes(s) || cargoText.includes(s));
         const matchesStatus = hideDone ? r.status !== 'completed' : true;
         return matchesSearch && matchesStatus;
-    }).map(r => {
+    });
+    
+    // --- НОВАЯ ЛОГИКА ОГРАНИЧЕНИЯ ---
+    const totalFound = f.length;
+    const limitedList = f.slice(0, listLimits.requests);
+    
+    let html = limitedList.map(r => {
         const isOverdue = r.status !== 'completed' && (now - new Date(r.createdAt)) > limitMs;
         return `<div class="list-item ${r.status === 'completed' ? 'completed' : ''} ${isOverdue?'overdue':''}" onclick="showRequestPreview(${r.id})">
             <div class="item-main">
@@ -1068,6 +1124,13 @@ function renderRequests() {
             </div>
         </div>`;
     }).join('');
+    
+    // Кнопка
+    if (totalFound > listLimits.requests) {
+        html += `<div class="load-more-container"><button class="btn-load-more" onclick="loadMore('requests')">Загрузить еще (осталось ${totalFound - listLimits.requests})</button></div>`;
+    }
+
+    document.getElementById('requestsList').innerHTML = html;
     updateCounters();
 }
    async function finishRequest(e, id) { 
@@ -1087,7 +1150,7 @@ function renderDeals() {
     const adminFilter = document.getElementById('adminDealManagerFilter').value || 'all';
     const hideDone = document.getElementById('hideDoneDeals').checked;
 
-    document.getElementById('dealsList').innerHTML = deals.filter(d => {
+    let f = deals.filter(d => {
         const companyText = String(d.company || "").toLowerCase();
         const numText = String(d.num || "").toLowerCase();
         const matchesSearch = companyText.includes(s) || numText.includes(s);
@@ -1100,8 +1163,13 @@ function renderDeals() {
         }
 
         return matchesSearch && matchesAccess && matchesManager && matchesStatus;
-    }).map(d => {
-        // Подготавливаем отображение маржи, если она есть
+    });
+    
+    // --- НОВАЯ ЛОГИКА ОГРАНИЧЕНИЯ ---
+    const totalFound = f.length;
+    const limitedList = f.slice(0, listLimits.deals);
+
+    let html = limitedList.map(d => {
         const marginInfo = d.margin ? `<span style="color:var(--warning); font-weight:bold;"> (${d.margin})</span>` : "";
         
         return `
@@ -1118,6 +1186,12 @@ function renderDeals() {
         </div>`;
     }).join('');
     
+    // Кнопка
+    if (totalFound > listLimits.deals) {
+        html += `<div class="load-more-container"><button class="btn-load-more" onclick="loadMore('deals')">Загрузить еще (осталось ${totalFound - listLimits.deals})</button></div>`;
+    }
+
+    document.getElementById('dealsList').innerHTML = html;
     updateCounters();
 }
    async function finishDeal(e, id) { 
@@ -1161,31 +1235,30 @@ function renderDeals() {
 }
 function renderCompanies() {
     const s = document.getElementById('searchComp').value.toLowerCase(), 
-          fProd = document.getElementById('filterProduct').value.toLowerCase(), // ПОЛУЧАЕМ ЗНАЧЕНИЕ ГРУЗА
+          fProd = document.getElementById('filterProduct').value.toLowerCase(), 
           fCity = document.getElementById('filterCity').value.toLowerCase(), 
           fImp = document.getElementById('filterImport').value.toLowerCase(), 
           fExp = document.getElementById('filterExport').value.toLowerCase(), 
           cat = document.getElementById('sortComp').value, 
           valSel = document.getElementById('secondarySelect').value;
-
+          
     const limitMs = 10 * 24 * 60 * 60 * 1000, now = new Date();
-
+    
     let f = companies.filter(c => {
         const matchN = String(c.name).toLowerCase().includes(s);
-        const matchProd = String(c.product || "").toLowerCase().includes(fProd); // ПРОВЕРКА ПО ГРУЗУ
+        const matchProd = String(c.product || "").toLowerCase().includes(fProd);
         const matchCity = String(c.city || "").toLowerCase().includes(fCity);
         const matchImp = String(c.import || "").toLowerCase().includes(fImp);
         const matchExp = String(c.export || "").toLowerCase().includes(fExp);
-        
-        let matchT = true; 
-        if (cat === 'manager' && valSel) matchT = (c.manager === valSel); 
-        if (cat === 'status' && valSel) matchT = (c.status === valSel);
-        
+        let matchT = true; if (cat === 'manager' && valSel) matchT = (c.manager === valSel); if (cat === 'status' && valSel) matchT = (c.status === valSel);
         return matchN && matchProd && matchCity && matchImp && matchExp && matchT;
     });
 
-    document.getElementById('companiesList').innerHTML = f.map(c => {
-        // ... (весь остальной код формирования карточки внутри map остается без изменений) ...
+    // --- НОВАЯ ЛОГИКА ОГРАНИЧЕНИЯ ---
+    const totalFound = f.length;
+    const limitedList = f.slice(0, listLimits.companies);
+
+    let html = limitedList.map(c => {
         let isForgotten = false;
         if ((c.status === 'cold' || c.status === 'warm') && checkAccess(c.name)) {
             const dates = [...reminders.filter(r => r.name === c.name).map(r => new Date(r.date)), ...requests.filter(r => r.company === c.name).map(r => new Date(r.createdAt)), ...deals.filter(d => d.company === c.name).map(d => new Date(d.createdAt))].filter(d => !isNaN(d));
@@ -1193,14 +1266,34 @@ function renderCompanies() {
         }
         return `<div class="list-item ${isForgotten ? 'forgotten' : ''}" onclick="showCompanyPreview('${c.name}')"><div class="item-main"><h4>${c.name} ${isForgotten ? '<span class="forgotten-tag">⚠️ В работу</span>' : ''}</h4><p>${checkAccess(c.name) ? statusMap[c.status].label : '🔒 Ограничен'} | ${c.manager}</p></div><div class="item-actions"><button class="action-btn" onclick="openEdit(${c.id},'company')">✎</button><button class="action-btn btn-delete" onclick="deleteItem('companies', ${c.id})">×</button></div></div>`;
     }).join('');
-    
+
+    // Кнопка
+    if (totalFound > listLimits.companies) {
+        html += `<div class="load-more-container"><button class="btn-load-more" onclick="loadMore('companies')">Загрузить еще (осталось ${totalFound - listLimits.companies})</button></div>`;
+    }
+
+    document.getElementById('companiesList').innerHTML = html;
     updateCounters();
 }
     function renderPartners() {
-        const s = document.getElementById('searchPart').value.toLowerCase();
-        document.getElementById('partnersList').innerHTML = partners.filter(p => p.name.toLowerCase().includes(s)).map(p => `<div class="list-item" onclick="showPartnerPreview(${p.id})"><div class="item-main"><h4>${p.name}</h4><p>${p.status.toUpperCase()} | ${p.country}</p></div><div class="item-actions"><button class="action-btn" onclick="openEdit(${p.id},'partner')">✎</button><button class="action-btn btn-delete" onclick="deleteItem('partners', ${p.id})">×</button></div></div>`).join('');
-        updateCounters();
+    const s = document.getElementById('searchPart').value.toLowerCase();
+    
+    let f = partners.filter(p => p.name.toLowerCase().includes(s));
+    
+    // --- НОВАЯ ЛОГИКА ОГРАНИЧЕНИЯ ---
+    const totalFound = f.length;
+    const limitedList = f.slice(0, listLimits.partners);
+
+    let html = limitedList.map(p => `<div class="list-item" onclick="showPartnerPreview(${p.id})"><div class="item-main"><h4>${p.name}</h4><p>${p.status.toUpperCase()} | ${p.country}</p></div><div class="item-actions"><button class="action-btn" onclick="openEdit(${p.id},'partner')">✎</button><button class="action-btn btn-delete" onclick="deleteItem('partners', ${p.id})">×</button></div></div>`).join('');
+
+    // Кнопка
+    if (totalFound > listLimits.partners) {
+        html += `<div class="load-more-container"><button class="btn-load-more" onclick="loadMore('partners')">Загрузить еще (осталось ${totalFound - listLimits.partners})</button></div>`;
     }
+
+    document.getElementById('partnersList').innerHTML = html;
+    updateCounters();
+}
 
   // --- ФУНКЦИИ РЕДАКТИРОВАНИЯ ---
     function openEdit(id, type) {
