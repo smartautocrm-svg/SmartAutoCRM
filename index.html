@@ -1471,6 +1471,7 @@ async function saveEdit() {
 
         openTab('deals');
 
+        // Заполняем основные поля
         document.getElementById('dealComp').value = r.company || "";
         document.getElementById('dealCargo').value = r.cargo || "";
         document.getElementById('dealTransport').value = r.transport || "авто";
@@ -1486,9 +1487,17 @@ async function saveEdit() {
         document.getElementById('dealLoad').value = r.load || "";
         document.getElementById('dealUnload').value = r.unload || "";
         document.getElementById('dealInfo').value = r.desc || "";
-checkTransportFields('deal');
-        calcDealProfit();
-document.getElementById('dealNum').focus();
+
+        // Очищаем деньги перед расчетом
+        document.getElementById('dealExp').value = "";
+        document.getElementById('dealInc').value = "";
+
+        checkTransportFields('deal');
+        
+        // --- ВАЖНО: Запускаем расчет прибыли сразу после вставки данных ---
+        calcDealProfit(); 
+
+        document.getElementById('dealNum').focus();
     }
     async function addDeal() { const n = document.getElementById('dealNum').value, t = document.getElementById('dealType').value; if(!n||!t)return alert("Поля!"); const newItem = { id: Date.now(), num: n, company: document.getElementById('dealComp').value, cargo: document.getElementById('dealCargo').value, trans: document.getElementById('dealTransport').value, weight: document.getElementById('dealWeight').value, vol: document.getElementById('dealVol').value, value: document.getElementById('dealVal').value, curr: "USD", load: document.getElementById('dealLoad').value, zip: "", unload: document.getElementById('dealUnload').value, info: document.getElementById('dealInfo').value, manager: sessionStorage.getItem('crm_user'), createdAt: new Date().toISOString(), exp: document.getElementById('dealExp').value, inc: document.getElementById('dealInc').value, prof: document.getElementById('dealProf').value, status: "active", type: t, container: document.getElementById('dealContainer').value, contQty: document.getElementById('dealContQty').value, blNum: document.getElementById('dealBL').value, awbNum: document.getElementById('dealAWB').value, files: [] }; deals.push(newItem); renderDeals(); await sync('deals', deals, 'append'); ['dealNum', 'dealComp', 'dealCargo', 'dealWeight', 'dealVol', 'dealVal', 'dealExp', 'dealInc', 'dealProf', 'dealLoad', 'dealUnload', 'dealInfo', 'dealContQty', 'dealBL', 'dealAWB'].forEach(i=>document.getElementById(i).value=''); }
    async function addCompany() {
@@ -1564,6 +1573,24 @@ document.getElementById('dealNum').focus();
         if(sh==='requests') requests=requests.filter(x=>x.id!=id); else if(sh==='deals') deals=deals.filter(x=>x.id!=id); else if(sh==='companies') companies=companies.filter(x=>x.id!=id); else if(sh==='reminders') reminders=reminders.filter(x=>x.id!=id); else if(sh==='partners') partners=partners.filter(x=>x.id!=id); else if(sh==='tracking') tracking=tracking.filter(x=>x.id!=id);
         await sync(sh, (sh==='requests'?requests:sh==='deals'?deals:sh==='companies'?companies:sh==='partners'?partners:sh==='tracking'?tracking:reminders), false); loadCloudData(); 
     }
+    function calcDealProfit() {
+    // Получаем значения из полей
+    const incVal = document.getElementById('dealInc').value;
+    const expVal = document.getElementById('dealExp').value;
+
+    // Превращаем в числа (если пусто — будет 0)
+    const inc = parseFloat(incVal) || 0;
+    const exp = parseFloat(expVal) || 0;
+    
+    const prof = inc - exp;
+    
+    // Записываем прибыль (округляем до 2 знаков)
+    document.getElementById('dealProf').value = prof.toFixed(2);
+    
+    // Расчет маржи %
+    const margin = inc > 0 ? (prof / inc * 100) : 0;
+    document.getElementById('dealMargin').value = margin.toFixed(1) + '%';
+}
     
     async function toggleAccess(cid, man, act) { 
     const i = companies.findIndex(x=>x.id==cid); 
