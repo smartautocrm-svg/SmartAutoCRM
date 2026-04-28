@@ -632,6 +632,26 @@
     </div>
 </div>
     
+    <!-- МОДАЛКА ЗАКРЫТИЯ ЗАПРОСА (ОБЯЗАТЕЛЬНЫЙ КОММЕНТАРИЙ) -->
+<div id="requestCloseModal" class="modal-overlay" onclick="if(event.target===this) this.style.display='none'">
+    <div class="modal-content" style="width: 400px; border-top: 5px solid var(--danger);">
+        <h3>Завершение запроса</h3>
+        <p style="font-size: 11px; color: #666; margin-bottom: 10px;">
+            Пожалуйста, укажите причину закрытия запроса (почему не дошли до сделки?):
+        </p>
+        <!-- Поле для ввода комментария -->
+        <textarea id="reqCloseComment" style="width: 100%; height: 100px; padding: 8px; border: 1px solid var(--border); border-radius: 4px;" placeholder="Пример: Клиент ушел к конкурентам из-за цены / Груз отменился..."></textarea>
+        
+        <!-- Скрытое поле для хранения ID запроса -->
+        <input type="hidden" id="reqCloseId">
+        
+        <div style="display: flex; gap: 10px; margin-top: 15px;">
+            <button class="main" style="background: var(--success);" onclick="submitRequestClose()">Подтвердить закрытие</button>
+            <button class="main" style="background: var(--cold); width: 100px;" onclick="document.getElementById('requestCloseModal').style.display='none'">Отмена</button>
+        </div>
+    </div>
+</div>
+    
 <datalist id="allEntitiesData"></datalist>
 
 <script>
@@ -1228,15 +1248,17 @@ function renderRequests() {
     document.getElementById('requestsList').innerHTML = html;
     updateCounters();
 }
-   async function finishRequest(e, id) { 
-    e.stopPropagation(); 
-    if(!confirm("Завершить запрос?")) return; 
-    const i = requests.findIndex(x=>x.id==id); 
-    if(i>-1) { 
-        requests[i].status = 'completed'; 
-        renderRequests(); 
-        await sync('requests', requests[i], 'update'); 
-    } 
+function finishRequest(e, id) { 
+    e.stopPropagation(); // Чтобы не открылось превью запроса
+    
+    // Записываем ID запроса в скрытое поле модалки, чтобы знать, какой запрос закрываем
+    document.getElementById('reqCloseId').value = id;
+    
+    // Очищаем поле комментария от старых записей
+    document.getElementById('reqCloseComment').value = ""; 
+    
+    // Показываем модальное окно
+    document.getElementById('requestCloseModal').style.display = 'block';
 }
     
 function renderDeals() {
@@ -1660,6 +1682,15 @@ async function saveEdit() {
         calcDealProfit(); 
 
         document.getElementById('dealNum').focus();
+        
+        // АВТОМАТИЧЕСКОЕ ЗАВЕРШЕНИЕ ЗАПРОСА
+        const reqIndex = requests.findIndex(x => x.id == reqId);
+        if (reqIndex > -1) {
+            requests[reqIndex].status = 'completed';
+            requests[reqIndex].comment = "✅ Переведено в сделку"; // Системный коммент
+            renderRequests();
+            sync('requests', requests[reqIndex], 'update'); // Обновляем статус в таблице
+        }
     }
     async function addDeal() { 
         const n = document.getElementById('dealNum').value, t = document.getElementById('dealType').value; 
@@ -1983,6 +2014,36 @@ function calcEditProf() {
         const t = tracking.find(x => x.id == id); if (!t) return;
         document.getElementById('preview-tracking').innerHTML = `<h3>Детали: ${t.num}</h3><div class="preview-grid"><div class="preview-box"><label>Груз</label><span>${t.cargo}</span></div><div class="preview-box"><label>Статус</label><span style="color:var(--primary); font-weight:bold;">${t.status}</span></div><div class="preview-box"><label>Вес/Объем</label><span>${t.weight}кг / ${t.vol}м³</span></div><div class="preview-box"><label>Упаковка</label><span>${t.qty} (${t.pack})</span></div><div class="preview-box"><label>Транспорт</label><span>${t.trans.toUpperCase()}</span></div></div>`;
     }
+
+    async function submitRequestClose() {
+    const id = document.getElementById('reqCloseId').value;
+    const comment = document.getElementById('reqCloseComment').value.trim();
+
+    // 1. ПРОВЕРКА: Если текста нет — ругаемся и не закрываем
+    if (comment.length < 5) {
+        alert("Пожалуйста, напишите подробнее причину закрытия (минимум 5 символов).");
+        return;
+    }
+
+    // 2. Находим запрос в нашем массиве
+    const i = requests.findIndex(x => x.id == id);
+    if (i > -1) {
+        // Меняем статус на выполненный и записываем комментарий
+        requests[i].status = 'completed';
+        requests[i].comment = comment; 
+        
+        // 3. Обновляем интерфейс
+        renderRequests();
+        
+        // 4. Закрываем окно
+        document.getElementById('requestCloseModal').style.display = 'none';
+
+        // 5. Синхронизируем с облаком (отправляем только измененный запрос)
+        await sync('requests', requests[i], 'update'); 
+        
+        console.log("Запрос " + id + " закрыт с комментарием: " + comment);
+    }
+}
 
     window.onload = startApp;
 const debouncedRenderDeals = debounce(() => renderDeals());
