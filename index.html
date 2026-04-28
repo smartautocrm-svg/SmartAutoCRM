@@ -347,7 +347,13 @@
 <input type="number" id="dealProf" placeholder="Прибыль" readonly style="background:#f0f7ff; color:var(--success); font-weight:bold;">
 <input type="text" id="dealMargin" placeholder="Маржа %" readonly style="background:#fff3e0; color:var(--warning); font-weight:bold;">
                 <input type="text" id="dealLoad" placeholder="Погрузка" style="grid-column: span 3;"><input type="text" id="dealUnload" placeholder="Выгрузка" style="grid-column: span 3;"><textarea id="dealInfo" style="grid-column: span 3;" placeholder="Инфо..."></textarea>
-            </div>
+            <div style="grid-column: span 3; margin-bottom: 5px;">
+    <label style="font-size: 10px; color: var(--danger); font-weight: bold;">КТО ВИДИТ ДАННУЮ СДЕЛКУ:</label>
+    <select id="dealPrivacy" style="background: #fff3e0; font-weight: bold; border: 1px solid #ffcc80; height: 30px;">
+        <option value="false">🔓 ОТКРЫТАЯ (видят все, у кого есть доступ к компании)</option>
+        <option value="true">🔒 ЗАКРЫТАЯ (видит только автор сделки и админ)</option>
+    </select>
+</div>
             <button class="main" style="background:var(--active);" onclick="addDeal()">Создать сделку</button>
         </div>
         <div class="card" id="preview-deals"><div style="color:#ccc; text-align:center; margin-top:50px;">Выберите сделку</div></div>
@@ -803,7 +809,8 @@ async function loadCloudData() {
         stage: x[27] || "docs",
         // НОВЫЕ ПОЛЯ:
         isPaid: x[28] === true || x[28] === 'true', 
-        payDate: x[29] || ""                         
+        payDate: x[29] || "",
+                isPrivateDeal: x[30] === true || x[30] === 'true'
             };
         });
 
@@ -831,7 +838,8 @@ async function loadCloudData() {
     o.blNum || "", o.awbNum || "", JSON.stringify(o.files || []), o.margin, 
     o.stage || "docs",
     o.isPaid || false, 
-    o.payDate || ""    
+    o.payDate || "",
+           o.isPrivateDeal || false
 ];
         if (sh === 'reminders') return [o.id, o.name, o.date, o.topic, o.manager, o.status];
         if (sh === 'partners') return [o.id, o.name, o.status, o.country, o.contact, o.phone, o.email, o.website, o.desc];
@@ -915,7 +923,19 @@ function deleteFile(dealId, fileId) {
 }
 
     function checkAccess(n) { const me = sessionStorage.getItem('crm_user'); if (me === 'admin') return true; const c = companies.find(x=>x.name===n); return !c || !c.isPrivate || c.manager===me || (c.sharedWith||"").split(',').includes(me); }
-    function checkDealAccess(d) { const me = sessionStorage.getItem('crm_user'); if (me === 'admin') return true; return d.manager===me || (d.sharedWith||"").split(',').includes(me); }
+    function checkDealAccess(d) {
+        const me = sessionStorage.getItem('crm_user');
+        if (me === 'admin') return true; // Админ видит всё всегда
+
+        if (d.isPrivateDeal) {
+            // Если сделка приватная — её видит ТОЛЬКО автор сделки
+            return d.manager === me;
+        } else {
+            // Если сделка открытая — её видят те, у кого есть доступ к КОМПАНИИ
+            // (это автор компании + те, кому автор компании открыл доступ через "Поделиться")
+            return checkAccess(d.company);
+        }
+    }
     
     function checkTransportFields(p) {
         const v = document.getElementById(p+'Transport')?.value || document.getElementById(p+'Trans')?.value;
@@ -1428,7 +1448,14 @@ function renderCompanies() {
                 <input type="text" id="eDealMargin" value="${d.margin || '0%'}" readonly style="background:#fff3e0; font-weight:bold;">
                 <input type="text" id="eDealL" value="${d.load}" style="grid-column: span 2;" placeholder="Загрузка">
                 <input type="text" id="eDealU" value="${d.unload}" style="grid-column: span 2;" placeholder="Выгрузка">
-                <textarea id="eDealI" style="grid-column: span 2;">${d.info}</textarea>`;
+                <textarea id="eDealI" style="grid-column: span 2;">${d.info}</textarea>
+                <div style="grid-column: span 2; border-top: 1px solid #eee; padding-top: 10px; margin-top: 5px;">
+                    <label style="font-size:10px; color:var(--danger); font-weight:bold;">ДОСТУП К СДЕЛКЕ:</label>
+                    <select id="eDealPrivacy" style="font-weight:bold;">
+                        <option value="false" ${!d.isPrivateDeal ? 'selected' : ''}>🔓 ОТКРЫТАЯ (доступна коллегам)</option>
+                        <option value="true" ${d.isPrivateDeal ? 'selected' : ''}>🔒 ЗАКРЫТАЯ (только для меня)</option>
+                    </select>
+                </div>`;
             
             setTimeout(() => checkTransportFields('eDeal'), 50);
         } else if (type === 'partner') {
@@ -1524,7 +1551,7 @@ async function saveEdit() {
         deals[i].info = document.getElementById('eDealI').value;
         deals[i].margin = document.getElementById('eDealMargin').value;
         deals[i].stage = document.getElementById('eDealStage').value;
-        
+        deals[i].isPrivateDeal = document.getElementById('eDealPrivacy').value === 'true';
         updatedItem = deals[i];
         renderDeals();
     } else if (type === 'partner') {
@@ -1630,7 +1657,8 @@ async function saveEdit() {
             awbNum: document.getElementById('dealAWB').value, 
             files: [],
             margin: document.getElementById('dealMargin').value,
-            stage: document.getElementById('dealStage').value // НОВОЕ ПОЛЕ
+            stage: document.getElementById('dealStage').value, 
+isPrivateDeal: document.getElementById('dealPrivacy').value === 'true'
         }; 
 
         deals.push(newItem); 
