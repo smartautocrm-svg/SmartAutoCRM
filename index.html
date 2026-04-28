@@ -1690,7 +1690,7 @@ async function saveEdit() {
             requests[reqIndex].comment = "✅ Переведено в сделку"; // Системный коммент
             renderRequests();
             sync('requests', requests[reqIndex], 'update'); // Обновляем статус в таблице
-        }
+        } 
     }
     async function addDeal() { 
         const n = document.getElementById('dealNum').value, t = document.getElementById('dealType').value; 
