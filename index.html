@@ -968,17 +968,25 @@ function showRequestPreview(id) {
         let tDetails = '';
         if (d.trans === 'море') tDetails = `<div class="preview-box"><label>Конт. (${d.container})</label><span>${d.contQty || 0} шт.</span></div><div class="preview-box"><label>Коносамент</label><span>${d.blNum || '-'}</span></div>`;
         else if (d.trans === 'авиа') tDetails = `<div class="preview-box" style="grid-column:span 2;"><label>Авианакладная</label><span>${d.awbNum || '-'}</span></div>`;
+        
         let fHtml = (d.files || []).map(f => `<div class="file-item"><a href="${f.url}" target="_blank">📄 ${f.name}</a><span class="file-delete" onclick="deleteFile(${d.id}, '${f.id}')">×</span></div>`).join('');
+        
         document.getElementById('preview-deals').innerHTML = `
         <h3>№ ${d.num} - ${d.company}</h3>
         <div class="preview-grid">
-            <div class="preview-box"><label>Прибыль</label><span style="color:var(--success);font-weight:bold;">${d.prof} USD</span></div>
+            <!-- БЛОК ПРИБЫЛИ И МАРЖИ -->
+            <div class="preview-box"><label>Прибыль</label><span style="color:var(--success); font-weight:bold; font-size: 14px;">${d.prof} USD</span></div>
+            <div class="preview-box"><label>Маржа %</label><span style="color:var(--warning); font-weight:bold; font-size: 14px;">${d.margin || '0%'}</span></div>
+            
             <div class="preview-box"><label>Доход / Расход</label><span>${d.inc} / ${d.exp}</span></div>
             <div class="preview-box"><label>Тип сделки</label><span>${d.type || '-'}</span></div>
+            
             <div class="preview-box"><label>Транспорт</label><span>${d.trans.toUpperCase()}</span></div>
             <div class="preview-box"><label>Менеджер</label><span>${d.manager}</span></div>
+            
             <div class="preview-box"><label>Вес/Объем</label><span>${d.weight}кг / ${d.vol}м³</span></div>
             ${tDetails}
+            
             <div class="preview-box" style="grid-column: span 2;"><label>Маршрут</label><span>${d.load} → ${d.unload}</span></div>
             <div class="preview-box" style="grid-column: span 2;"><label>Инфо</label><span>${d.info || '-'}</span></div>
         </div>
