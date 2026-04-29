@@ -530,14 +530,27 @@
     </div>
 
     <!-- НИЖНЯЯ СЕКЦИЯ СО СПИСКОМ (была пропущена) -->
-    <div class="bottom-section">
+       <div class="bottom-section">
         <div class="controls-bar">
+            <!-- Поиск по названию -->
             <input type="text" id="searchPart" placeholder="Поиск по названию..." oninput="renderPartners()">
+            
+            <!-- Фильтр по стране -->
+            <input type="text" id="filterPartCountry" placeholder="Поиск по стране..." oninput="renderPartners()">
+            
+            <!-- Фильтр по статусу -->
+            <select id="filterPartStatus" onchange="renderPartners()" style="min-width: 130px;">
+                <option value="all">🌐 Все статусы</option>
+                <option value="агент">🤝 Агент</option>
+                <option value="перевозчик">🚛 Перевозчик</option>
+                <option value="брокер">📑 Брокер</option>
+            </select>
         </div>
         <div class="scroll-list" id="partnersList"></div>
     </div>
-</div>
-<!-- ВКЛАДКА ОТЧЕТ -->
+    </div>
+    
+    <!-- ВКЛАДКА ОТЧЕТ (ЕЁ НУЖНО ВЕРНУТЬ) -->
 <div id="report" class="content">
     <div class="scroll-list" style="background:white; padding:20px;">
         <div id="admin-report-selector" class="admin-controls" style="display:none;">
@@ -1636,26 +1649,52 @@ function renderCompanies() {
     updateCounters();
 }
     function renderPartners() {
-    const s = document.getElementById('searchPart').value.toLowerCase();
+    // 1. Получаем значения из всех полей фильтрации
+    const searchName = document.getElementById('searchPart').value.toLowerCase();
+    const filterCountry = document.getElementById('filterPartCountry').value.toLowerCase();
+    const filterStatus = document.getElementById('filterPartStatus').value;
     
+    // 2. Фильтруем массив партнеров
     let f = partners.filter(p => {
-        if (p.isDeleted) return false; // ДОБАВЛЕНО
-        return p.name.toLowerCase().includes(s);
+        if (p.isDeleted) return false; // Не показываем удаленных
+
+        // Проверка по имени
+        const matchName = p.name.toLowerCase().includes(searchName);
+        
+        // Проверка по стране (приводим к строке, чтобы не было ошибок если поле пустое)
+        const matchCountry = String(p.country || "").toLowerCase().includes(filterCountry);
+        
+        // Проверка по статусу (если выбрано "all" — пропускаем всех)
+        const matchStatus = (filterStatus === 'all') || (p.status === filterStatus);
+
+        // Объект отображается, только если прошел все 3 проверки
+        return matchName && matchCountry && matchStatus;
     });
     
-    // --- НОВАЯ ЛОГИКА ОГРАНИЧЕНИЯ ---
+    // 3. Логика ограничения списка и кнопка "Загрузить еще"
     const totalFound = f.length;
     const limitedList = f.slice(0, listLimits.partners);
 
-    let html = limitedList.map(p => `<div class="list-item" onclick="showPartnerPreview(${p.id})"><div class="item-main"><h4>${p.name}</h4><p>${p.status.toUpperCase()} | ${p.country}</p></div><div class="item-actions"><button class="action-btn" onclick="openEdit(${p.id},'partner')">✎</button><button class="action-btn btn-delete" onclick="deleteItem('partners', ${p.id})">×</button></div></div>`).join('');
+    let html = limitedList.map(p => `
+        <div class="list-item" onclick="showPartnerPreview(${p.id})">
+            <div class="item-main">
+                <h4>${p.name}</h4>
+                <p>${p.status.toUpperCase()} | 🌍 ${p.country || '---'}</p>
+            </div>
+            <div class="item-actions">
+                <button class="action-btn" onclick="openEdit(${p.id},'partner')">✎</button>
+                <button class="action-btn btn-delete" onclick="deleteItem('partners', ${p.id})">×</button>
+            </div>
+        </div>
+    `).join('');
 
-    // Кнопка
+    // Добавляем кнопку дозагрузки, если партнеров больше чем лимит
     if (totalFound > listLimits.partners) {
         html += `<div class="load-more-container"><button class="btn-load-more" onclick="loadMore('partners')">Загрузить еще (осталось ${totalFound - listLimits.partners})</button></div>`;
     }
 
     document.getElementById('partnersList').innerHTML = html;
-    updateCounters();
+    updateCounters(); // Обновляем счетчик на вкладке
 }
 
   // --- ФУНКЦИИ РЕДАКТИРОВАНИЯ ---
