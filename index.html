@@ -1757,62 +1757,49 @@ function renderCompanies() {
                 </div>`;
             
             setTimeout(() => checkTransportFields('eDeal'), 50);
-        } else if (type === 'partner') {
-    const p = partners.find(x => x.id == id);
-    title.innerText = "Правка партнера";
+} else if (type === 'partner') {
+            const p = partners.find(x => x.id == id);
+            title.innerText = "Правка партнера";
 
-    // 1. Пытаемся превратить строку в массив контактов
-    let currentContacts = [];
-    try {
-        // Если данные уже в формате JSON (начинаются с [ )
-        if (p.contact && p.contact.startsWith('[')) {
-            currentContacts = JSON.parse(p.contact);
-        } else {
-            // Если это старые данные (просто текст), создаем из них один контакт
-            currentContacts = [{ 
-                name: p.contact || '', 
-                phone: p.phone || '', 
-                email: p.email || '' 
-            }];
-        }
-    } catch(e) {
-        console.error("Ошибка парсинга контактов", e);
-        currentContacts = [];
-    }
+            // 1. Извлекаем контакты (из JSON или старого формата)
+            let currentContacts = [];
+            try {
+                if (p.contact && p.contact.startsWith('[')) {
+                    currentContacts = JSON.parse(p.contact);
+                } else {
+                    currentContacts = [{ 
+                        name: p.contact || '', 
+                        phone: p.phone || '', 
+                        email: p.email || '' 
+                    }];
+                }
+            } catch(e) { currentContacts = []; }
 
-    // 2. Формируем структуру полей в модалке
-    f.innerHTML = `
-        <input type="text" id="ePartName" value="${p.name}" placeholder="Название компании">
-        <select id="ePartStatus">
-            <option value="агент" ${p.status==='агент'?'selected':''}>Агент</option>
-            <option value="перевозчик" ${p.status==='перевозчик'?'selected':''}>Перевозчик</option>
-            <option value="брокер" ${p.status==='брокер'?'selected':''}>Брокер</option>
-        </select>
-        <input type="text" id="ePartCountry" value="${p.country || ''}" placeholder="Страна">
-        <input type="text" id="ePartWeb" value="${p.website || ''}" placeholder="Сайт">
-        
-        <!-- Контейнер для динамических контактов -->
-        <div id="ePartContactsContainer" style="grid-column: span 2; border: 1px solid #eee; padding: 10px; border-radius: 4px; background: #fdfdfd; margin-top:5px;">
-            <label style="font-size:10px; font-weight:bold; color:var(--primary); display:block; margin-bottom:5px;">
-                КОНТАКТНЫЕ ЛИЦА:
-            </label>
-            <div id="ePartContactsList"></div>
-            <button type="button" onclick="addContactRow('ePartContactsList')" 
-                style="margin-top: 8px; font-size: 10px; padding: 4px 8px; cursor: pointer;">
-                + Добавить контакт
-            </button>
-        </div>
+            // 2. Формируем HTML (структура как при создании)
+            f.innerHTML = `
+                <input type="text" id="ePartName" value="${p.name}" placeholder="Название компании *">
+                <select id="ePartStatus">
+                    <option value="агент" ${p.status==='агент'?'selected':''}>🤝 Агент</option>
+                    <option value="перевозчик" ${p.status==='перевозчик'?'selected':''}>🚛 Перевозчик</option>
+                    <option value="брокер" ${p.status==='брокер'?'selected':''}>📑 Брокер</option>
+                </select>
+                <input type="text" id="ePartCountry" value="${p.country || ''}" placeholder="Страна">
+                <input type="text" id="ePartWeb" value="${p.website || ''}" placeholder="Сайт">
+                <textarea id="ePartDesc" style="grid-column: span 2;" placeholder="Описание...">${p.desc || ''}</textarea>
 
-        <textarea id="ePartDesc" style="grid-column: span 2;" placeholder="Описание...">${p.desc || ''}</textarea>
-    `;
+                <div id="ePartContactsContainer" style="grid-column: span 2; margin-top: 10px; border: 1px solid #ddd; padding: 10px; border-radius: 4px; background: #fff;">
+                    <label style="font-weight: bold; font-size: 11px; color: var(--primary);">КОНТАКТНЫЕ ЛИЦА:</label>
+                    <div id="ePartContactsList"></div>
+                    <button type="button" onclick="addContactRow('ePartContactsList')" style="margin-top: 8px; font-size: 10px; cursor: pointer; padding: 4px 8px;">+ Добавить контакт</button>
+                </div>
+            `;
 
-    // 3. Важный момент: Отрисовываем каждую строчку контакта через нашу новую функцию
-    if (currentContacts.length > 0) {
-        currentContacts.forEach(c => addContactRow('ePartContactsList', c));
-    } else {
-        // Если контактов совсем нет, добавим одну пустую строку
-        addContactRow('ePartContactsList');
-    }
+            // 3. Заполняем контакты
+            if (currentContacts.length > 0) {
+                currentContacts.forEach(c => addContactRow('ePartContactsList', c));
+            } else {
+                addContactRow('ePartContactsList');
+            }
         } else if (type === 'tracking') {
             const t = tracking.find(x => x.id == id);
             title.innerText = "Правка трекинга";
@@ -1906,46 +1893,37 @@ async function saveEdit() {
         deals[i].isPrivateDeal = document.getElementById('eDealPrivacy').value === 'true';
         updatedItem = deals[i];
         renderDeals();
-    } else if (type === 'partner') {
-    sheetName = 'partners';
-    const i = partners.findIndex(x => x.id == id);
-    
-    // 1. Сохраняем основные поля
-    partners[i].name = document.getElementById('ePartName').value;
-    partners[i].status = document.getElementById('ePartStatus').value;
-    partners[i].country = document.getElementById('ePartCountry').value;
-    partners[i].website = document.getElementById('ePartWeb').value;
-    partners[i].desc = document.getElementById('ePartDesc').value;
-
-    // 2. Собираем все динамические контакты из модалки
-    const rows = document.querySelectorAll('#ePartContactsList .contact-entry');
-    const updatedContacts = [];
-    
-    rows.forEach(r => {
-        const nameVal = r.querySelector('.p-con-name').value.trim();
-        const phoneVal = r.querySelector('.p-con-phone').value.trim();
-        const emailVal = r.querySelector('.p-con-email').value.trim();
+} else if (type === 'partner') {
+        sheetName = 'partners';
+        const i = partners.findIndex(x => x.id == id);
         
-        // Добавляем только если хотя бы одно поле заполнено
-        if (nameVal || phoneVal || emailVal) {
-            updatedContacts.push({
-                name: nameVal,
-                phone: phoneVal,
-                email: emailVal
-            });
-        }
-    });
+        // Основные поля
+        partners[i].name = document.getElementById('ePartName').value;
+        partners[i].status = document.getElementById('ePartStatus').value;
+        partners[i].country = document.getElementById('ePartCountry').value;
+        partners[i].website = document.getElementById('ePartWeb').value;
+        partners[i].desc = document.getElementById('ePartDesc').value;
 
-    // 3. Превращаем массив объектов в JSON-строку для хранения в одной ячейке
-    partners[i].contact = JSON.stringify(updatedContacts);
-    
-    // 4. Очищаем старые поля (так как теперь всё в JSON), 
-    // чтобы в таблице не было путаницы
-    partners[i].phone = "";
-    partners[i].email = "";
+        // Собираем мульти-контакты
+        const rows = document.querySelectorAll('#ePartContactsList .contact-entry');
+        const updatedContacts = [];
+        rows.forEach(r => {
+            const nameVal = r.querySelector('.p-con-name').value.trim();
+            const phoneVal = r.querySelector('.p-con-phone').value.trim();
+            const emailVal = r.querySelector('.p-con-email').value.trim();
+            if (nameVal || phoneVal || emailVal) {
+                updatedContacts.push({ name: nameVal, phone: phoneVal, email: emailVal });
+            }
+        });
 
-    updatedItem = partners[i];
-    renderPartners();
+        partners[i].contact = JSON.stringify(updatedContacts);
+        
+        // Очищаем старые плоские поля, так как теперь всё в JSON
+        partners[i].phone = "";
+        partners[i].email = "";
+
+        updatedItem = partners[i];
+        renderPartners();
     } else if (type === 'tracking') {
         sheetName = 'tracking';
         const i = tracking.findIndex(x => x.id == id);
