@@ -171,6 +171,45 @@
             background: var(--primary); 
             color: #fff; 
         }
+        /* Стили для всплывающих уведомлений */
+        #notification-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 11000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            max-width: 300px;
+        }
+        .toast {
+            background: white;
+            border-left: 5px solid var(--primary);
+            padding: 12px 15px;
+            border-radius: 6px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            animation: slideIn 0.3s ease-out;
+            position: relative;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .toast h4 { margin: 0; font-size: 12px; color: var(--primary); }
+        .toast p { margin: 0; font-size: 11px; color: #555; line-height: 1.3; }
+        .toast-close {
+            position: absolute;
+            top: 5px;
+            right: 8px;
+            cursor: pointer;
+            color: #aaa;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .toast-close:hover { color: #333; }
     </style>
 </head>
 <body>
@@ -798,6 +837,8 @@ async function startApp() {
         for(let y = currentYear; y >= 2023; y--) { yearHtml += `<option value="${y}">${y} год</option>`; }
         document.querySelectorAll('#reportYearFilter, #statsYearFilter').forEach(el=>el.innerHTML=yearHtml);
         await loadCloudData(); setInterval(loadCloudData, 60000);
+    // Запуск интервала проверки напоминаний (каждые 15 секунд)
+        setInterval(checkRemindersForNotifications, 15000);
     }
 
     async function loadProfile() {
@@ -2241,12 +2282,77 @@ function getArrayBySheet(sh) {
     if(sh==='tracking') return tracking;
     return [];
 }
+// --- СИСТЕМА ЖИВЫХ УВЕДОМЛЕНИЙ ---
+    
+    // Хранилище ID напоминаний, которые мы уже показали за текущую сессию
+    let notifiedReminders = new Set();
 
+    // 1. Функция создания всплывашки на экране
+    function createNotification(title, message, id) {
+        const container = document.getElementById('notification-container');
+        const toast = document.createElement('div');
+        toast.className = 'toast';
+        toast.id = `toast-${id}`;
+        
+        toast.innerHTML = `
+            <span class="toast-close" onclick="this.parentElement.remove()">×</span>
+            <h4>🔔 Напоминание!</h4>
+            <p><strong>${title}</strong></p>
+            <p>${message}</p>
+            <button class="main" style="margin-top:5px; padding:3px; font-size:9px;" onclick="openReminderFromToast(${id})">Открыть</button>
+        `;
+        
+        container.appendChild(toast);
+        
+        // Автоудаление через 15 секунд
+        setTimeout(() => { if(toast) toast.remove(); }, 15000);
+        
+        // Звуковой сигнал (по желанию, стандартный "бип")
+        try {
+            const context = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = context.createOscillator();
+            osc.connect(context.destination);
+            osc.start();
+            osc.stop(context.currentTime + 0.1);
+        } catch(e) {}
+    }
+
+    // 2. Кнопка "Открыть" на всплывашке
+    function openReminderFromToast(id) {
+        openTab('calls');
+        showCallPreview(id);
+        const toast = document.getElementById(`toast-${id}`);
+        if(toast) toast.remove();
+    }
+
+    // 3. Функция сканирования напоминаний
+    function checkRemindersForNotifications() {
+        const me = sessionStorage.getItem('crm_user');
+        const now = new Date();
+        
+        reminders.forEach(r => {
+            if (!r.date || r.status === 'completed' || r.isDeleted) return;
+            
+            // Если напоминание не принадлежит текущему менеджеру (и он не админ) — пропускаем
+            if (me !== 'admin' && r.manager !== me) return;
+
+            const remDate = new Date(r.date);
+            const diffMs = now - remDate; // разница в миллисекундах
+            
+            // Если время пришло (или прошло не более чем на 5 минут) 
+            // и мы еще не показывали это уведомление:
+            if (diffMs >= 0 && diffMs < 5 * 60 * 1000 && !notifiedReminders.has(r.id)) {
+                createNotification(r.name, r.topic, r.id);
+                notifiedReminders.add(r.id); // Запоминаем, что показали
+            }
+        });
+    }
     window.onload = startApp;
 const debouncedRenderDeals = debounce(() => renderDeals());
 const debouncedRenderCompanies = debounce(() => renderCompanies());
 const debouncedRenderRequests = debounce(() => renderRequests());
     
 </script>
+    <div id="notification-container"></div>
 </body>
 </html> 
