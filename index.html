@@ -703,14 +703,16 @@
     </div>
 </div>
 
-    <div id="trash" class="content">
+<div id="trash" class="content">
     <div class="controls-bar">
         <h3 style="margin:0; color:var(--danger);">🗑️ КОРЗИНА (ТОЛЬКО АДМИН)</h3>
         <select id="trashType" onchange="renderTrash()">
-            <option value="companies">🏢 Компании</option>
             <option value="deals">💰 Сделки</option>
+            <option value="partners">🤝 Партнеры</option>
+            <option value="companies">🏢 Компании</option>
             <option value="requests">📦 Запросы</option>
             <option value="reminders">📞 Активности</option>
+            <option value="tracking">🛰️ Трекинг</option>
         </select>
         <div style="margin-left:auto; font-size:11px; color:#666;">Здесь можно восстановить данные или удалить их навсегда</div>
     </div>
@@ -2132,7 +2134,7 @@ isPrivateDeal: document.getElementById('dealPrivacy').value === 'true'
     // --- СИСТЕМНЫЕ ФУНКЦИИ ---
 async function deleteItem(sh, id) { 
     const me = sessionStorage.getItem('crm_user'); 
-    let arr = getArrayBySheet(sh); // Вспомогательная функция (ниже)
+    let arr = getArrayBySheet(sh); 
     const itm = arr.find(x => x.id == id);
 
     if(!itm) return; 
@@ -2140,10 +2142,13 @@ async function deleteItem(sh, id) {
 
     if(!confirm("Переместить в корзину?")) return; 
 
-    itm.isDeleted = true; // Помечаем
-    await sync(sh, itm, 'update'); // Отправляем в облако
+    itm.isDeleted = true; // Помечаем локально
+    await sync(sh, itm, 'update'); // Отправляем в Google Таблицу
     
-    renderAll(); // Обновляем списки (объект исчезнет)
+    renderAll(); // Обновляем основные списки
+    if (document.getElementById('trash').classList.contains('active')) {
+        renderTrash(); // Если открыта корзина — обновляем и её
+    }
     alert("Удалено в корзину.");
 }
 
