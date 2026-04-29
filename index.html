@@ -1365,28 +1365,63 @@ function renderDeals() {
     } 
 }
     function showCompanyHistory(companyName) {
-    // Фильтруем все активности по имени компании и берем последние 5
-    const history = reminders.filter(r => r.name === companyName)
-                             .sort((a,b) => new Date(b.date) - new Date(a.date))
-                             .slice(0, 5);
+    // 1. Собираем активности (звонки/напоминания)
+    const historyCalls = reminders
+        .filter(r => r.name === companyName)
+        .map(r => ({
+            date: r.date,
+            manager: r.manager,
+            text: r.topic,
+            type: 'ACTIVITY',
+            status: r.status
+        }));
+
+    // 2. Собираем закрытые запросы с комментариями
+    const historyRequests = requests
+        .filter(r => r.company === companyName && r.status === 'completed' && r.comment)
+        .map(r => ({
+            date: r.createdAt,
+            manager: r.manager,
+            text: r.comment,
+            type: 'REQUEST_CLOSED',
+            status: 'completed'
+        }));
+
+    // 3. Объединяем и сортируем (самые свежие вверху)
+    const fullHistory = [...historyCalls, ...historyRequests]
+        .sort((a, b) => new Date(b.date) - new Date(a.date))
+        .slice(0, 10); // Берем последние 10 записей
 
     let hHtml = '';
 
-    if (history.length > 0) {
-        hHtml = history.map(h => `
-            <div style="padding:10px; border-bottom:1px solid #eee; background: ${h.status === 'completed' ? '#f9f9f9' : '#fff'}">
-                <div style="display:flex; justify-content:space-between; margin-bottom:5px; font-size:10px; color:#666;">
-                    <span>📅 <b>${dtFmt(h.date)}</b></span>
-                    <span>👤 ${h.manager}</span>
+    if (fullHistory.length > 0) {
+        hHtml = fullHistory.map(h => {
+            // Настройка внешнего вида в зависимости от типа
+            const isRequest = h.type === 'REQUEST_CLOSED';
+            const typeLabel = isRequest ? 'ЗАВЕРШЕННЫЙ ЗАПРОС' : 'АКТИВНОСТЬ';
+            const typeColor = isRequest ? '#e91e63' : 'var(--primary)'; // Розовый для запросов, синий для звонков
+            const bgColor = isRequest ? '#fff0f5' : '#fff'; // Светлый фон для запросов
+            
+            return `
+                <div style="padding:10px; border-bottom:1px solid #eee; background: ${bgColor}">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:5px; font-size:10px; color:#666;">
+                        <span>📅 <b>${dtFmt(h.date)}</b></span>
+                        <span>👤 ${h.manager}</span>
+                    </div>
+                    
+                    <!-- Метка типа -->
+                    <div style="display:inline-block; font-size:8px; font-weight:bold; color:white; background:${typeColor}; padding:1px 5px; border-radius:3px; margin-bottom:5px;">
+                        ${typeLabel}
+                    </div>
+
+                    <div style="font-size:12px; line-height:1.4; color:#333; font-style: ${isRequest ? 'italic' : 'normal'}">
+                        ${isRequest ? '💬 Причина закрытия: ' : ''}${h.text}
+                    </div>
                 </div>
-                <div style="font-size:12px; line-height:1.4; color:#333;">${h.topic}</div>
-                <div style="margin-top:5px; font-size:9px; text-transform:uppercase; color:${h.status === 'completed' ? 'var(--success)' : 'var(--primary)'}">
-                    ● ${h.status === 'completed' ? 'Завершено' : 'В планах'}
-                </div>
-            </div>
-        `).join('');
+            `;
+        }).join('');
     } else {
-        hHtml = '<div style="padding:20px; text-align:center; color:#999;">Активностей по этой компании не найдено</div>';
+        hHtml = '<div style="padding:20px; text-align:center; color:#999;">История пуста</div>';
     }
 
     document.getElementById('historyModalTitle').innerText = "История: " + companyName;
