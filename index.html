@@ -1251,10 +1251,10 @@ function renderRequests() {
 function finishRequest(e, id) { 
     e.stopPropagation(); // Чтобы не открылось превью запроса
     
-    // Записываем ID запроса в скрытое поле модалки, чтобы знать, какой запрос закрываем
+    // Записываем ID запроса в скрытое поле модалки
     document.getElementById('reqCloseId').value = id;
     
-    // Очищаем поле комментария от старых записей
+    // Очищаем поле комментария
     document.getElementById('reqCloseComment').value = ""; 
     
     // Показываем модальное окно
@@ -1649,49 +1649,46 @@ async function saveEdit() {
     // --- ФУНКЦИИ ДОБАВЛЕНИЯ ---
     async function addReminder() { const n = document.getElementById('callName').value; if(!n)return alert("Имя?"); const newItem = { id: Date.now(), name: n, date: document.getElementById('callTime').value, topic: document.getElementById('callTopic').value, manager: sessionStorage.getItem('crm_user'), status: "active" }; reminders.push(newItem); renderReminders(); await sync('reminders', reminders, 'append'); ['callName', 'callTime', 'callTopic'].forEach(i=>document.getElementById(i).value=''); }
     async function addRequest() { const c = document.getElementById('reqComp').value; if(!c)return alert("Клиент?"); const newItem = { id: Date.now(), company: c, cargo: document.getElementById('reqCargo').value, transport: document.getElementById('reqTransport').value, weight: document.getElementById('reqWeight').value, vol: document.getElementById('reqVol').value, value: document.getElementById('reqValue').value, currency: document.getElementById('reqCurrency').value, load: document.getElementById('reqLoad').value, zip: document.getElementById('reqZip').value, unload: document.getElementById('reqUnload').value, desc: document.getElementById('reqDesc').value, createdAt: new Date().toISOString(), status: "active", manager: sessionStorage.getItem('crm_user'), container: document.getElementById('reqContainer').value, contQty: document.getElementById('reqContQty').value }; requests.push(newItem); renderRequests(); await sync('requests', requests, 'append'); ['reqComp', 'reqCargo', 'reqWeight', 'reqVol', 'reqValue', 'reqLoad', 'reqZip', 'reqUnload', 'reqDesc', 'reqContQty'].forEach(i=>document.getElementById(i).value=''); }
-    function convertToDeal(reqId) {
-        const r = requests.find(x => x.id == reqId);
-        if (!r) return;
+function convertToDeal(reqId) {
+    const r = requests.find(x => x.id == reqId);
+    if (!r) return;
 
-        openTab('deals');
+    // Переходим на вкладку сделок
+    openTab('deals');
 
-        // Заполняем основные поля
-        document.getElementById('dealComp').value = r.company || "";
-        document.getElementById('dealCargo').value = r.cargo || "";
-        document.getElementById('dealTransport').value = r.transport || "авто";
-        
-        if (r.transport === 'море') {
-            document.getElementById('dealContainer').value = r.container || "";
-            document.getElementById('dealContQty').value = r.contQty || "";
-        }
-        
-        document.getElementById('dealWeight').value = r.weight || "";
-        document.getElementById('dealVol').value = r.vol || "";
-        document.getElementById('dealVal').value = r.value || "";
-        document.getElementById('dealLoad').value = r.load || "";
-        document.getElementById('dealUnload').value = r.unload || "";
-        document.getElementById('dealInfo').value = r.desc || "";
-
-        // Очищаем деньги перед расчетом
-        document.getElementById('dealExp').value = "";
-        document.getElementById('dealInc').value = "";
-
-        checkTransportFields('deal');
-        
-        // --- ВАЖНО: Запускаем расчет прибыли сразу после вставки данных ---
-        calcDealProfit(); 
-
-        document.getElementById('dealNum').focus();
-        
-        // АВТОМАТИЧЕСКОЕ ЗАВЕРШЕНИЕ ЗАПРОСА
-        const reqIndex = requests.findIndex(x => x.id == reqId);
-        if (reqIndex > -1) {
-            requests[reqIndex].status = 'completed';
-            requests[reqIndex].comment = "✅ Переведено в сделку"; // Системный коммент
-            renderRequests();
-            sync('requests', requests[reqIndex], 'update'); // Обновляем статус в таблице
-        } 
+    // Переносим данные в поля формы новой сделки
+    document.getElementById('dealComp').value = r.company || "";
+    document.getElementById('dealCargo').value = r.cargo || "";
+    document.getElementById('dealTransport').value = r.transport || "авто";
+    
+    if (r.transport === 'море') {
+        document.getElementById('dealContainer').value = r.container || "";
+        document.getElementById('dealContQty').value = r.contQty || "";
     }
+    
+    document.getElementById('dealWeight').value = r.weight || "";
+    document.getElementById('dealVol').value = r.vol || "";
+    document.getElementById('dealVal').value = r.value || "";
+    document.getElementById('dealLoad').value = r.load || "";
+    document.getElementById('dealUnload').value = r.unload || "";
+    document.getElementById('dealInfo').value = r.desc || "";
+
+    // Считаем прибыль (чтобы маржа обновилась)
+    calcDealProfit(); 
+
+    // --- АВТОМАТИЧЕСКОЕ ЗАВЕРШЕНИЕ ЗАПРОСА ---
+    const reqIndex = requests.findIndex(x => x.id == reqId);
+    if (reqIndex > -1) {
+        requests[reqIndex].status = 'completed';
+        requests[reqIndex].comment = "✅ Конвертировано в сделку"; // Авто-комментарий
+        
+        renderRequests(); // Перерисовываем список запросов
+        sync('requests', requests[reqIndex], 'update'); // Отправляем обновление в таблицу
+    }
+
+    document.getElementById('dealNum').focus();
+    alert("Данные запроса перенесены в форму сделки. Запрос помечен как выполненный.");
+}
     async function addDeal() { 
         const n = document.getElementById('dealNum').value, t = document.getElementById('dealType').value; 
         if(!n||!t)return alert("Заполните Номер и Тип сделки!"); 
@@ -2019,29 +2016,28 @@ function calcEditProf() {
     const id = document.getElementById('reqCloseId').value;
     const comment = document.getElementById('reqCloseComment').value.trim();
 
-    // 1. ПРОВЕРКА: Если текста нет — ругаемся и не закрываем
+    // ПРОВЕРКА НА ОБЯЗАТЕЛЬНОСТЬ (минимум 5 символов)
     if (comment.length < 5) {
-        alert("Пожалуйста, напишите подробнее причину закрытия (минимум 5 символов).");
+        alert("Пожалуйста, укажите причину закрытия (минимум 5 символов). Это поле обязательно.");
         return;
     }
 
-    // 2. Находим запрос в нашем массиве
     const i = requests.findIndex(x => x.id == id);
     if (i > -1) {
-        // Меняем статус на выполненный и записываем комментарий
+        // Меняем статус на завершенный и сохраняем причину
         requests[i].status = 'completed';
         requests[i].comment = comment; 
         
-        // 3. Обновляем интерфейс
+        // Обновляем список на экране
         renderRequests();
         
-        // 4. Закрываем окно
+        // Закрываем модалку
         document.getElementById('requestCloseModal').style.display = 'none';
 
-        // 5. Синхронизируем с облаком (отправляем только измененный запрос)
+        // Синхронизируем только одну измененную строку в Google Таблицу
         await sync('requests', requests[i], 'update'); 
         
-        console.log("Запрос " + id + " закрыт с комментарием: " + comment);
+        alert("Запрос успешно закрыт.");
     }
 }
 
