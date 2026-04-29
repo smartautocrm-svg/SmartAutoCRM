@@ -1084,21 +1084,19 @@ async function loadCloudData() {
 async function sync(sh, dt, mode = 'saveAll') {
     showLoader(true); 
     
-    // ПРОВЕРКА: берем имя пользователя из сессии
-    const currentUser = sessionStorage.getItem('crm_user');
-    
+    // 1. Извлекаем имя текущего юзера из сессии
+    const currentUser = sessionStorage.getItem('crm_user') || 'Система';
+
     let payload = { 
         sheet: sh,
-        user: currentUser || 'Неизвестный' // Если имя пропало, запишет 'Неизвестный'
+        user: currentUser // <-- ВОТ ЭТО ПОЛЕ ПЕРЕДАЕТ ИМЯ В ЛОГИ
     };
 
     if (mode === 'append') {
         payload.action = 'append';
-        // Если это добавление, берем последний элемент массива
         payload.rowData = formatRow(sh, dt[dt.length - 1]);
     } else if (mode === 'update') {
         payload.action = 'updateRow';
-        // Если это обновление, dt уже является объектом
         payload.rowData = formatRow(sh, dt);
     } else {
         payload.action = 'clearAndSave';
