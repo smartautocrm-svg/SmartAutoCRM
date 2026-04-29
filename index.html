@@ -2212,31 +2212,32 @@ function updateDatalists() {
             dl.innerHTML = companies.map(c => `<option value="${c.name}">`).join(''); 
         }
     }
-    function updateCounters() { 
+function updateCounters() { 
         const me = sessionStorage.getItem('crm_user');
 
-        // 1. Считаем только свои активности (если не админ)
-        const myReminders = reminders.filter(r => me === 'admin' || r.manager === me);
+        // 1. Активности: считаем только свои и НЕ удаленные
+        const myReminders = reminders.filter(r => (me === 'admin' || r.manager === me) && !r.isDeleted);
         document.getElementById('count-calls').innerText = myReminders.length; 
 
-        // 2. Считаем только запросы по компаниям, к которым есть доступ
-        const myRequests = requests.filter(r => checkAccess(r.company));
+        // 2. Запросы: считаем только те, к которым есть доступ и НЕ удаленные
+        const myRequests = requests.filter(r => checkAccess(r.company) && !r.isDeleted);
         document.getElementById('count-requests').innerText = myRequests.length; 
 
-        // 3. Считаем только свои сделки (или те, которыми с нами поделились)
-        const myDeals = deals.filter(d => checkDealAccess(d));
+        // 3. Сделки: считаем только доступные и НЕ удаленные
+        const myDeals = deals.filter(d => checkDealAccess(d) && !d.isDeleted);
         document.getElementById('count-deals').innerText = myDeals.length; 
 
-        // 4. Считаем компании, к которым есть доступ
-        const myCompanies = companies.filter(c => checkAccess(c.name));
+        // 4. Компании: считаем доступные и НЕ удаленные
+        const myCompanies = companies.filter(c => checkAccess(c.name) && !c.isDeleted);
         document.getElementById('count-companies').innerText = myCompanies.length; 
 
-        // Партнеры обычно общие для всех, но если нужно тоже ограничить - добавь фильтр по менеджеру
-        document.getElementById('count-partners').innerText = partners.length; 
+        // 5. Партнеры: считаем только НЕ удаленные
+        const myPartners = partners.filter(p => !p.isDeleted);
+        document.getElementById('count-partners').innerText = myPartners.length; 
 
-        // Трекинг
+        // 6. Трекинг: считаем доступные и НЕ удаленные
         if(document.getElementById('count-tracking')) {
-            const myTracking = tracking.filter(t => checkTrackingAccess(t));
+            const myTracking = tracking.filter(t => checkTrackingAccess(t) && !t.isDeleted);
             document.getElementById('count-tracking').innerText = myTracking.length;
         }
     }
