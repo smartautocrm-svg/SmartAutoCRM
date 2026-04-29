@@ -320,7 +320,7 @@
         <div class="card" id="preview-calls"><div style="color:#ccc; text-align:center; margin-top:50px;">Выберите активность</div></div>
     </div>
     <div class="bottom-section">
-        <div class="controls-bar"><input type="text" id="searchCallComp" placeholder="Поиск..."><input type="date" id="searchCallDate" onchange="renderReminders()"><label style="font-size: 10px; display: flex; align-items: center; gap: 4px; white-space: nowrap;">
+        <div class="controls-bar"><input type="text" id="searchCallComp" placeholder="Поиск компании..." oninput="renderReminders()"><input type="date" id="searchCallDate" onchange="renderReminders()"><label style="font-size: 10px; display: flex; align-items: center; gap: 4px; white-space: nowrap;">
         <input type="checkbox" id="hideDoneCalls" onchange="renderReminders()" style="width: auto;"> Скрыть завершенные
     </label><button onclick="clearCallFilters()">Сброс</button></div>
         <div class="scroll-list" id="remindersList"></div>
@@ -1377,19 +1377,29 @@ function renderReminders() {
     const limitMs = 3 * 24 * 60 * 60 * 1000, now = new Date();
     
     let f = reminders.filter(r => {
-    if (r.isDeleted) return false; // ДОБАВЛЕНО: прячем удаленные
-    const nameText = String(r.name || "").toLowerCase();
-    return nameText.includes(s) && (!d || dFmt(r.date) === dFmt(d));
-});
+        if (r.isDeleted) return false; // Не показываем удаленные
+
+        // 1. Поиск по названию компании (поле .name в объекте напоминания)
+        const companyName = String(r.name || "").toLowerCase();
+        const matchesSearch = companyName.includes(s);
+
+        // 2. Фильтр по дате (если дата выбрана)
+        const matchesDate = !d || dFmt(r.date) === dFmt(d);
+
+        return matchesSearch && matchesDate;
+    });
     
+    // Фильтр по менеджеру (если не админ)
     if (me !== 'admin') f = f.filter(r => r.manager === me);
+    
+    // Фильтр "Скрыть завершенные"
     if (hideDone) f = f.filter(r => r.status !== 'completed');
 
+    // Сортировка (новые сверху)
     f.sort((a,b) => new Date(b.date) - new Date(a.date));
     
-    // --- НОВАЯ ЛОГИКА ОГРАНИЧЕНИЯ ---
-    const totalFound = f.length; // Запоминаем сколько всего нашли
-    const limitedList = f.slice(0, listLimits.calls); // Отрезаем список до нашего лимита
+    const totalFound = f.length;
+    const limitedList = f.slice(0, listLimits.calls);
     
     let html = limitedList.map(r => {
         const isOverdue = r.status !== 'completed' && (now - new Date(r.date)) > limitMs;
@@ -1398,19 +1408,18 @@ function renderReminders() {
                 <h4>${r.name} ${isOverdue?'<span class="overdue-tag">ПРОСРОЧЕНО</span>':''}</h4><p>${dtFmt(r.date)} | ${r.manager}</p>
             </div>
             <div class="item-actions">
-                ${r.status!=='completed'?'<button class="action-btn" style="color:var(--success)" onclick="finishRem(event,'+r.id+')">✅</button>':''}
+                ${r.status!=='completed'?'<button class="action-btn" style="color:var(--success)" onclick="finishRem(event,${r.id})">✅</button>':''}
                 <button class="action-btn" onclick="openEdit(${r.id},'reminder')">✎</button>
                 <button class="action-btn btn-delete" onclick="deleteItem('reminders',${r.id})">×</button>
             </div>
         </div>`;
     }).join('');
     
-    // Если записей больше, чем текущий лимит — добавляем кнопку в конец
     if (totalFound > listLimits.calls) {
         html += `<div class="load-more-container"><button class="btn-load-more" onclick="loadMore('calls')">Загрузить еще (осталось ${totalFound - listLimits.calls})</button></div>`;
     }
 
-    document.getElementById('remindersList').innerHTML = html;
+    document.getElementById('remindersList').innerHTML = html || '<div style="text-align:center; padding:20px; color:#999;">Ничего не найдено</div>';
     updateCounters();
 }
    async function finishRem(e, id) { 
