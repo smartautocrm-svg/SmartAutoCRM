@@ -495,16 +495,35 @@
 <div id="partners" class="content">
     <div class="top-section">
         <div class="card">
-            <h3>Новый партнер</h3>
-            <div class="input-row"><input type="text" id="partName" placeholder="Название *"><select id="partStatus"><option value="агент">🤝 Агент</option><option value="перевозчик">🚛 Перевозчик</option><option value="брокер">📑 Брокер</option></select><input type="text" id="partCountry" placeholder="Страна"><input type="text" id="partContact" placeholder="Контакт"><input type="text" id="partPhone" placeholder="Телефон"><input type="email" id="partEmail" placeholder="Email"><input type="text" id="partWeb" placeholder="Сайт"><textarea id="partDesc" style="grid-column: span 2;" placeholder="Описание..."></textarea></div>
-            <button class="main" style="background:#607d8b;" onclick="addPartner()">Добавить партнера</button>
+    <h3>Новый партнер</h3>
+    <div class="input-row">
+        <input type="text" id="partName" placeholder="Название компании *">
+        <select id="partStatus">
+            <option value="агент">🤝 Агент</option>
+            <option value="перевозчик">🚛 Перевозчик</option>
+            <option value="брокер">📑 Брокер</option>
+        </select>
+        <input type="text" id="partCountry" placeholder="Страна">
+        <input type="text" id="partWeb" placeholder="Сайт">
+    </div>
+
+    <!-- КОНТЕЙНЕР ДЛЯ КОНТАКТОВ -->
+    <div id="partnerContactsWrapper" style="margin-top: 10px; border: 1px solid #eee; padding: 10px; border-radius: 4px; background: #fafafa;">
+        <label style="font-size: 10px; font-weight: bold; color: var(--primary); display: block; margin-bottom: 5px;">КОНТАКТНЫЕ ЛИЦА:</label>
+        <div id="partnerContactsList">
+            <!-- Первая строка всегда есть -->
+            <div class="contact-entry" style="display: grid; grid-template-columns: 1fr 1fr 1fr 30px; gap: 5px; margin-bottom: 5px;">
+                <input type="text" class="p-con-name" placeholder="Имя">
+                <input type="text" class="p-con-phone" placeholder="Телефон">
+                <input type="text" class="p-con-email" placeholder="Email">
+                <button type="button" style="background:none; border:none; color:var(--danger); cursor:pointer;" onclick="this.parentElement.remove()">×</button>
+            </div>
         </div>
-        <div class="card" id="preview-partners"></div>
+        <button class="main" style="background:var(--primary); width:auto; padding:3px 10px; font-size:10px;" onclick="addPartnerContactRow()">+ Добавить еще контакт</button>
     </div>
-    <div class="bottom-section">
-        <div class="controls-bar"><input type="text" id="searchPart" placeholder="Поиск..." oninput="renderPartners()"></div>
-        <div class="scroll-list" id="partnersList"></div>
-    </div>
+
+    <textarea id="partDesc" style="width:100%; margin-top:10px; height:60px;" placeholder="Общее описание..."></textarea>
+    <button class="main" style="background:#607d8b; margin-top:10px;" onclick="addPartner()">Добавить партнера</button>
 </div>
 
 <!-- ВКЛАДКА ОТЧЕТ -->
@@ -1265,20 +1284,36 @@ function showCompanyPreview(n) {
     </div>`;
 }
 
-    function showPartnerPreview(id) {
-        const p = partners.find(x => x.id == id); if(!p) return;
-        document.getElementById('preview-partners').innerHTML = `
-        <h3>${p.name}</h3>
-        <div class="preview-grid">
-            <div class="preview-box"><label>Тип</label><span>${p.status.toUpperCase()}</span></div>
-            <div class="preview-box"><label>Страна</label><span>${p.country || '-'}</span></div>
-            <div class="preview-box"><label>Контакт</label><span>${p.contact || '-'}</span></div>
-            <div class="preview-box"><label>Телефон</label><span>${p.phone || '-'}</span></div>
-            <div class="preview-box"><label>Email</label><span>${p.email || '-'}</span></div>
-            <div class="preview-box"><label>Сайт</label><span>${p.website || '-'}</span></div>
-            <div class="preview-box" style="grid-column:span 2;"><label>Описание</label><div style="font-size:11px; white-space:pre-wrap; background:#f9f9f9; padding:5px;">${p.desc || '-'}</div></div>
-        </div>`;
+function showPartnerPreview(id) {
+    const p = partners.find(x => x.id == id); if(!p) return;
+    
+    let contactsHtml = "";
+    try {
+        const contacts = JSON.parse(p.contact);
+        contactsHtml = contacts.map(c => `
+            <div style="background:#f0f7ff; padding:8px; border-radius:4px; margin-bottom:5px; border:1px solid #d2e3fc;">
+                <div style="font-weight:bold; color:var(--primary);">${c.name || 'Без имени'}</div>
+                <div style="font-size:10px;">📞 ${c.phone || '-'}</div>
+                <div style="font-size:10px;">📧 ${c.email || '-'}</div>
+            </div>
+        `).join('');
+    } catch(e) {
+        // Если там старая строка (не JSON), показываем как было
+        contactsHtml = `<div style="background:#f9f9f9; padding:8px;">${p.contact} <br> ${p.phone} <br> ${p.email}</div>`;
     }
+
+    document.getElementById('preview-partners').innerHTML = `
+    <h3>${p.name}</h3>
+    <div class="preview-grid">
+        <div class="preview-box"><label>Тип</label><span>${p.status.toUpperCase()}</span></div>
+        <div class="preview-box"><label>Страна</label><span>${p.country || '-'}</span></div>
+        <div class="preview-box" style="grid-column:span 2;"><label>Контакты</label>
+            <div style="margin-top:5px;">${contactsHtml || 'Нет контактов'}</div>
+        </div>
+        <div class="preview-box" style="grid-column:span 2;"><label>Сайт</label><span>${p.website || '-'}</span></div>
+        <div class="preview-box" style="grid-column:span 2;"><label>Описание</label><div style="font-size:11px; white-space:pre-wrap;">${p.desc || '-'}</div></div>
+    </div>`;
+}
 
 function renderReminders() {
     const s = document.getElementById('searchCallComp').value.toLowerCase(), 
@@ -1958,7 +1993,91 @@ isPrivateDeal: document.getElementById('dealPrivacy').value === 'true'
     // Очистка полей
     ['compName', 'compProduct', 'compCity', 'compContact', 'compPhone', 'compEmail', 'compWebsite', 'compImp', 'compExp'].forEach(i => document.getElementById(i).value = '');
 }
-    async function addPartner() { const n = document.getElementById('partName').value; if(!n)return alert("Название?"); const newItem = { id: Date.now(), name: n, status: document.getElementById('partStatus').value, country: document.getElementById('partCountry').value, contact: document.getElementById('partContact').value, phone: document.getElementById('partPhone').value, email: document.getElementById('partEmail').value, website: document.getElementById('partWeb').value, desc: document.getElementById('partDesc').value }; partners.push(newItem); renderPartners(); await sync('partners', partners, 'append'); ['partName', 'partCountry', 'partContact', 'partPhone', 'partEmail', 'partWeb', 'partDesc'].forEach(i=>document.getElementById(i).value=''); }
+    function addPartnerContactRow(data = {name: '', phone: '', email: ''}) {
+    // Находим контейнер, куда будем вставлять строки
+    const container = document.getElementById('partnerContactsList');
+    
+    // Создаем новый элемент DIV
+    const div = document.createElement('div');
+    div.className = 'contact-entry'; // Присваиваем класс для поиска
+    
+    // Задаем стиль сетки (3 колонки + кнопка удаления)
+    div.style = "display: grid; grid-template-columns: 1fr 1fr 1fr 30px; gap: 5px; margin-bottom: 5px;";
+    
+    // Вставляем HTML внутренности строки
+    div.innerHTML = `
+        <input type="text" class="p-con-name" placeholder="Имя" value="${data.name}">
+        <input type="text" class="p-con-phone" placeholder="Телефон" value="${data.phone}">
+        <input type="text" class="p-con-email" placeholder="Email" value="${data.email}">
+        <button type="button" 
+                style="background:none; border:none; color:var(--danger); cursor:pointer; font-size:16px; font-weight:bold;" 
+                onclick="this.parentElement.remove()">×</button>
+    `;
+    
+    // Добавляем созданную строку в контейнер на странице
+    container.appendChild(div);
+}
+
+/**
+ * 2. Эта функция пробегает по всем созданным строкам на экране
+ * и собирает из них данные в один список (массив объектов).
+ */
+function getPartnerContactsFromUI() {
+    // Находим все элементы с классом .contact-entry
+    const rows = document.querySelectorAll('#partnerContactsList .contact-entry');
+    let contacts = [];
+    
+    rows.forEach(row => {
+        // Из каждой строки вытаскиваем значения полей
+        const name = row.querySelector('.p-con-name').value.trim();
+        const phone = row.querySelector('.p-con-phone').value.trim();
+        const email = row.querySelector('.p-con-email').value.trim();
+        
+        // Если хотя бы одно поле заполнено — сохраняем этот контакт
+        if (name || phone || email) {
+            contacts.push({ 
+                name: name, 
+                phone: phone, 
+                email: email 
+            });
+        }
+    });
+    
+    return contacts; // Возвращаем массив типа [{name:'..', phone:'..'}, {...}]
+}
+    async function addPartner() {
+    const n = document.getElementById('partName').value;
+    if(!n) return alert("Название компании обязательно!");
+
+    // Собираем контакты
+    const contacts = getPartnerContactsFromUI();
+
+    const newItem = { 
+        id: Date.now(), 
+        name: n, 
+        status: document.getElementById('partStatus').value, 
+        country: document.getElementById('partCountry').value, 
+        // Храним весь массив контактов в виде JSON в поле contact
+        contact: JSON.stringify(contacts), 
+        phone: contacts.length > 0 ? contacts[0].phone : "", // Для совместимости берем первый телефон
+        email: contacts.length > 0 ? contacts[0].email : "", // Для совместимости берем первый email
+        website: document.getElementById('partWeb').value, 
+        desc: document.getElementById('partDesc').value,
+        isDeleted: false
+    };
+
+    partners.push(newItem); 
+    renderPartners(); 
+    await sync('partners', partners, 'append'); 
+
+    // Очистка
+    document.getElementById('partName').value = '';
+    document.getElementById('partCountry').value = '';
+    document.getElementById('partWeb').value = '';
+    document.getElementById('partDesc').value = '';
+    document.getElementById('partnerContactsList').innerHTML = '';
+    addPartnerContactRow(); // Возвращаем одну пустую строку
+}
     async function addTracking() { const num = document.getElementById('trackNum').value, cargo = document.getElementById('trackCargo').value; if (!num || !cargo) return alert("Заполните Номер и Груз!"); const newItem = { id: Date.now(), num: num, cargo: cargo, weight: document.getElementById('trackWeight').value, vol: document.getElementById('trackVol').value, qty: document.getElementById('trackQty').value, pack: document.getElementById('trackPack').value, trans: document.getElementById('trackTrans').value, status: document.getElementById('trackStatus').value, manager: sessionStorage.getItem('crm_user'), sharedWith: document.getElementById('trackShare').value }; tracking.push(newItem); renderTracking(); await sync('tracking', tracking, 'append'); ['trackNum', 'trackCargo', 'trackWeight', 'trackVol', 'trackQty', 'trackShare'].forEach(i => document.getElementById(i).value = ''); }
 
     // --- СИСТЕМНЫЕ ФУНКЦИИ ---
