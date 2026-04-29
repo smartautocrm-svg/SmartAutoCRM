@@ -302,6 +302,7 @@
     <button class="tab-btn" id="btn-tracking" onclick="openTab('tracking')">🛰️ Трекинг <span class="tab-counter" id="count-tracking">0</span></button>
     <button class="tab-btn" id="btn-profile" onclick="openTab('profile')">👤 Профиль</button>
     <button class="tab-btn" id="btn-trash" style="display:none;" onclick="openTab('trash')">🗑️ Корзина</button>
+    <button class="tab-btn" id="btn-logs" style="display:none;" onclick="openTab('logs')">📜 Логи</button>
     <div style="margin-left: auto; padding: 5px 10px; color: #999; font-size: 9px; text-align: right;">
         <span id="user-display" style="color:var(--primary); font-weight:bold;"></span><br>
         <span id="sync-status">Загрузка...</span> | <a href="#" onclick="logout()" style="color:var(--danger); text-decoration:none;">Выход</a>
@@ -550,6 +551,7 @@
     </div>
     </div>
     
+    
     <!-- ВКЛАДКА ОТЧЕТ (ЕЁ НУЖНО ВЕРНУТЬ) -->
 <div id="report" class="content">
     <div class="scroll-list" style="background:white; padding:20px;">
@@ -718,6 +720,30 @@
     </div>
     <div class="scroll-list" id="trashList"></div>
 </div>
+    <!-- ВКЛАДКА ЛОГИ (ADMIN ONLY) -->
+<div id="logs" class="content">
+    <div class="controls-bar">
+        <h3 style="margin:0; color:var(--primary);">📜 ЖУРНАЛ ДЕЙСТВИЙ</h3>
+        <input type="text" id="searchLogs" placeholder="Поиск по событиям..." oninput="renderLogs()" style="max-width: 250px;">
+        <div style="margin-left:auto; font-size:11px; color:#666;">Последние 100 событий системы</div>
+    </div>
+    <div class="scroll-list" style="background:white; padding:0;">
+        <table class="report-table" style="margin-top:0; font-size: 11px;">
+            <thead style="position: sticky; top: 0; z-index: 10;">
+                <tr>
+                    <th style="width: 15%;">Дата</th>
+                    <th style="width: 15%;">Пользователь</th>
+                    <th style="width: 15%;">Действие</th>
+                    <th style="width: 15%;">Раздел</th>
+                    <th>Объект / ID</th>
+                </tr>
+            </thead>
+            <tbody id="logsTableBody">
+                <!-- Сюда попадут логи -->
+            </tbody>
+        </table>
+    </div>
+</div>
 
 <!-- МОДАЛКИ -->
 <div id="editModal" class="modal-overlay" onclick="if(event.target===this) this.style.display='none'"><div class="modal-content" style="width: 550px;"><h3 id="editModalTitle">Редактирование</h3><div id="editFields" class="input-row"></div><input type="hidden" id="editId"><input type="hidden" id="editType"><button class="main" style="background:var(--success); margin-top:15px;" onclick="saveEdit()">Сохранить</button></div></div>
@@ -801,7 +827,7 @@ function forInput(v) {
     container.appendChild(div);
 }
     
-    let reminders = [], companies = [], partners = [], requests = [], managers = [], deals = [], tracking = [];
+    let reminders = [], companies = [], partners = [], requests = [], managers = [], deals = [], tracking = [], crmLogs = [];
     let listLimits = { 
         calls: 30, 
         requests: 30, 
@@ -1025,6 +1051,7 @@ async function loadCloudData() {
             phone: x[5], email: x[6], website: x[7], desc: x[8],
             isDeleted: x[9] === true || x[9] === 'true'
         }));
+        crmLogs = d.logs || [];
         renderAll(); 
         document.getElementById('sync-status').innerText = "Обновлено: " + new Date().toLocaleTimeString();
     } catch (e) { 
@@ -2208,9 +2235,20 @@ function openTab(id) {
         }
         // Вынесли проверку корзины отдельно:
         if(id === 'trash') renderTrash();
+    if(id === 'logs') renderLogs();
     }
 
-    function renderAll() { renderReminders(); renderRequests(); renderDeals(); renderCompanies(); renderPartners(); renderTracking(); updateCounters(); updateDatalists(); }
+    function renderAll() { 
+    renderReminders(); 
+    renderRequests(); 
+    renderDeals(); 
+    renderCompanies(); 
+    renderPartners(); 
+    renderTracking(); 
+    if(sessionStorage.getItem('crm_user') === 'admin') renderLogs(); // Добавь это
+    updateCounters(); 
+    updateDatalists(); 
+}
 function updateDatalists() { 
         const dl = document.getElementById('allEntitiesData');
         if (dl) {
@@ -2417,7 +2455,9 @@ function updateAdminUI() {
     const user = sessionStorage.getItem('crm_user');
     if (user === 'admin') {
         const trashBtn = document.getElementById('btn-trash');
+        const logsBtn = document.getElementById('btn-logs'); // Добавили эту строку
         if (trashBtn) trashBtn.style.display = 'flex';
+        if (logsBtn) logsBtn.style.display = 'flex'; // И эту
     }
 }
 
@@ -2560,6 +2600,26 @@ function getArrayBySheet(sh) {
 const debouncedRenderDeals = debounce(() => renderDeals());
 const debouncedRenderCompanies = debounce(() => renderCompanies());
 const debouncedRenderRequests = debounce(() => renderRequests());
+
+    function renderLogs() {
+    const s = document.getElementById('searchLogs').value.toLowerCase();
+    
+    // Берем массив логов, переворачиваем (свежие сверху) и фильтруем
+    let html = crmLogs.slice().reverse().filter(log => {
+        const rowText = JSON.stringify(log).toLowerCase();
+        return rowText.includes(s);
+    }).slice(0, 100).map(log => {
+        return `<tr>
+            <td>${dtFmt(log[0])}</td>
+            <td><b>${log[1]}</b></td>
+            <td style="color:var(--primary)">${log[2]}</td>
+            <td>${log[3]}</td>
+            <td style="text-align:left; padding-left:15px;">${log[4]} <small style="color:#999">(ID: ${log[5]})</small></td>
+        </tr>`;
+    }).join('');
+
+    document.getElementById('logsTableBody').innerHTML = html || '<tr><td colspan="5">Событий не найдено</td></tr>';
+}
     
 </script>
     <div id="notification-container"></div>
