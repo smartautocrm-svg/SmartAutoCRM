@@ -833,12 +833,14 @@ function forInput(v) {
         requests: 30, 
         deals: 30, 
         companies: 30, 
-        partners: 30 
+        partners: 30, 
+        logs: 100
     };
 
     // Функция, которая срабатывает при нажатии на кнопку "Загрузить еще"
     function loadMore(type) {
-        listLimits[type] += 30; // Увеличиваем лимит на 30
+       if (type === 'logs') listLimits[type] += 100; // Логи грузим пачками по 100
+        else listLimits[type] += 30; 
         
         // Перерисовываем нужную вкладку
         if (type === 'calls') renderReminders();
@@ -2619,14 +2621,19 @@ const debouncedRenderDeals = debounce(() => renderDeals());
 const debouncedRenderCompanies = debounce(() => renderCompanies());
 const debouncedRenderRequests = debounce(() => renderRequests());
 
-    function renderLogs() {
+function renderLogs() {
     const s = document.getElementById('searchLogs').value.toLowerCase();
     
-    // Берем массив логов, переворачиваем (свежие сверху) и фильтруем
-    let html = crmLogs.slice().reverse().filter(log => {
+    // 1. Сначала фильтруем ВСЮ историю по поиску
+    const filtered = crmLogs.slice().reverse().filter(log => {
         const rowText = JSON.stringify(log).toLowerCase();
         return rowText.includes(s);
-    }).slice(0, 100).map(log => {
+    });
+
+    const totalFound = filtered.length;
+    
+    // 2. Отрезаем кусок согласно текущему лимиту (100, 200, 300...)
+    let html = filtered.slice(0, listLimits.logs).map(log => {
         return `<tr>
             <td>${dtFmt(log[0])}</td>
             <td><b>${log[1]}</b></td>
@@ -2635,6 +2642,13 @@ const debouncedRenderRequests = debounce(() => renderRequests());
             <td style="text-align:left; padding-left:15px;">${log[4]} <small style="color:#999">(ID: ${log[5]})</small></td>
         </tr>`;
     }).join('');
+
+    // 3. Если логов в базе больше, чем мы показали — выводим кнопку вниз ТАБЛИЦЫ
+    if (totalFound > listLimits.logs) {
+        html += `<tr><td colspan="5" style="background:#f8f9fa; padding:15px;">
+            <button class="btn-load-more" onclick="loadMore('logs')">Загрузить более старые события (еще ${totalFound - listLimits.logs})</button>
+        </td></tr>`;
+    }
 
     document.getElementById('logsTableBody').innerHTML = html || '<tr><td colspan="5">Событий не найдено</td></tr>';
 }
