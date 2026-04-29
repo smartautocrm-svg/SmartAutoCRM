@@ -495,17 +495,48 @@
     <div class="top-section">
         <div class="card">
             <h3>Новый партнер</h3>
-            <div class="input-row"><input type="text" id="partName" placeholder="Название *"><select id="partStatus"><option value="агент">🤝 Агент</option><option value="перевозчик">🚛 Перевозчик</option><option value="брокер">📑 Брокер</option></select><input type="text" id="partCountry" placeholder="Страна"><input type="text" id="partContact" placeholder="Контакт"><input type="text" id="partPhone" placeholder="Телефон"><input type="email" id="partEmail" placeholder="Email"><input type="text" id="partWeb" placeholder="Сайт"><textarea id="partDesc" style="grid-column: span 2;" placeholder="Описание..."></textarea></div>
-            <button class="main" style="background:#607d8b;" onclick="addPartner()">Добавить партнера</button>
+            <div class="input-row">
+                <input type="text" id="partName" placeholder="Название компании *">
+                <select id="partStatus">
+                    <option value="агент">🤝 Агент</option>
+                    <option value="перевозчик">🚛 Перевозчик</option>
+                    <option value="брокер">📑 Брокер</option>
+                </select>
+                <input type="text" id="partCountry" placeholder="Страна">
+                <input type="text" id="partWeb" placeholder="Сайт">
+                <textarea id="partDesc" style="grid-column: span 2;" placeholder="Описание..."></textarea>
+            </div>
+
+            <div id="partContactsContainer" style="margin-top: 10px; border: 1px solid #ddd; padding: 10px; border-radius: 4px; background: #fff;">
+                <label style="font-weight: bold; font-size: 11px; color: var(--primary);">КОНТАКТНЫЕ ЛИЦА:</label>
+                <div id="partContactsList">
+                    <!-- Первая строка по умолчанию -->
+                    <div class="contact-entry" style="display: flex; gap: 5px; margin-top: 5px;">
+                        <input type="text" placeholder="Имя" class="p-con-name">
+                        <input type="text" placeholder="Телефон" class="p-con-phone">
+                        <input type="email" placeholder="Email" class="p-con-email">
+                        <button type="button" onclick="this.parentElement.remove()" style="background:var(--danger); color:white; border:none; border-radius:3px; cursor:pointer; width:25px;">×</button>
+                    </div>
+                </div>
+                <button type="button" onclick="addContactRow('partContactsList')" style="margin-top: 8px; font-size: 10px; cursor: pointer; padding: 4px 8px;">+ Добавить контакт</button>
+            </div>
+            
+            <button class="main" style="background:#607d8b; margin-top: 10px;" onclick="addPartner()">Добавить партнера</button>
         </div>
-        <div class="card" id="preview-partners"></div>
+        <!-- КАРТОЧКА ПРЕВЬЮ (была пропущена) -->
+        <div class="card" id="preview-partners">
+            <div style="color:#ccc; text-align:center; margin-top:50px;">Выберите партнера для просмотра</div>
+        </div>
     </div>
+
+    <!-- НИЖНЯЯ СЕКЦИЯ СО СПИСКОМ (была пропущена) -->
     <div class="bottom-section">
-        <div class="controls-bar"><input type="text" id="searchPart" placeholder="Поиск..." oninput="renderPartners()"></div>
+        <div class="controls-bar">
+            <input type="text" id="searchPart" placeholder="Поиск по названию..." oninput="renderPartners()">
+        </div>
         <div class="scroll-list" id="partnersList"></div>
     </div>
 </div>
-
 <!-- ВКЛАДКА ОТЧЕТ -->
 <div id="report" class="content">
     <div class="scroll-list" style="background:white; padding:20px;">
@@ -739,6 +770,20 @@ function forInput(v) {
     const d = new Date(v); 
     if (isNaN(d.getTime())) return ""; 
     return d.toISOString().slice(0, 16); 
+}
+    function addContactRow(containerId, data = {name: '', phone: '', email: ''}) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    const div = document.createElement('div');
+    div.className = 'contact-entry';
+    div.style = "display: flex; gap: 5px; margin-top: 5px;";
+    div.innerHTML = `
+        <input type="text" placeholder="Имя" class="p-con-name" value="${data.name || ''}" style="flex: 1;">
+        <input type="text" placeholder="Телефон" class="p-con-phone" value="${data.phone || ''}" style="flex: 1;">
+        <input type="email" placeholder="Email" class="p-con-email" value="${data.email || ''}" style="flex: 1;">
+        <button type="button" onclick="this.parentElement.remove()" style="background:var(--danger); color:white; border:none; border-radius:3px; cursor:pointer; width:25px; height:26px; flex-shrink: 0;">×</button>
+    `;
+    container.appendChild(div);
 }
     
     let reminders = [], companies = [], partners = [], requests = [], managers = [], deals = [], tracking = [];
@@ -1231,19 +1276,44 @@ function showCompanyPreview(n) {
 }
 
     function showPartnerPreview(id) {
-        const p = partners.find(x => x.id == id); if(!p) return;
-        document.getElementById('preview-partners').innerHTML = `
-        <h3>${p.name}</h3>
-        <div class="preview-grid">
-            <div class="preview-box"><label>Тип</label><span>${p.status.toUpperCase()}</span></div>
-            <div class="preview-box"><label>Страна</label><span>${p.country || '-'}</span></div>
-            <div class="preview-box"><label>Контакт</label><span>${p.contact || '-'}</span></div>
-            <div class="preview-box"><label>Телефон</label><span>${p.phone || '-'}</span></div>
-            <div class="preview-box"><label>Email</label><span>${p.email || '-'}</span></div>
-            <div class="preview-box"><label>Сайт</label><span>${p.website || '-'}</span></div>
-            <div class="preview-box" style="grid-column:span 2;"><label>Описание</label><div style="font-size:11px; white-space:pre-wrap; background:#f9f9f9; padding:5px;">${p.desc || '-'}</div></div>
-        </div>`;
+    const p = partners.find(x => x.id == id);
+    if(!p) return;
+
+    let contactsHtml = "";
+    try {
+        // Проверяем, является ли поле JSON массивом или старым форматом строки
+        if (p.contact.startsWith('[')) {
+            const contacts = JSON.parse(p.contact);
+            contactsHtml = contacts.map(c => `
+                <div style="border-bottom: 1px solid #eee; padding: 5px 0;">
+                    <b>${c.name || '---'}</b><br>
+                    📞 ${c.phone || '---'} | ✉️ ${c.email || '---'}
+                </div>
+            `).join('');
+        } else {
+            // Поддержка старых данных (если раньше там было просто имя)
+            contactsHtml = `<div><b>${p.contact}</b><br>📞 ${p.phone} | ✉️ ${p.email}</div>`;
+        }
+    } catch(e) {
+        contactsHtml = `<div><b>${p.contact}</b></div>`;
     }
+
+    document.getElementById('preview-partners').innerHTML = `
+    <h3>${p.name}</h3>
+    <div class="preview-grid">
+        <div class="preview-box"><label>Тип</label><span>${p.status.toUpperCase()}</span></div>
+        <div class="preview-box"><label>Страна</label><span>${p.country || '-'}</span></div>
+        <div class="preview-box" style="grid-column:span 2;"><label>Контакты</label>
+            <div style="background:#fcfcfc; border:1px solid #eee; padding:8px; border-radius:4px; max-height:150px; overflow-y:auto;">
+                ${contactsHtml}
+            </div>
+        </div>
+        <div class="preview-box"><label>Сайт</label><span>${p.website || '-'}</span></div>
+        <div class="preview-box" style="grid-column:span 2;"><label>Описание</label>
+            <div style="font-size:11px; white-space:pre-wrap; background:#f9f9f9; padding:5px;">${p.desc || '-'}</div>
+        </div>
+    </div>`;
+}
 
 function renderReminders() {
     const s = document.getElementById('searchCallComp').value.toLowerCase(), 
@@ -1649,8 +1719,61 @@ function renderCompanies() {
             
             setTimeout(() => checkTransportFields('eDeal'), 50);
         } else if (type === 'partner') {
-            const p = partners.find(x => x.id == id); title.innerText = "Правка партнера";
-            f.innerHTML = `<input type="text" id="ePartName" value="${p.name}"><select id="ePartStatus"><option value="агент" ${p.status==='агент'?'selected':''}>Агент</option><option value="перевозчик" ${p.status==='перевозчик'?'selected':''}>Перевозчик</option><option value="брокер" ${p.status==='брокер'?'selected':''}>Брокер</option></select><input type="text" id="ePartCountry" value="${p.country}"><input type="text" id="partPhone" value="${p.phone}"><input type="email" id="ePartEmail" value="${p.email}"><input type="text" id="ePartWeb" value="${p.website}"><textarea id="ePartDesc" style="grid-column: span 2;">${p.desc}</textarea>`;
+    const p = partners.find(x => x.id == id);
+    title.innerText = "Правка партнера";
+
+    // 1. Пытаемся превратить строку в массив контактов
+    let currentContacts = [];
+    try {
+        // Если данные уже в формате JSON (начинаются с [ )
+        if (p.contact && p.contact.startsWith('[')) {
+            currentContacts = JSON.parse(p.contact);
+        } else {
+            // Если это старые данные (просто текст), создаем из них один контакт
+            currentContacts = [{ 
+                name: p.contact || '', 
+                phone: p.phone || '', 
+                email: p.email || '' 
+            }];
+        }
+    } catch(e) {
+        console.error("Ошибка парсинга контактов", e);
+        currentContacts = [];
+    }
+
+    // 2. Формируем структуру полей в модалке
+    f.innerHTML = `
+        <input type="text" id="ePartName" value="${p.name}" placeholder="Название компании">
+        <select id="ePartStatus">
+            <option value="агент" ${p.status==='агент'?'selected':''}>Агент</option>
+            <option value="перевозчик" ${p.status==='перевозчик'?'selected':''}>Перевозчик</option>
+            <option value="брокер" ${p.status==='брокер'?'selected':''}>Брокер</option>
+        </select>
+        <input type="text" id="ePartCountry" value="${p.country || ''}" placeholder="Страна">
+        <input type="text" id="ePartWeb" value="${p.website || ''}" placeholder="Сайт">
+        
+        <!-- Контейнер для динамических контактов -->
+        <div id="ePartContactsContainer" style="grid-column: span 2; border: 1px solid #eee; padding: 10px; border-radius: 4px; background: #fdfdfd; margin-top:5px;">
+            <label style="font-size:10px; font-weight:bold; color:var(--primary); display:block; margin-bottom:5px;">
+                КОНТАКТНЫЕ ЛИЦА:
+            </label>
+            <div id="ePartContactsList"></div>
+            <button type="button" onclick="addContactRow('ePartContactsList')" 
+                style="margin-top: 8px; font-size: 10px; padding: 4px 8px; cursor: pointer;">
+                + Добавить контакт
+            </button>
+        </div>
+
+        <textarea id="ePartDesc" style="grid-column: span 2;" placeholder="Описание...">${p.desc || ''}</textarea>
+    `;
+
+    // 3. Важный момент: Отрисовываем каждую строчку контакта через нашу новую функцию
+    if (currentContacts.length > 0) {
+        currentContacts.forEach(c => addContactRow('ePartContactsList', c));
+    } else {
+        // Если контактов совсем нет, добавим одну пустую строку
+        addContactRow('ePartContactsList');
+    }
         } else if (type === 'tracking') {
             const t = tracking.find(x => x.id == id);
             title.innerText = "Правка трекинга";
@@ -1745,17 +1868,45 @@ async function saveEdit() {
         updatedItem = deals[i];
         renderDeals();
     } else if (type === 'partner') {
-        sheetName = 'partners';
-        const i = partners.findIndex(x => x.id == id);
-        partners[i].name = document.getElementById('ePartName').value;
-        partners[i].status = document.getElementById('ePartStatus').value;
-        partners[i].country = document.getElementById('ePartCountry').value;
-        partners[i].contact = document.getElementById('partPhone').value;
-        partners[i].email = document.getElementById('ePartEmail').value;
-        partners[i].website = document.getElementById('ePartWeb').value;
-        partners[i].desc = document.getElementById('ePartDesc').value;
-        updatedItem = partners[i];
-        renderPartners();
+    sheetName = 'partners';
+    const i = partners.findIndex(x => x.id == id);
+    
+    // 1. Сохраняем основные поля
+    partners[i].name = document.getElementById('ePartName').value;
+    partners[i].status = document.getElementById('ePartStatus').value;
+    partners[i].country = document.getElementById('ePartCountry').value;
+    partners[i].website = document.getElementById('ePartWeb').value;
+    partners[i].desc = document.getElementById('ePartDesc').value;
+
+    // 2. Собираем все динамические контакты из модалки
+    const rows = document.querySelectorAll('#ePartContactsList .contact-entry');
+    const updatedContacts = [];
+    
+    rows.forEach(r => {
+        const nameVal = r.querySelector('.p-con-name').value.trim();
+        const phoneVal = r.querySelector('.p-con-phone').value.trim();
+        const emailVal = r.querySelector('.p-con-email').value.trim();
+        
+        // Добавляем только если хотя бы одно поле заполнено
+        if (nameVal || phoneVal || emailVal) {
+            updatedContacts.push({
+                name: nameVal,
+                phone: phoneVal,
+                email: emailVal
+            });
+        }
+    });
+
+    // 3. Превращаем массив объектов в JSON-строку для хранения в одной ячейке
+    partners[i].contact = JSON.stringify(updatedContacts);
+    
+    // 4. Очищаем старые поля (так как теперь всё в JSON), 
+    // чтобы в таблице не было путаницы
+    partners[i].phone = "";
+    partners[i].email = "";
+
+    updatedItem = partners[i];
+    renderPartners();
     } else if (type === 'tracking') {
         sheetName = 'tracking';
         const i = tracking.findIndex(x => x.id == id);
@@ -1923,7 +2074,42 @@ isPrivateDeal: document.getElementById('dealPrivacy').value === 'true'
     // Очистка полей
     ['compName', 'compProduct', 'compCity', 'compContact', 'compPhone', 'compEmail', 'compWebsite', 'compImp', 'compExp'].forEach(i => document.getElementById(i).value = '');
 }
-    async function addPartner() { const n = document.getElementById('partName').value; if(!n)return alert("Название?"); const newItem = { id: Date.now(), name: n, status: document.getElementById('partStatus').value, country: document.getElementById('partCountry').value, contact: document.getElementById('partContact').value, phone: document.getElementById('partPhone').value, email: document.getElementById('partEmail').value, website: document.getElementById('partWeb').value, desc: document.getElementById('partDesc').value }; partners.push(newItem); renderPartners(); await sync('partners', partners, 'append'); ['partName', 'partCountry', 'partContact', 'partPhone', 'partEmail', 'partWeb', 'partDesc'].forEach(i=>document.getElementById(i).value=''); }
+   async function addPartner() {
+    const n = document.getElementById('partName').value;
+    if(!n) return alert("Введите название компании!");
+
+    // Собираем контакты
+    const contactRows = document.querySelectorAll('#partContactsList .contact-entry');
+    const contacts = [];
+    contactRows.forEach(row => {
+        contacts.push({
+            name: row.querySelector('.p-con-name').value,
+            phone: row.querySelector('.p-con-phone').value,
+            email: row.querySelector('.p-con-email').value
+        });
+    });
+
+    const newItem = { 
+        id: Date.now(), 
+        name: n, 
+        status: document.getElementById('partStatus').value, 
+        country: document.getElementById('partCountry').value, 
+        contact: JSON.stringify(contacts), // Сохраняем как JSON строку
+        phone: "", // Старые поля оставляем пустыми
+        email: "", 
+        website: document.getElementById('partWeb').value, 
+        desc: document.getElementById('partDesc').value 
+    };
+
+    partners.push(newItem);
+    renderPartners();
+    await sync('partners', partners, 'append');
+
+    // Очистка
+    document.getElementById('partName').value = '';
+    document.getElementById('partContactsList').innerHTML = '';
+    addContactRow('partContactsList'); // Возвращаем одну пустую строку
+}
     async function addTracking() { const num = document.getElementById('trackNum').value, cargo = document.getElementById('trackCargo').value; if (!num || !cargo) return alert("Заполните Номер и Груз!"); const newItem = { id: Date.now(), num: num, cargo: cargo, weight: document.getElementById('trackWeight').value, vol: document.getElementById('trackVol').value, qty: document.getElementById('trackQty').value, pack: document.getElementById('trackPack').value, trans: document.getElementById('trackTrans').value, status: document.getElementById('trackStatus').value, manager: sessionStorage.getItem('crm_user'), sharedWith: document.getElementById('trackShare').value }; tracking.push(newItem); renderTracking(); await sync('tracking', tracking, 'append'); ['trackNum', 'trackCargo', 'trackWeight', 'trackVol', 'trackQty', 'trackShare'].forEach(i => document.getElementById(i).value = ''); }
 
     // --- СИСТЕМНЫЕ ФУНКЦИИ ---
