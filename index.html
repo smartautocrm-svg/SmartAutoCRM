@@ -302,7 +302,6 @@
     <button class="tab-btn" id="btn-tracking" onclick="openTab('tracking')">🛰️ Трекинг <span class="tab-counter" id="count-tracking">0</span></button>
     <button class="tab-btn" id="btn-profile" onclick="openTab('profile')">👤 Профиль</button>
     <button class="tab-btn" id="btn-trash" style="display:none;" onclick="openTab('trash')">🗑️ Корзина</button>
-    <button class="tab-btn" id="btn-logs" style="display:none;" onclick="openTab('logs')">📜 Логи</button>
     <div style="margin-left: auto; padding: 5px 10px; color: #999; font-size: 9px; text-align: right;">
         <span id="user-display" style="color:var(--primary); font-weight:bold;"></span><br>
         <span id="sync-status">Загрузка...</span> | <a href="#" onclick="logout()" style="color:var(--danger); text-decoration:none;">Выход</a>
@@ -495,35 +494,16 @@
 <div id="partners" class="content">
     <div class="top-section">
         <div class="card">
-    <h3>Новый партнер</h3>
-    <div class="input-row">
-        <input type="text" id="partName" placeholder="Название компании *">
-        <select id="partStatus">
-            <option value="агент">🤝 Агент</option>
-            <option value="перевозчик">🚛 Перевозчик</option>
-            <option value="брокер">📑 Брокер</option>
-        </select>
-        <input type="text" id="partCountry" placeholder="Страна">
-        <input type="text" id="partWeb" placeholder="Сайт">
-    </div>
-
-    <!-- КОНТЕЙНЕР ДЛЯ КОНТАКТОВ -->
-    <div id="partnerContactsWrapper" style="margin-top: 10px; border: 1px solid #eee; padding: 10px; border-radius: 4px; background: #fafafa;">
-        <label style="font-size: 10px; font-weight: bold; color: var(--primary); display: block; margin-bottom: 5px;">КОНТАКТНЫЕ ЛИЦА:</label>
-        <div id="partnerContactsList">
-            <!-- Первая строка всегда есть -->
-            <div class="contact-entry" style="display: grid; grid-template-columns: 1fr 1fr 1fr 30px; gap: 5px; margin-bottom: 5px;">
-                <input type="text" class="p-con-name" placeholder="Имя">
-                <input type="text" class="p-con-phone" placeholder="Телефон">
-                <input type="text" class="p-con-email" placeholder="Email">
-                <button type="button" style="background:none; border:none; color:var(--danger); cursor:pointer;" onclick="this.parentElement.remove()">×</button>
-            </div>
+            <h3>Новый партнер</h3>
+            <div class="input-row"><input type="text" id="partName" placeholder="Название *"><select id="partStatus"><option value="агент">🤝 Агент</option><option value="перевозчик">🚛 Перевозчик</option><option value="брокер">📑 Брокер</option></select><input type="text" id="partCountry" placeholder="Страна"><input type="text" id="partContact" placeholder="Контакт"><input type="text" id="partPhone" placeholder="Телефон"><input type="email" id="partEmail" placeholder="Email"><input type="text" id="partWeb" placeholder="Сайт"><textarea id="partDesc" style="grid-column: span 2;" placeholder="Описание..."></textarea></div>
+            <button class="main" style="background:#607d8b;" onclick="addPartner()">Добавить партнера</button>
         </div>
-        <button class="main" style="background:var(--primary); width:auto; padding:3px 10px; font-size:10px;" onclick="addPartnerContactRow()">+ Добавить еще контакт</button>
+        <div class="card" id="preview-partners"></div>
     </div>
-
-    <textarea id="partDesc" style="width:100%; margin-top:10px; height:60px;" placeholder="Общее описание..."></textarea>
-    <button class="main" style="background:#607d8b; margin-top:10px;" onclick="addPartner()">Добавить партнера</button>
+    <div class="bottom-section">
+        <div class="controls-bar"><input type="text" id="searchPart" placeholder="Поиск..." oninput="renderPartners()"></div>
+        <div class="scroll-list" id="partnersList"></div>
+    </div>
 </div>
 
 <!-- ВКЛАДКА ОТЧЕТ -->
@@ -692,28 +672,6 @@
     </div>
     <div class="scroll-list" id="trashList"></div>
 </div>
-    
-    <div id="logs" class="content">
-    <div class="controls-bar">
-        <h3 style="margin:0; color:var(--primary);">📜 ИСТОРИЯ ДЕЙСТВИЙ (ADMIN ONLY)</h3>
-        <input type="text" id="searchLogs" placeholder="Поиск по юзеру или объекту..." oninput="renderLogs()" style="max-width:250px;">
-        <button onclick="loadCloudData()" style="font-size:10px;">Обновить данные</button>
-    </div>
-    <div class="scroll-list">
-        <table class="report-table" style="font-size:11px;">
-            <thead>
-                <tr>
-                    <th>Время</th>
-                    <th>Кто</th>
-                    <th>Действие</th>
-                    <th>Тип</th>
-                    <th>Объект</th>
-                </tr>
-            </thead>
-            <tbody id="logsTableBody"></tbody>
-        </table>
-    </div>
-</div>
 
 <!-- МОДАЛКИ -->
 <div id="editModal" class="modal-overlay" onclick="if(event.target===this) this.style.display='none'"><div class="modal-content" style="width: 550px;"><h3 id="editModalTitle">Редактирование</h3><div id="editFields" class="input-row"></div><input type="hidden" id="editId"><input type="hidden" id="editType"><button class="main" style="background:var(--success); margin-top:15px;" onclick="saveEdit()">Сохранить</button></div></div>
@@ -783,7 +741,7 @@ function forInput(v) {
     return d.toISOString().slice(0, 16); 
 }
     
-    let reminders = [], companies = [], partners = [], requests = [], managers = [], deals = [], tracking = [], logs = [];
+    let reminders = [], companies = [], partners = [], requests = [], managers = [], deals = [], tracking = [];
     let listLimits = { 
         calls: 30, 
         requests: 30, 
@@ -1001,28 +959,11 @@ async function loadCloudData() {
             isDeleted: x[6] === true || x[6] === 'true'
         }));
 
-// 6. Партнеры (ИСПРАВЛЕНО: добавлены закрывающие скобки }));)
+        // 6. Партнеры (isDeleted - индекс 9)
         partners = (d.partners || []).map(x => ({ 
-            id: x[0], 
-            name: String(x[1]||""), 
-            status: x[2], 
-            country: x[3], 
-            contact: x[4], 
-            phone: x[5], 
-            email: x[6], 
-            website: x[7], 
-            desc: x[8],
+            id: x[0], name: String(x[1]||""), status: x[2], country: x[3], contact: x[4], 
+            phone: x[5], email: x[6], website: x[7], desc: x[8],
             isDeleted: x[9] === true || x[9] === 'true'
-        })); // <-- Вот эти скобки были пропущены в твоем коде
-
-        // 7. Логи
-        logs = (d.logs || []).map(x => ({ 
-            date: x[0], 
-            user: x[1], 
-            action: x[2], 
-            type: x[3], 
-            name: x[4], 
-            id: x[5] 
         }));
         renderAll(); 
         document.getElementById('sync-status').innerText = "Обновлено: " + new Date().toLocaleTimeString();
@@ -1055,10 +996,8 @@ async function loadCloudData() {
   // Обновленная функция синхронизации
 async function sync(sh, dt, mode = 'saveAll') {
     showLoader(true); 
-    let payload = { 
-        sheet: sh,
-        user: sessionStorage.getItem('crm_user') // ДОБАВЛЕНО: берем имя юзера из сессии
-    };
+    let payload = { sheet: sh };
+
     if (mode === 'append') {
         payload.action = 'append';
         payload.rowData = formatRow(sh, dt[dt.length - 1]);
@@ -1291,58 +1230,20 @@ function showCompanyPreview(n) {
     </div>`;
 }
 
-function showPartnerPreview(id) {
-    const p = partners.find(x => x.id == id); if(!p) return;
-    
-    let contactsHtml = "";
-    try {
-        // Пробуем расшифровать список контактов из JSON
-        const contacts = JSON.parse(p.contact);
-        if (Array.isArray(contacts)) {
-            contactsHtml = contacts.map(c => `
-                <div style="background:#f0f7ff; padding:8px; border-radius:4px; margin-bottom:5px; border:1px solid #d2e3fc;">
-                    <div style="font-weight:bold; color:var(--primary);">${c.name || 'Контактное лицо'}</div>
-                    <div style="font-size:10px;">📞 ${c.phone || '-'}</div>
-                    <div style="font-size:10px;">📧 ${c.email || '-'}</div>
-                </div>
-            `).join('');
-        } else { throw new Error(); }
-    } catch(e) {
-        // Если данные в старом формате (просто текст), показываем как раньше
-        contactsHtml = `
-            <div style="background:#f9f9f9; padding:8px; border-radius:4px;">
-                <div style="font-weight:bold;">${p.contact || '-'}</div>
-                <div style="font-size:10px;">📞 ${p.phone || '-'}</div>
-                <div style="font-size:10px;">📧 ${p.email || '-'}</div>
-            </div>
-        `;
+    function showPartnerPreview(id) {
+        const p = partners.find(x => x.id == id); if(!p) return;
+        document.getElementById('preview-partners').innerHTML = `
+        <h3>${p.name}</h3>
+        <div class="preview-grid">
+            <div class="preview-box"><label>Тип</label><span>${p.status.toUpperCase()}</span></div>
+            <div class="preview-box"><label>Страна</label><span>${p.country || '-'}</span></div>
+            <div class="preview-box"><label>Контакт</label><span>${p.contact || '-'}</span></div>
+            <div class="preview-box"><label>Телефон</label><span>${p.phone || '-'}</span></div>
+            <div class="preview-box"><label>Email</label><span>${p.email || '-'}</span></div>
+            <div class="preview-box"><label>Сайт</label><span>${p.website || '-'}</span></div>
+            <div class="preview-box" style="grid-column:span 2;"><label>Описание</label><div style="font-size:11px; white-space:pre-wrap; background:#f9f9f9; padding:5px;">${p.desc || '-'}</div></div>
+        </div>`;
     }
-
-    document.getElementById('preview-partners').innerHTML = `
-    <h3>${p.name}</h3>
-    <div class="preview-grid">
-        <div class="preview-box"><label>Тип</label><span>${p.status.toUpperCase()}</span></div>
-        <div class="preview-box"><label>Страна</label><span>${p.country || '-'}</span></div>
-        <div class="preview-box" style="grid-column:span 2;"><label>Контакты</label>
-            <div style="margin-top:5px;">${contactsHtml}</div>
-        </div>
-        <div class="preview-box" style="grid-column:span 2;"><label>Сайт</label><span>${p.website || '-'}</span></div>
-        <div class="preview-box" style="grid-column:span 2;"><label>Описание</label><div style="font-size:11px; white-space:pre-wrap;">${p.desc || '-'}</div></div>
-    </div>`;
-}
-
-    document.getElementById('preview-partners').innerHTML = `
-    <h3>${p.name}</h3>
-    <div class="preview-grid">
-        <div class="preview-box"><label>Тип</label><span>${p.status.toUpperCase()}</span></div>
-        <div class="preview-box"><label>Страна</label><span>${p.country || '-'}</span></div>
-        <div class="preview-box" style="grid-column:span 2;"><label>Контакты</label>
-            <div style="margin-top:5px;">${contactsHtml}</div>
-        </div>
-        <div class="preview-box" style="grid-column:span 2;"><label>Сайт</label><span>${p.website || '-'}</span></div>
-        <div class="preview-box" style="grid-column:span 2;"><label>Описание</label><div style="font-size:11px; white-space:pre-wrap;">${p.desc || '-'}</div></div>
-    </div>`;
-}
 
 function renderReminders() {
     const s = document.getElementById('searchCallComp').value.toLowerCase(), 
@@ -2022,91 +1923,7 @@ isPrivateDeal: document.getElementById('dealPrivacy').value === 'true'
     // Очистка полей
     ['compName', 'compProduct', 'compCity', 'compContact', 'compPhone', 'compEmail', 'compWebsite', 'compImp', 'compExp'].forEach(i => document.getElementById(i).value = '');
 }
-    function addPartnerContactRow(data = {name: '', phone: '', email: ''}) {
-    // Находим контейнер, куда будем вставлять строки
-    const container = document.getElementById('partnerContactsList');
-    
-    // Создаем новый элемент DIV
-    const div = document.createElement('div');
-    div.className = 'contact-entry'; // Присваиваем класс для поиска
-    
-    // Задаем стиль сетки (3 колонки + кнопка удаления)
-    div.style = "display: grid; grid-template-columns: 1fr 1fr 1fr 30px; gap: 5px; margin-bottom: 5px;";
-    
-    // Вставляем HTML внутренности строки
-    div.innerHTML = `
-        <input type="text" class="p-con-name" placeholder="Имя" value="${data.name}">
-        <input type="text" class="p-con-phone" placeholder="Телефон" value="${data.phone}">
-        <input type="text" class="p-con-email" placeholder="Email" value="${data.email}">
-        <button type="button" 
-                style="background:none; border:none; color:var(--danger); cursor:pointer; font-size:16px; font-weight:bold;" 
-                onclick="this.parentElement.remove()">×</button>
-    `;
-    
-    // Добавляем созданную строку в контейнер на странице
-    container.appendChild(div);
-}
-
-/**
- * 2. Эта функция пробегает по всем созданным строкам на экране
- * и собирает из них данные в один список (массив объектов).
- */
-function getPartnerContactsFromUI() {
-    // Находим все элементы с классом .contact-entry
-    const rows = document.querySelectorAll('#partnerContactsList .contact-entry');
-    let contacts = [];
-    
-    rows.forEach(row => {
-        // Из каждой строки вытаскиваем значения полей
-        const name = row.querySelector('.p-con-name').value.trim();
-        const phone = row.querySelector('.p-con-phone').value.trim();
-        const email = row.querySelector('.p-con-email').value.trim();
-        
-        // Если хотя бы одно поле заполнено — сохраняем этот контакт
-        if (name || phone || email) {
-            contacts.push({ 
-                name: name, 
-                phone: phone, 
-                email: email 
-            });
-        }
-    });
-    
-    return contacts; // Возвращаем массив типа [{name:'..', phone:'..'}, {...}]
-}
-    async function addPartner() {
-    const n = document.getElementById('partName').value;
-    if(!n) return alert("Название компании обязательно!");
-
-    // Собираем контакты
-    const contacts = getPartnerContactsFromUI();
-
-    const newItem = { 
-        id: Date.now(), 
-        name: n, 
-        status: document.getElementById('partStatus').value, 
-        country: document.getElementById('partCountry').value, 
-        // Храним весь массив контактов в виде JSON в поле contact
-        contact: JSON.stringify(contacts), 
-        phone: contacts.length > 0 ? contacts[0].phone : "", // Для совместимости берем первый телефон
-        email: contacts.length > 0 ? contacts[0].email : "", // Для совместимости берем первый email
-        website: document.getElementById('partWeb').value, 
-        desc: document.getElementById('partDesc').value,
-        isDeleted: false
-    };
-
-    partners.push(newItem); 
-    renderPartners(); 
-    await sync('partners', partners, 'append'); 
-
-    // Очистка
-    document.getElementById('partName').value = '';
-    document.getElementById('partCountry').value = '';
-    document.getElementById('partWeb').value = '';
-    document.getElementById('partDesc').value = '';
-    document.getElementById('partnerContactsList').innerHTML = '';
-    addPartnerContactRow(); // Возвращаем одну пустую строку
-}
+    async function addPartner() { const n = document.getElementById('partName').value; if(!n)return alert("Название?"); const newItem = { id: Date.now(), name: n, status: document.getElementById('partStatus').value, country: document.getElementById('partCountry').value, contact: document.getElementById('partContact').value, phone: document.getElementById('partPhone').value, email: document.getElementById('partEmail').value, website: document.getElementById('partWeb').value, desc: document.getElementById('partDesc').value }; partners.push(newItem); renderPartners(); await sync('partners', partners, 'append'); ['partName', 'partCountry', 'partContact', 'partPhone', 'partEmail', 'partWeb', 'partDesc'].forEach(i=>document.getElementById(i).value=''); }
     async function addTracking() { const num = document.getElementById('trackNum').value, cargo = document.getElementById('trackCargo').value; if (!num || !cargo) return alert("Заполните Номер и Груз!"); const newItem = { id: Date.now(), num: num, cargo: cargo, weight: document.getElementById('trackWeight').value, vol: document.getElementById('trackVol').value, qty: document.getElementById('trackQty').value, pack: document.getElementById('trackPack').value, trans: document.getElementById('trackTrans').value, status: document.getElementById('trackStatus').value, manager: sessionStorage.getItem('crm_user'), sharedWith: document.getElementById('trackShare').value }; tracking.push(newItem); renderTracking(); await sync('tracking', tracking, 'append'); ['trackNum', 'trackCargo', 'trackWeight', 'trackVol', 'trackQty', 'trackShare'].forEach(i => document.getElementById(i).value = ''); }
 
     // --- СИСТЕМНЫЕ ФУНКЦИИ ---
@@ -2183,7 +2000,6 @@ function openTab(id) {
         }
         // Вынесли проверку корзины отдельно:
         if(id === 'trash') renderTrash();
-    if(id === 'logs') renderLogs();
     }
 
     function renderAll() { renderReminders(); renderRequests(); renderDeals(); renderCompanies(); renderPartners(); renderTracking(); updateCounters(); updateDatalists(); }
@@ -2393,42 +2209,9 @@ function updateAdminUI() {
     if (user === 'admin') {
         const trashBtn = document.getElementById('btn-trash');
         if (trashBtn) trashBtn.style.display = 'flex';
-        // Показать кнопку логов в меню
-const logsBtn = document.getElementById('btn-logs');
-if (logsBtn) logsBtn.style.display = 'flex';
     }
 }
-function renderLogs() {
-    const s = document.getElementById('searchLogs').value.toLowerCase();
-    const tbody = document.getElementById('logsTableBody');
-    
-    // Фильтруем логи по пользователю, действию или названию объекта
-    let f = logs.filter(l => 
-        String(l.user || "").toLowerCase().includes(s) || 
-        String(l.name || "").toLowerCase().includes(s) || 
-        String(l.action || "").toLowerCase().includes(s) ||
-        String(l.type || "").toLowerCase().includes(s)
-    );
 
-    // Сортируем: самые новые сверху и берем последние 200 записей
-    const sortedLogs = f.reverse().slice(0, 200);
-
-    tbody.innerHTML = sortedLogs.map(l => `
-        <tr>
-            <td style="color:#888; font-size:10px;">${dtFmt(l.date)}</td>
-            <td style="color:var(--primary); font-weight:bold;">${l.user}</td>
-            <td style="font-weight:500;">${l.action}</td>
-            <td><span style="background:#eee; padding:1px 4px; border-radius:3px; font-size:9px;">${l.type}</span></td>
-            <td style="text-align:left; padding-left:10px;">
-                ${l.name} <small style="color:#bbb;">(ID:${l.id})</small>
-            </td>
-        </tr>
-    `).join('');
-
-    if (sortedLogs.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" style="padding:20px; color:#999;">История действий пуста или ничего не найдено</td></tr>`;
-    }
-}
 // 2. Отображение удаленных объектов в корзине
 function renderTrash() {
     const type = document.getElementById('trashType').value;
