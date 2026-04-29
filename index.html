@@ -716,7 +716,7 @@
             <option value="reminders">📞 Активности</option>
             <option value="tracking">🛰️ Трекинг</option>
         </select>
-        <div style="margin-left:auto; font-size:11px; color:#666;">Здесь можно восстановить данные или удалить их навсегда</div>
+        <div style="margin-left:auto; font-size:11px; color:#666;">Показано: <span id="logsShownCount">0</span> из <span id="logsTotalCount">0</span></div>
     </div>
     <div class="scroll-list" id="trashList"></div>
 </div>
@@ -2624,16 +2624,25 @@ const debouncedRenderRequests = debounce(() => renderRequests());
 function renderLogs() {
     const s = document.getElementById('searchLogs').value.toLowerCase();
     
-    // 1. Сначала фильтруем ВСЮ историю по поиску
+    // 1. Фильтруем все логи из базы по поиску
     const filtered = crmLogs.slice().reverse().filter(log => {
+        // Проверяем все поля лога на совпадение с поиском
         const rowText = JSON.stringify(log).toLowerCase();
         return rowText.includes(s);
     });
 
     const totalFound = filtered.length;
-    
-    // 2. Отрезаем кусок согласно текущему лимиту (100, 200, 300...)
-    let html = filtered.slice(0, listLimits.logs).map(log => {
+    const currentLimit = listLimits.logs || 100; // на случай если лимит не определен
+
+    // 2. Берем только ту часть, которая входит в лимит
+    const logsToDisplay = filtered.slice(0, currentLimit);
+
+    // Обновляем счетчики в заголовке
+    document.getElementById('logsShownCount').innerText = logsToDisplay.length;
+    document.getElementById('logsTotalCount').innerText = totalFound;
+
+    // 3. Строим таблицу
+    let html = logsToDisplay.map(log => {
         return `<tr>
             <td>${dtFmt(log[0])}</td>
             <td><b>${log[1]}</b></td>
@@ -2643,14 +2652,19 @@ function renderLogs() {
         </tr>`;
     }).join('');
 
-    // 3. Если логов в базе больше, чем мы показали — выводим кнопку вниз ТАБЛИЦЫ
-    if (totalFound > listLimits.logs) {
-        html += `<tr><td colspan="5" style="background:#f8f9fa; padding:15px;">
-            <button class="btn-load-more" onclick="loadMore('logs')">Загрузить более старые события (еще ${totalFound - listLimits.logs})</button>
-        </td></tr>`;
+    // 4. ЛОГИКА КНОПКИ: Показываем её только если нашли больше, чем разрешает лимит
+    if (totalFound > currentLimit) {
+        html += `
+            <tr>
+                <td colspan="5" style="background:#f8f9fa; padding:20px; text-align:center;">
+                    <button class="btn-load-more" onclick="loadMore('logs')" style="width: 300px;">
+                        📥 Загрузить старые события (еще ${totalFound - currentLimit})
+                    </button>
+                </td>
+            </tr>`;
     }
 
-    document.getElementById('logsTableBody').innerHTML = html || '<tr><td colspan="5">Событий не найдено</td></tr>';
+    document.getElementById('logsTableBody').innerHTML = html || '<tr><td colspan="5" style="padding:50px; color:#999;">Событий не найдено</td></tr>';
 }
     
 </script>
