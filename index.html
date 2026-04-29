@@ -262,6 +262,7 @@
     <button class="tab-btn" id="btn-stats" onclick="openTab('stats')">📈 Статистика</button>
     <button class="tab-btn" id="btn-tracking" onclick="openTab('tracking')">🛰️ Трекинг <span class="tab-counter" id="count-tracking">0</span></button>
     <button class="tab-btn" id="btn-profile" onclick="openTab('profile')">👤 Профиль</button>
+    <button class="tab-btn" id="btn-trash" style="display:none;" onclick="openTab('trash')">🗑️ Корзина</button>
     <div style="margin-left: auto; padding: 5px 10px; color: #999; font-size: 9px; text-align: right;">
         <span id="user-display" style="color:var(--primary); font-weight:bold;"></span><br>
         <span id="sync-status">Загрузка...</span> | <a href="#" onclick="logout()" style="color:var(--danger); text-decoration:none;">Выход</a>
@@ -619,6 +620,20 @@
     </div>
 </div>
 
+    <div id="trash" class="content">
+    <div class="controls-bar">
+        <h3 style="margin:0; color:var(--danger);">🗑️ КОРЗИНА (ТОЛЬКО АДМИН)</h3>
+        <select id="trashType" onchange="renderTrash()">
+            <option value="companies">🏢 Компании</option>
+            <option value="deals">💰 Сделки</option>
+            <option value="requests">📦 Запросы</option>
+            <option value="reminders">📞 Активности</option>
+        </select>
+        <div style="margin-left:auto; font-size:11px; color:#666;">Здесь можно восстановить данные или удалить их навсегда</div>
+    </div>
+    <div class="scroll-list" id="trashList"></div>
+</div>
+
 <!-- МОДАЛКИ -->
 <div id="editModal" class="modal-overlay" onclick="if(event.target===this) this.style.display='none'"><div class="modal-content" style="width: 550px;"><h3 id="editModalTitle">Редактирование</h3><div id="editFields" class="input-row"></div><input type="hidden" id="editId"><input type="hidden" id="editType"><button class="main" style="background:var(--success); margin-top:15px;" onclick="saveEdit()">Сохранить</button></div></div>
 <div id="statsDetailModal" class="modal-overlay" onclick="if(event.target===this) this.style.display='none'"><div class="modal-content" style="width: 80%; max-width: 800px;"><h3>Детали сделок</h3><div id="statsDetailTableContainer" style="overflow-x: auto;"></div><button class="main" style="background:var(--cold); margin-top:15px;" onclick="document.getElementById('statsDetailModal').style.display='none'">Закрыть</button></div></div>
@@ -761,7 +776,7 @@ function forInput(v) {
         }
     }
 
-    async function startApp() {
+async function startApp() {
         const user = sessionStorage.getItem('crm_user');
         if (!user) {
             const re = localStorage.getItem('crm_rem_email'), rp = localStorage.getItem('crm_rem_pass');
@@ -770,10 +785,14 @@ function forInput(v) {
         }
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('user-display').innerText = user;
+        
         if (user === 'admin') { 
-    document.querySelectorAll('#admin-report-selector, #admin-stats-selector').forEach(el=>el.style.display='flex'); 
-    document.getElementById('adminDealManagerFilter').style.display = 'inline-block'; //
-}
+            document.querySelectorAll('#admin-report-selector, #admin-stats-selector').forEach(el=>el.style.display='flex'); 
+            document.getElementById('adminDealManagerFilter').style.display = 'inline-block';
+            
+            updateAdminUI(); // <--- ДОБАВЬ ЭТУ СТРОКУ ЗДЕСЬ
+        }
+        
         const currentYear = new Date().getFullYear();
         let yearHtml = `<option value="all">Все годы</option>`;
         for(let y = currentYear; y >= 2023; y--) { yearHtml += `<option value="${y}">${y} год</option>`; }
@@ -846,33 +865,65 @@ async function loadCloudData() {
         }
 
         // Загрузка массивов с защитой от пустых данных
-        companies = (d.companies || []).map(x => ({ id: x[0], name: String(x[1]||""), contact: String(x[2]||""), phone: String(x[3]||""), product: String(x[4]||""), city: String(x[5]||""), email: String(x[6]||""), import: String(x[7]||""), export: String(x[8]||""), status: x[9], createdAt: x[10], activatedAt: x[11], manager: String(x[12]||""), isPrivate: String(x[13]) === "true", sharedWith: String(x[14]||""), website: String(x[15]||"") }));
-        requests = (d.requests || []).map(x => ({ id: x[0], company: String(x[1]||""), cargo: String(x[2]||""), transport: String(x[3]||""), weight: x[4], vol: x[5], value: x[6], currency: x[7], load: String(x[8]||""), unload: String(x[9]||""), desc: String(x[10]||""), createdAt: x[11], status: x[12], comment: x[13], container: x[14], zip: x[15], manager: String(x[16]||""), contQty: x[17] }));
+        companies = (d.companies || []).map(x => ({ 
+            id: x[0], name: String(x[1]||""), contact: String(x[2]||""), phone: String(x[3]||""), 
+            product: String(x[4]||""), city: String(x[5]||""), email: String(x[6]||""), 
+            import: String(x[7]||""), export: String(x[8]||""), status: x[9], 
+            createdAt: x[10], activatedAt: x[11], manager: String(x[12]||""), 
+            isPrivate: String(x[13]) === "true", sharedWith: String(x[14]||""), 
+            website: String(x[15]||""),
+            isDeleted: x[16] === true || x[16] === 'true' 
+        }));
+
+        // 2. Запросы (isDeleted - индекс 18)
+        requests = (d.requests || []).map(x => ({ 
+            id: x[0], company: String(x[1]||""), cargo: String(x[2]||""), transport: String(x[3]||""), 
+            weight: x[4], vol: x[5], value: x[6], currency: x[7], load: String(x[8]||""), 
+            unload: String(x[9]||""), desc: String(x[10]||""), createdAt: x[11], status: x[12], 
+            comment: x[13], container: x[14], zip: x[15], manager: String(x[16]||""), 
+            contQty: x[17],
+            isDeleted: x[18] === true || x[18] === 'true'
+        }));
         
+        // 3. Сделки (isDeleted - индекс 31)
         deals = (d.deals || []).map(x => {
             let parsedFiles = [];
             try { if (x[25] && typeof x[25] === 'string' && x[25].trim() !== "") { parsedFiles = JSON.parse(x[25]); } } catch(e) {}
             return { 
-        id: x[0], num: String(x[1]||""), company: String(x[2]||""), cargo: String(x[3]||""), 
-        trans: String(x[4]||""), weight: x[5], vol: x[6], value: x[7], curr: x[8], 
-        load: x[9], zip: x[10], unload: x[11], info: x[12], manager: String(x[13]||""), 
-        createdAt: x[14], exp: Number(x[15]||0), inc: Number(x[16]||0), 
-        prof: Number(x[17]||0), container: x[18], sharedWith: x[19], 
-        status: x[20], type: x[21], contQty: x[22], blNum: x[23], awbNum: x[24], 
-        files: parsedFiles,
-        margin: x[26] || "0%",
-        stage: x[27] || "docs",
-        // НОВЫЕ ПОЛЯ:
-        isPaid: x[28] === true || x[28] === 'true', 
-        payDate: x[29] || "",
-                isPrivateDeal: x[30] === true || x[30] === 'true'
+                id: x[0], num: String(x[1]||""), company: String(x[2]||""), cargo: String(x[3]||""), 
+                trans: String(x[4]||""), weight: x[5], vol: x[6], value: x[7], curr: x[8], 
+                load: x[9], zip: x[10], unload: x[11], info: x[12], manager: String(x[13]||""), 
+                createdAt: x[14], exp: Number(x[15]||0), inc: Number(x[16]||0), 
+                prof: Number(x[17]||0), container: x[18], sharedWith: x[19], 
+                status: x[20], type: x[21], contQty: x[22], blNum: x[23], awbNum: x[24], 
+                files: parsedFiles, margin: x[26] || "0%", stage: x[27] || "docs",
+                isPaid: x[28] === true || x[28] === 'true', payDate: x[29] || "",
+                isPrivateDeal: x[30] === true || x[30] === 'true',
+                isDeleted: x[31] === true || x[31] === 'true'
             };
         });
 
-        tracking = (d.tracking || []).map(x => ({ id: x[0], num: String(x[1]||""), cargo: String(x[2]||""), weight: x[3], vol: x[4], qty: x[5], pack: x[6], trans: x[7], status: x[8], manager: x[9], sharedWith: x[10] }));
-        reminders = (d.reminders || []).map(x => ({ id: x[0], name: String(x[1]||""), date: x[2], topic: String(x[3]||""), manager: String(x[4]||""), status: x[5] }));
-        partners = (d.partners || []).map(x => ({ id: x[0], name: String(x[1]||""), status: x[2], country: x[3], contact: x[4], phone: x[5], email: x[6], website: x[7], desc: x[8] }));
-        
+        // 4. Трекинг (isDeleted - индекс 11)
+        tracking = (d.tracking || []).map(x => ({ 
+            id: x[0], num: String(x[1]||""), cargo: String(x[2]||""), weight: x[3], 
+            vol: x[4], qty: x[5], pack: x[6], trans: x[7], status: x[8], manager: x[9], 
+            sharedWith: x[10],
+            isDeleted: x[11] === true || x[11] === 'true'
+        }));
+
+        // 5. Активности/Напоминания (isDeleted - индекс 6)
+        reminders = (d.reminders || []).map(x => ({ 
+            id: x[0], name: String(x[1]||""), date: x[2], topic: String(x[3]||""), 
+            manager: String(x[4]||""), status: x[5],
+            isDeleted: x[6] === true || x[6] === 'true'
+        }));
+
+        // 6. Партнеры (isDeleted - индекс 9)
+        partners = (d.partners || []).map(x => ({ 
+            id: x[0], name: String(x[1]||""), status: x[2], country: x[3], contact: x[4], 
+            phone: x[5], email: x[6], website: x[7], desc: x[8],
+            isDeleted: x[9] === true || x[9] === 'true'
+        }));
         renderAll(); 
         document.getElementById('sync-status').innerText = "Обновлено: " + new Date().toLocaleTimeString();
     } catch (e) { 
@@ -884,8 +935,8 @@ async function loadCloudData() {
 }
 
     function formatRow(sh, o) {
-        if (sh === 'companies') return [o.id, o.name, o.contact, o.phone, o.product || "", o.city || "", o.email || "", o.import || "", o.export || "", o.status, o.createdAt, o.activatedAt || "", o.manager, o.isPrivate, o.sharedWith || "", o.website || ""];
-        if (sh === 'requests') return [o.id, o.company, o.cargo, o.transport, o.weight, o.vol, o.value, o.currency, o.load, o.unload, o.desc, o.createdAt, o.status, o.comment, o.container, o.zip, o.manager, o.contQty || ""];
+        if (sh === 'companies') return [o.id, o.name, o.contact, o.phone, o.product || "", o.city || "", o.email || "", o.import || "", o.export || "", o.status, o.createdAt, o.activatedAt || "", o.manager, o.isPrivate, o.sharedWith || "", o.website || "", o.isDeleted || false];
+        if (sh === 'requests') return [o.id, o.company, o.cargo, o.transport, o.weight, o.vol, o.value, o.currency, o.load, o.unload, o.desc, o.createdAt, o.status, o.comment, o.container, o.zip, o.manager, o.contQty || "", o.isDeleted || false];
        if (sh === 'deals') return [
     o.id, o.num, o.company, o.cargo, o.trans, o.weight, o.vol, o.value, o.curr, 
     o.load, o.zip, o.unload, o.info, o.manager, o.createdAt, o.exp, o.inc, 
@@ -894,11 +945,10 @@ async function loadCloudData() {
     o.stage || "docs",
     o.isPaid || false, 
     o.payDate || "",
-           o.isPrivateDeal || false
-];
-        if (sh === 'reminders') return [o.id, o.name, o.date, o.topic, o.manager, o.status];
-        if (sh === 'partners') return [o.id, o.name, o.status, o.country, o.contact, o.phone, o.email, o.website, o.desc];
-        if (sh === 'tracking') return [o.id, o.num, o.cargo, o.weight, o.vol, o.qty, o.pack, o.trans, o.status, o.manager, o.sharedWith || ""];
+           o.isPrivateDeal || false, o.isDeleted || false];
+        if (sh === 'reminders') return [o.id, o.name, o.date, o.topic, o.manager, o.status, o.isDeleted || false];
+        if (sh === 'partners') return [o.id, o.name, o.status, o.country, o.contact, o.phone, o.email, o.website, o.desc, o.isDeleted || false];
+        if (sh === 'tracking') return [o.id, o.num, o.cargo, o.weight, o.vol, o.qty, o.pack, o.trans, o.status, o.manager, o.sharedWith || "", o.isDeleted || false];
         return [];
     }
 
@@ -1163,9 +1213,10 @@ function renderReminders() {
     const limitMs = 3 * 24 * 60 * 60 * 1000, now = new Date();
     
     let f = reminders.filter(r => {
-        const nameText = String(r.name || "").toLowerCase();
-        return nameText.includes(s) && (!d || dFmt(r.date) === dFmt(d));
-    });
+    if (r.isDeleted) return false; // ДОБАВЛЕНО: прячем удаленные
+    const nameText = String(r.name || "").toLowerCase();
+    return nameText.includes(s) && (!d || dFmt(r.date) === dFmt(d));
+});
     
     if (me !== 'admin') f = f.filter(r => r.manager === me);
     if (hideDone) f = f.filter(r => r.status !== 'completed');
@@ -1214,8 +1265,9 @@ function renderRequests() {
     const limitMs = 2 * 24 * 60 * 60 * 1000, now = new Date();
     
     let f = requests.filter(r => {
-        const companyText = String(r.company || "").toLowerCase();
-        const cargoText = String(r.cargo || "").toLowerCase();
+    if (r.isDeleted) return false; // ДОБАВЛЕНО
+    const companyText = String(r.company || "").toLowerCase();
+    const cargoText = String(r.cargo || "").toLowerCase();
         const matchesSearch = checkAccess(r.company) && (companyText.includes(s) || cargoText.includes(s));
         const matchesStatus = hideDone ? r.status !== 'completed' : true;
         return matchesSearch && matchesStatus;
@@ -1271,8 +1323,9 @@ function renderDeals() {
     const paidFilter = document.getElementById('filterPaid').value;
 
     let f = deals.filter(d => {
-        const companyText = String(d.company || "").toLowerCase();
-        const numText = String(d.num || "").toLowerCase();
+    if (d.isDeleted) return false; // ДОБАВЛЕНО
+    const companyText = String(d.company || "").toLowerCase();
+    const numText = String(d.num || "").toLowerCase();
         const matchesSearch = companyText.includes(s) || numText.includes(s);
         const matchesAccess = checkDealAccess(d);
         const matchesStatus = hideDone ? d.status !== 'completed' : true;
@@ -1440,7 +1493,8 @@ function renderCompanies() {
     const limitMs = 10 * 24 * 60 * 60 * 1000, now = new Date();
     
     let f = companies.filter(c => {
-        const matchN = String(c.name).toLowerCase().includes(s);
+    if (c.isDeleted) return false; // ДОБАВЛЕНО
+    const matchN = String(c.name).toLowerCase().includes(s);
         const matchProd = String(c.product || "").toLowerCase().includes(fProd);
         const matchCity = String(c.city || "").toLowerCase().includes(fCity);
         const matchImp = String(c.import || "").toLowerCase().includes(fImp);
@@ -1473,7 +1527,10 @@ function renderCompanies() {
     function renderPartners() {
     const s = document.getElementById('searchPart').value.toLowerCase();
     
-    let f = partners.filter(p => p.name.toLowerCase().includes(s));
+    let f = partners.filter(p => {
+        if (p.isDeleted) return false; // ДОБАВЛЕНО
+        return p.name.toLowerCase().includes(s);
+    });
     
     // --- НОВАЯ ЛОГИКА ОГРАНИЧЕНИЯ ---
     const totalFound = f.length;
@@ -1829,14 +1886,33 @@ isPrivateDeal: document.getElementById('dealPrivacy').value === 'true'
     async function addTracking() { const num = document.getElementById('trackNum').value, cargo = document.getElementById('trackCargo').value; if (!num || !cargo) return alert("Заполните Номер и Груз!"); const newItem = { id: Date.now(), num: num, cargo: cargo, weight: document.getElementById('trackWeight').value, vol: document.getElementById('trackVol').value, qty: document.getElementById('trackQty').value, pack: document.getElementById('trackPack').value, trans: document.getElementById('trackTrans').value, status: document.getElementById('trackStatus').value, manager: sessionStorage.getItem('crm_user'), sharedWith: document.getElementById('trackShare').value }; tracking.push(newItem); renderTracking(); await sync('tracking', tracking, 'append'); ['trackNum', 'trackCargo', 'trackWeight', 'trackVol', 'trackQty', 'trackShare'].forEach(i => document.getElementById(i).value = ''); }
 
     // --- СИСТЕМНЫЕ ФУНКЦИИ ---
-    async function deleteItem(sh, id) { 
-        const me = sessionStorage.getItem('crm_user'); let itm = null;
-        if(sh==='requests') itm = requests.find(x=>x.id==id); else if(sh==='deals') itm = deals.find(x=>x.id==id); else if(sh==='companies') itm = companies.find(x=>x.id==id); else if(sh==='reminders') itm = reminders.find(x=>x.id==id); else if(sh==='partners') itm = partners.find(x=>x.id==id); else if(sh==='tracking') itm = tracking.find(x=>x.id==id);
-        if(!itm) return; if(me!=='admin' && itm.manager!==me) return alert("Нельзя удалять чужое!");
-        if(!confirm("Удалить?"))return; 
-        if(sh==='requests') requests=requests.filter(x=>x.id!=id); else if(sh==='deals') deals=deals.filter(x=>x.id!=id); else if(sh==='companies') companies=companies.filter(x=>x.id!=id); else if(sh==='reminders') reminders=reminders.filter(x=>x.id!=id); else if(sh==='partners') partners=partners.filter(x=>x.id!=id); else if(sh==='tracking') tracking=tracking.filter(x=>x.id!=id);
-        await sync(sh, (sh==='requests'?requests:sh==='deals'?deals:sh==='companies'?companies:sh==='partners'?partners:sh==='tracking'?tracking:reminders), false); loadCloudData(); 
-    }
+async function deleteItem(sh, id) { 
+    const me = sessionStorage.getItem('crm_user'); 
+    let arr = getArrayBySheet(sh); // Вспомогательная функция (ниже)
+    const itm = arr.find(x => x.id == id);
+
+    if(!itm) return; 
+    if(me !== 'admin' && itm.manager !== me) return alert("Нельзя удалять чужое!");
+
+    if(!confirm("Переместить в корзину?")) return; 
+
+    itm.isDeleted = true; // Помечаем
+    await sync(sh, itm, 'update'); // Отправляем в облако
+    
+    renderAll(); // Обновляем списки (объект исчезнет)
+    alert("Удалено в корзину.");
+}
+
+// Вспомогательная функция для удобства
+function getArrayBySheet(sh) {
+    if(sh==='requests') return requests;
+    if(sh==='deals') return deals;
+    if(sh==='companies') return companies;
+    if(sh==='reminders') return reminders;
+    if(sh==='partners') return partners;
+    if(sh==='tracking') return tracking;
+}
+
     function calcDealProfit() {
     // Получаем значения из полей
     const incVal = document.getElementById('dealInc').value;
@@ -1869,14 +1945,20 @@ isPrivateDeal: document.getElementById('dealPrivacy').value === 'true'
     await sync('companies', companies[i], 'update'); 
 }
 
-    function openTab(id) { 
+function openTab(id) { 
         document.querySelectorAll('.content, .tab-btn').forEach(x => x.classList.remove('active')); 
         document.getElementById(id).classList.add('active'); 
         document.getElementById('btn-'+id).classList.add('active'); 
+        
         if(id==='report') generateReport(); 
         if(id==='stats') renderManagerStats(); 
         if(id==='profile') loadProfile();
-        if(id==='tracking') { renderTracking(); updateTrackStatusOptions('admin'); }
+        if(id==='tracking') { 
+            renderTracking(); 
+            updateTrackStatusOptions('admin'); 
+        }
+        // Вынесли проверку корзины отдельно:
+        if(id === 'trash') renderTrash();
     }
 
     function renderAll() { renderReminders(); renderRequests(); renderDeals(); renderCompanies(); renderPartners(); renderTracking(); updateCounters(); updateDatalists(); }
@@ -2021,7 +2103,10 @@ function calcEditProf() {
             document.getElementById('tracking-admin-zone').style.display = 'flex';
             document.getElementById('tracking-user-zone').style.display = 'none';
             const s = document.getElementById('searchTrackAdmin').value.toLowerCase();
-            let f = tracking.filter(t => checkTrackingAccess(t) && t.num.toLowerCase().includes(s));
+            let f = tracking.filter(t => {
+    if (t.isDeleted) return false; // ДОБАВЛЕНО
+    return checkTrackingAccess(t) && t.num.toLowerCase().includes(s);
+});
             document.getElementById('trackingListAdmin').innerHTML = f.map(t => `<div class="list-item" onclick="showTrackPreview(${t.id})"><div class="item-main"><h4>${t.num} — ${t.cargo}</h4><p>Статус: <b>${t.status}</b> | ${t.weight}кг / ${t.vol}м³</p></div><div class="item-actions"><button class="action-btn" onclick="openEdit(${t.id},'tracking')">✎</button><button class="action-btn btn-delete" onclick="deleteItem('tracking',${t.id})">×</button></div></div>`).join('');
         } else {
             document.getElementById('tracking-admin-zone').style.display = 'none';
@@ -2074,6 +2159,87 @@ function calcEditProf() {
         
         alert("Запрос успешно закрыт.");
     }
+}
+    // --- ФУНКЦИИ КОРЗИНЫ (ADMIN ONLY) ---
+
+// 1. Проверяем, админ ли зашел, и показываем кнопку
+function updateAdminUI() {
+    const user = sessionStorage.getItem('crm_user');
+    if (user === 'admin') {
+        const trashBtn = document.getElementById('btn-trash');
+        if (trashBtn) trashBtn.style.display = 'flex';
+    }
+}
+
+// 2. Отображение удаленных объектов в корзине
+function renderTrash() {
+    const type = document.getElementById('trashType').value;
+    let data = getArrayBySheet(type);
+    
+    // Фильтруем только то, что помечено как удаленное
+    const deletedItems = data.filter(x => x.isDeleted);
+
+    let html = deletedItems.map(x => `
+        <div class="list-item" style="border-left: 4px solid var(--danger); margin-bottom: 5px;">
+            <div class="item-main">
+                <h4>${x.name || x.num || x.company || 'Объект без имени'}</h4>
+                <p>Менеджер: ${x.manager || 'автор'} | Дата: ${dFmt(x.createdAt || x.date || '')}</p>
+            </div>
+            <div class="item-actions">
+                <button class="main" style="background:var(--success); width:120px; font-size:10px;" onclick="restoreItem('${type}', ${x.id})">Восстановить</button>
+                <button class="main" style="background:var(--danger); width:40px; font-size:10px;" onclick="hardDeleteItem('${type}', ${x.id})">×</button>
+            </div>
+        </div>
+    `).join('');
+
+    document.getElementById('trashList').innerHTML = html || '<div style="text-align:center; padding:50px; color:#999;">В корзине пусто</div>';
+}
+
+// 3. Восстановление объекта
+async function restoreItem(sh, id) {
+    if (!confirm("Восстановить этот объект в общую базу?")) return;
+    let arr = getArrayBySheet(sh);
+    const itm = arr.find(x => x.id == id);
+    if (itm) {
+        itm.isDeleted = false; // Убираем метку удаления
+        await sync(sh, itm, 'update'); // Сохраняем изменение в таблицу
+        renderTrash();
+        renderAll();
+        alert("Объект успешно восстановлен!");
+    }
+}
+
+// 4. Окончательное удаление (Hard Delete)
+async function hardDeleteItem(sh, id) {
+    if (!confirm("ВНИМАНИЕ! Вы удаляете данные навсегда из Google Таблицы. Продолжить?")) return;
+    
+    let arr = getArrayBySheet(sh);
+    // Физически удаляем из массива (все, кроме этого ID)
+    const filteredData = arr.filter(x => x.id != id);
+
+    // В зависимости от типа, обновляем глобальную переменную
+    if(sh==='requests') requests = filteredData;
+    else if(sh==='deals') deals = filteredData;
+    else if(sh==='companies') companies = filteredData;
+    else if(sh==='reminders') reminders = filteredData;
+    else if(sh==='partners') partners = filteredData;
+    else if(sh==='tracking') tracking = filteredData;
+
+    // Перезаписываем весь лист в таблице (без этой строки)
+    await sync(sh, filteredData, 'saveAll');
+    renderTrash();
+    alert("Данные стерты окончательно.");
+}
+
+// Вспомогательная функция (чтобы код понимал, с каким массивом работать)
+function getArrayBySheet(sh) {
+    if(sh==='requests') return requests;
+    if(sh==='deals') return deals;
+    if(sh==='companies') return companies;
+    if(sh==='reminders') return reminders;
+    if(sh==='partners') return partners;
+    if(sh==='tracking') return tracking;
+    return [];
 }
 
     window.onload = startApp;
