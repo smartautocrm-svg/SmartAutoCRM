@@ -1083,14 +1083,21 @@ async function loadCloudData() {
   // Обновленная функция синхронизации
 async function sync(sh, dt, mode = 'saveAll') {
     showLoader(true); 
-    let payload = { sheet: sh };
+    
+    // Получаем имя текущего пользователя из сессии
+    const currentUser = sessionStorage.getItem('crm_user') || 'Система';
+
+    let payload = { 
+        sheet: sh,
+        user: currentUser // <-- ВОТ ЭТА СТРОКА ПЕРЕДАЕТ ИМЯ В ЛОГИ
+    };
 
     if (mode === 'append') {
         payload.action = 'append';
         payload.rowData = formatRow(sh, dt[dt.length - 1]);
     } else if (mode === 'update') {
         payload.action = 'updateRow';
-        // В режиме update передаем не весь массив, а только один объект (dt)
+        // В режиме update передаем конкретный объект
         payload.rowData = formatRow(sh, dt);
     } else {
         payload.action = 'clearAndSave';
