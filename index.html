@@ -1304,7 +1304,7 @@ function showCompanyPreview(n) {
     }
 
     // Проверка доступа для управления (шеринг)
-    let shareHtml = (c.manager === me || me === 'admin') ? `<div style="grid-column:span 2; border-top:1px solid #eee; margin-top:10px; padding-top:5px;"><label style="font-size:8px;">ДОСТУП</label><div style="display:flex; gap:5px; margin-top:5px;"><select id="shMan" style="flex-grow:1; font-size:10px;"><option value="">Поделиться...</option>${managers.filter(m=>m!==me).map(m=>`<option value="${m}">${m}</option>`).join('')}</select><button onclick="toggleAccess(${c.id}, document.getElementById('shMan').value, 'add')" style="padding:2px 8px; font-size:10px;">+</button></div><div style="margin-top:5px;">${(c.sharedWith || "").split(',').filter(s=>s).map(s=>`<span class="share-tag">${s} <span onclick="toggleAccess(${c.id},'${s}','remove')" style="cursor:pointer">×</span></span>`).join('') || '<small>Никому</small>'}</div></div>` : "";
+    let shareHtml = (c.manager === me || me === 'admin') ? `<div style="grid-column:span 2; border-top:1px solid #eee; margin-top:10px; padding-top:5px;"><label style="font-size:8px;">ДОСТУП</label><div style="display:flex; gap:5px; margin-top:5px;"><select id="shMan" style="flex-grow:1; font-size:10px;"><option value="">Поделиться...</option>${managers.filter(m=>m!==me).map(m=>`<option value="${m}">${m}</option>`).join('')}</select><button onclick="toggleAccess('${c.id}', document.getElementById('shMan').value, 'add')" style="padding:2px 8px; font-size:10px;">+</button></div><div style="margin-top:5px;">${(c.sharedWith || "").split(',').filter(s=>s).map(s=>`<span class="share-tag">${s} <span onclick="toggleAccess('${c.id}','${s}','remove')" style="cursor:pointer">×</span></span>`).join('') || '<small>Никому</small>'}</div></div>` : "";
 
     document.getElementById('preview-companies').innerHTML = `
     <h3>${c.name}</h3>
@@ -1408,7 +1408,7 @@ function renderReminders() {
                 <h4>${r.name} ${isOverdue?'<span class="overdue-tag">ПРОСРОЧЕНО</span>':''}</h4><p>${dtFmt(r.date)} | ${r.manager}</p>
             </div>
             <div class="item-actions">
-                ${r.status!=='completed'?'<button class="action-btn" style="color:var(--success)" onclick="finishRem(event, '${r.id}')">✅</button>':''}
+                ${r.status !== 'completed' ? `<button class="action-btn" style="color:var(--success)" onclick="finishRem(event, '${r.id}')">✅</button>` : ''}
                 <button class="action-btn" onclick="openEdit('${r.id}','reminder')">✎</button>
                 <button class="action-btn btn-delete" onclick="deleteItem('reminders', '${r.id}')">×</button>
             </div>
@@ -1872,7 +1872,7 @@ async function saveEdit() {
 
     if (type === 'reminder') {
         sheetName = 'reminders';
-        const i = reminders.findIndex(x => x.id == id);
+        const i = reminders.findIndex(x => String(x.id) === String(id))
         reminders[i].name = document.getElementById('eRemName').value;
         reminders[i].date = document.getElementById('eRemDate').value;
         reminders[i].topic = document.getElementById('eRemTopic').value;
@@ -1880,7 +1880,7 @@ async function saveEdit() {
         renderReminders();
 } else if (type === 'company') {
         sheetName = 'companies';
-        const i = companies.findIndex(x => x.id == id);
+        const i = companies.findIndex(x => String(x.id) === String(id))
         const oldSt = companies[i].status;
         const newSt = document.getElementById('eCompStatus').value;
         if (newSt === 'active' && oldSt !== 'active') companies[i].activatedAt = new Date().toISOString();
@@ -1904,7 +1904,7 @@ async function saveEdit() {
         renderCompanies();
     } else if (type === 'request') {
         sheetName = 'requests';
-        const i = requests.findIndex(x => x.id == id);
+        const i = requests.findIndex(x => String(x.id) === String(id))
         requests[i].company = document.getElementById('eReqComp').value;
         requests[i].cargo = document.getElementById('eReqCargo').value;
         requests[i].transport = document.getElementById('eReqTrans').value;
@@ -1922,7 +1922,7 @@ async function saveEdit() {
         renderRequests();
     } else if (type === 'deal') {
         sheetName = 'deals';
-        const i = deals.findIndex(x => x.id == id);
+        const i = deals.findIndex(x => String(x.id) === String(id))
         deals[i].num = document.getElementById('eDealNum').value;
         deals[i].company = document.getElementById('eDealComp').value;
         deals[i].cargo = document.getElementById('eDealCargo').value;
@@ -1950,7 +1950,7 @@ async function saveEdit() {
         renderDeals();
 } else if (type === 'partner') {
         sheetName = 'partners';
-        const i = partners.findIndex(x => x.id == id);
+        const i = partners.findIndex(x => String(x.id) === String(id))
         
         // Основные поля
         partners[i].name = document.getElementById('ePartName').value;
@@ -1981,7 +1981,7 @@ async function saveEdit() {
         renderPartners();
     } else if (type === 'tracking') {
         sheetName = 'tracking';
-        const i = tracking.findIndex(x => x.id == id);
+        const i = tracking.findIndex(x => String(x.id) === String(id))
         tracking[i].num = document.getElementById('eTrackNum').value;
         tracking[i].cargo = document.getElementById('eTrackCargo').value;
         tracking[i].weight = document.getElementById('eTrackW').value;
