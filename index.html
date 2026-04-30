@@ -1252,7 +1252,7 @@ function showRequestPreview(id) {
             <div class="preview-box" style="grid-column:span 2;"><label>Детали</label><span>${r.desc || '-'}</span></div>
         </div>
         <!-- НОВАЯ КНОПКА -->
-        <button class="main" style="background:var(--active); margin-top:15px; height: 32px;" onclick="convertToDeal(${r.id})">💰 Создать сделку из запроса</button>
+        <button class="main" style="background:var(--active); margin-top:15px; height: 32px;" onclick="convertToDeal('${r.id}')">💰 Создать сделку из запроса</button>
         `;
     }
 
@@ -1408,9 +1408,9 @@ function renderReminders() {
                 <h4>${r.name} ${isOverdue?'<span class="overdue-tag">ПРОСРОЧЕНО</span>':''}</h4><p>${dtFmt(r.date)} | ${r.manager}</p>
             </div>
             <div class="item-actions">
-                ${r.status!=='completed'?'<button class="action-btn" style="color:var(--success)" onclick="finishRem(event, ${r.id})">✅</button>':''}
-                <button class="action-btn" onclick="openEdit(${r.id},'reminder')">✎</button>
-                <button class="action-btn btn-delete" onclick="deleteItem('reminders',${r.id})">×</button>
+                ${r.status!=='completed'?'<button class="action-btn" style="color:var(--success)" onclick="finishRem(event, '${r.id}')">✅</button>':''}
+                <button class="action-btn" onclick="openEdit('${r.id}','reminder')">✎</button>
+                <button class="action-btn btn-delete" onclick="deleteItem('reminders', '${r.id}')">×</button>
             </div>
         </div>`;
     }).join('');
@@ -1423,15 +1423,20 @@ function renderReminders() {
     updateCounters();
 }
 async function finishRem(e, id) { 
-    e.stopPropagation(); // Чтобы не открывалось превью при клике на галочку
+    e.stopPropagation(); 
     
-    const i = reminders.findIndex(x => x.id == id); 
+    // Приводим к строке, так как из HTML id может прийти как число, 
+    // а в массиве после загрузки из Google он может быть строкой
+    const i = reminders.findIndex(x => String(x.id) === String(id)); 
+    
     if (i > -1) {
-        reminders[i].status = 'completed'; // Меняем статус на "завершено"
-        renderReminders(); // Сразу перерисовываем список на экране
+        reminders[i].status = 'completed'; // Меняем статус локально
+        renderReminders(); // Сразу перерисовываем интерфейс
         
-        // Отправляем точечное обновление в Google Таблицу
+        // Отправляем обновление в облако
         await sync('reminders', reminders[i], 'update'); 
+    } else {
+        console.error("Не удалось найти активность с ID:", id);
     }
 }
     
@@ -1462,9 +1467,9 @@ function renderRequests() {
                 <p>${r.cargo} | Создан: ${dFmt(r.createdAt)} | ${r.manager}</p>
             </div>
             <div class="item-actions">
-                ${r.status!=='completed'?'<button class="action-btn" style="color:var(--success)" onclick="finishRequest(event,'+r.id+')">✅</button>':''}
-                <button class="action-btn" onclick="openEdit(${r.id},'request')">✎</button>
-                <button class="action-btn btn-delete" onclick="deleteItem('requests',${r.id})">×</button>
+                ${r.status !== 'completed' ? `<button class="action-btn" style="color:var(--success)" onclick="finishRequest(event, '${r.id}')">✅</button>` : ''}
+                <button class="action-btn" onclick="openEdit('${r.id}','request')">✎</button>
+                <button class="action-btn btn-delete" onclick="deleteItem('requests', '${r.id}')">×</button>
             </div>
         </div>`;
     }).join('');
@@ -1478,16 +1483,13 @@ function renderRequests() {
     updateCounters();
 }
 function finishRequest(e, id) { 
-    e.stopPropagation(); // Чтобы не открылось превью запроса
-    
-    // Записываем ID запроса в скрытое поле модалки
-    document.getElementById('reqCloseId').value = id;
-    
-    // Очищаем поле комментария
-    document.getElementById('reqCloseComment').value = ""; 
-    
-    // Показываем модальное окно
-    document.getElementById('requestCloseModal').style.display = 'block';
+    e.stopPropagation(); 
+    const i = requests.findIndex(x => String(x.id) === String(id));
+    if (i > -1) {
+        document.getElementById('reqCloseId').value = id;
+        document.getElementById('reqCloseComment').value = ""; 
+        document.getElementById('requestCloseModal').style.display = 'block';
+    }
 }
     
 function renderDeals() {
@@ -1546,12 +1548,12 @@ function renderDeals() {
                 <!-- КНОПКА ОПЛАТЫ ($) -->
                 <button class="action-btn" 
                         style="color:${d.isPaid ? 'var(--success)' : '#ccc'}; font-size:18px; font-weight:bold; margin-right:5px;" 
-                        onclick="togglePaidStatus(event, ${d.id})" 
+                        onclick="togglePaidStatus(event, '${d.id}')"
                         title="${d.isPaid ? 'Оплачено (нажми для сброса)' : 'Пометить как оплачено'}">
                     $
                 </button>
-                <button class="action-btn" onclick="openEdit(${d.id},'deal')">✎</button>
-                <button class="action-btn btn-delete" onclick="deleteItem('deals',${d.id})">×</button>
+                <button class="action-btn" onclick="openEdit('${d.id}','deal')">✎</button>
+                <button class="action-btn btn-delete" onclick="deleteItem('deals', '${d.id}')">×</button>
             </div>
         </div>`;
     }).join('');
@@ -1565,7 +1567,7 @@ function renderDeals() {
 }
     async function togglePaidStatus(e, id) {
         e.stopPropagation(); // ВАЖНО: чтобы при клике на кнопку не открывалось превью сделки
-        const i = deals.findIndex(x => x.id == id);
+        const i = deals.findIndex(x => String(x.id) === String(id));
         if (i === -1) return;
 
         if (deals[i].isPaid) {
@@ -1690,7 +1692,7 @@ function renderCompanies() {
             const dates = [...reminders.filter(r => r.name === c.name).map(r => new Date(r.date)), ...requests.filter(r => r.company === c.name).map(r => new Date(r.createdAt)), ...deals.filter(d => d.company === c.name).map(d => new Date(d.createdAt))].filter(d => !isNaN(d));
             if (dates.length === 0 || (now - new Date(Math.max(...dates))) > limitMs) isForgotten = true;
         }
-        return `<div class="list-item ${isForgotten ? 'forgotten' : ''}" onclick="showCompanyPreview('${c.name}')"><div class="item-main"><h4>${c.name} ${isForgotten ? '<span class="forgotten-tag">⚠️ В работу</span>' : ''}</h4><p>${checkAccess(c.name) ? statusMap[c.status].label : '🔒 Ограничен'} | ${c.manager}</p></div><div class="item-actions"><button class="action-btn" onclick="openEdit(${c.id},'company')">✎</button><button class="action-btn btn-delete" onclick="deleteItem('companies', ${c.id})">×</button></div></div>`;
+        return `<div class="list-item ${isForgotten ? 'forgotten' : ''}" onclick="showCompanyPreview('${c.name}')"><div class="item-main"><h4>${c.name} ${isForgotten ? '<span class="forgotten-tag">⚠️ В работу</span>' : ''}</h4><p>${checkAccess(c.name) ? statusMap[c.status].label : '🔒 Ограничен'} | ${c.manager}</p></div><div class="item-actions"><button class="action-btn" onclick="openEdit('${c.id}','company')">✎</button><button class="action-btn btn-delete" onclick="deleteItem('companies', '${c.id}')">×</button></div></div>`;
     }).join('');
 
     // Кнопка
@@ -1735,8 +1737,8 @@ function renderCompanies() {
                 <p>${p.status.toUpperCase()} | 🌍 ${p.country || '---'}</p>
             </div>
             <div class="item-actions">
-                <button class="action-btn" onclick="openEdit(${p.id},'partner')">✎</button>
-                <button class="action-btn btn-delete" onclick="deleteItem('partners', ${p.id})">×</button>
+                <button class="action-btn" onclick="openEdit('${p.id}','partner')">✎</button>
+                <button class="action-btn btn-delete" onclick="deleteItem('partners', '${p.id}')">×</button>
             </div>
         </div>
     `).join('');
@@ -2004,7 +2006,8 @@ async function saveEdit() {
     async function addReminder() { const n = document.getElementById('callName').value; if(!n)return alert("Имя?"); const newItem = { id: Date.now(), name: n, date: document.getElementById('callTime').value, topic: document.getElementById('callTopic').value, manager: sessionStorage.getItem('crm_user'), status: "active" }; reminders.push(newItem); renderReminders(); await sync('reminders', reminders, 'append'); ['callName', 'callTime', 'callTopic'].forEach(i=>document.getElementById(i).value=''); }
     async function addRequest() { const c = document.getElementById('reqComp').value; if(!c)return alert("Клиент?"); const newItem = { id: Date.now(), company: c, cargo: document.getElementById('reqCargo').value, transport: document.getElementById('reqTransport').value, weight: document.getElementById('reqWeight').value, vol: document.getElementById('reqVol').value, value: document.getElementById('reqValue').value, currency: document.getElementById('reqCurrency').value, load: document.getElementById('reqLoad').value, zip: document.getElementById('reqZip').value, unload: document.getElementById('reqUnload').value, desc: document.getElementById('reqDesc').value, createdAt: new Date().toISOString(), status: "active", manager: sessionStorage.getItem('crm_user'), container: document.getElementById('reqContainer').value, contQty: document.getElementById('reqContQty').value }; requests.push(newItem); renderRequests(); await sync('requests', requests, 'append'); ['reqComp', 'reqCargo', 'reqWeight', 'reqVol', 'reqValue', 'reqLoad', 'reqZip', 'reqUnload', 'reqDesc', 'reqContQty'].forEach(i=>document.getElementById(i).value=''); }
 function convertToDeal(reqId) {
-    const r = requests.find(x => x.id == reqId);
+    // Используй безопасный поиск
+    const r = requests.find(x => String(x.id) === String(reqId));
     if (!r) return;
 
     // Переходим на вкладку сделок
@@ -2186,7 +2189,7 @@ isPrivateDeal: document.getElementById('dealPrivacy').value === 'true'
 async function deleteItem(sh, id) { 
     const me = sessionStorage.getItem('crm_user'); 
     let arr = getArrayBySheet(sh); 
-    const itm = arr.find(x => x.id == id);
+    const itm = arr.find(x => String(x.id) === String(id));
 
     if(!itm) return; 
     if(me !== 'admin' && itm.manager !== me) return alert("Нельзя удалять чужое!");
@@ -2419,7 +2422,7 @@ function calcEditProf() {
     if (t.isDeleted) return false; // ДОБАВЛЕНО
     return checkTrackingAccess(t) && t.num.toLowerCase().includes(s);
 });
-            document.getElementById('trackingListAdmin').innerHTML = f.map(t => `<div class="list-item" onclick="showTrackPreview(${t.id})"><div class="item-main"><h4>${t.num} — ${t.cargo}</h4><p>Статус: <b>${t.status}</b> | ${t.weight}кг / ${t.vol}м³</p></div><div class="item-actions"><button class="action-btn" onclick="openEdit(${t.id},'tracking')">✎</button><button class="action-btn btn-delete" onclick="deleteItem('tracking',${t.id})">×</button></div></div>`).join('');
+            document.getElementById('trackingListAdmin').innerHTML = f.map(t => `<div class="list-item" onclick="showTrackPreview(${t.id})"><div class="item-main"><h4>${t.num} — ${t.cargo}</h4><p>Статус: <b>${t.status}</b> | ${t.weight}кг / ${t.vol}м³</p></div><div class="item-actions"><button class="action-btn" onclick="openEdit('${t.id}','tracking')">✎</button><button class="action-btn btn-delete" onclick="deleteItem('tracking', '${t.id}')">×</button></div></div>`).join('');
         } else {
             document.getElementById('tracking-admin-zone').style.display = 'none';
             document.getElementById('tracking-user-zone').style.display = 'block';
@@ -2500,8 +2503,8 @@ function renderTrash() {
                 <p>Менеджер: ${x.manager || 'автор'} | Дата: ${dFmt(x.createdAt || x.date || '')}</p>
             </div>
             <div class="item-actions">
-                <button class="main" style="background:var(--success); width:120px; font-size:10px;" onclick="restoreItem('${type}', ${x.id})">Восстановить</button>
-                <button class="main" style="background:var(--danger); width:40px; font-size:10px;" onclick="hardDeleteItem('${type}', ${x.id})">×</button>
+                <button class="main" style="background:var(--success); width:120px; font-size:10px;" onclick="restoreItem('${type}', '${x.id}')">Восстановить</button>
+                <button class="main" style="background:var(--danger); width:40px; font-size:10px;" onclick="hardDeleteItem('${type}', '${x.id}')">×</button>
             </div>
         </div>
     `).join('');
@@ -2513,7 +2516,7 @@ function renderTrash() {
 async function restoreItem(sh, id) {
     if (!confirm("Восстановить этот объект в общую базу?")) return;
     let arr = getArrayBySheet(sh);
-    const itm = arr.find(x => x.id == id);
+    const itm = arr.find(x => String(x.id) === String(id));
     if (itm) {
         itm.isDeleted = false; // Убираем метку удаления
         await sync(sh, itm, 'update'); // Сохраняем изменение в таблицу
@@ -2529,7 +2532,7 @@ async function hardDeleteItem(sh, id) {
     
     let arr = getArrayBySheet(sh);
     // Физически удаляем из массива (все, кроме этого ID)
-    const filteredData = arr.filter(x => x.id != id);
+    const filteredData = arr.filter(x => String(x.id) !== String(id));
 
     // В зависимости от типа, обновляем глобальную переменную
     if(sh==='requests') requests = filteredData;
