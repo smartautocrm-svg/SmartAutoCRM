@@ -1408,7 +1408,7 @@ function renderReminders() {
                 <h4>${r.name} ${isOverdue?'<span class="overdue-tag">ПРОСРОЧЕНО</span>':''}</h4><p>${dtFmt(r.date)} | ${r.manager}</p>
             </div>
             <div class="item-actions">
-                ${r.status!=='completed'?'<button class="action-btn" style="color:var(--success)" onclick="finishRem(event,${r.id})">✅</button>':''}
+                ${r.status!=='completed'?'<button class="action-btn" style="color:var(--success)" onclick="finishRem(event, ${r.id})">✅</button>':''}
                 <button class="action-btn" onclick="openEdit(${r.id},'reminder')">✎</button>
                 <button class="action-btn btn-delete" onclick="deleteItem('reminders',${r.id})">×</button>
             </div>
@@ -1422,13 +1422,17 @@ function renderReminders() {
     document.getElementById('remindersList').innerHTML = html || '<div style="text-align:center; padding:20px; color:#999;">Ничего не найдено</div>';
     updateCounters();
 }
-   async function finishRem(e, id) { 
-    e.stopPropagation(); 
-    const i = reminders.findIndex(x=>x.id==id); 
-    reminders[i].status = 'completed'; 
-    renderReminders(); 
-    // Вместо всей таблицы отправляем только один измененный объект
-    await sync('reminders', reminders[i], 'update'); 
+async function finishRem(e, id) { 
+    e.stopPropagation(); // Чтобы не открывалось превью при клике на галочку
+    
+    const i = reminders.findIndex(x => x.id == id); 
+    if (i > -1) {
+        reminders[i].status = 'completed'; // Меняем статус на "завершено"
+        renderReminders(); // Сразу перерисовываем список на экране
+        
+        // Отправляем точечное обновление в Google Таблицу
+        await sync('reminders', reminders[i], 'update'); 
+    }
 }
     
 function renderRequests() {
