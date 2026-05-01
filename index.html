@@ -1557,29 +1557,28 @@ function showRequestPreview(id) {
 document.getElementById('preview-deals').innerHTML = `
     <h3>💰 Сделка № ${d.num}</h3>
     <div class="preview-grid">
-        <div class="preview-box highlight"><label>💵 Прибыль</label><span style="color:var(--success); font-size: 16px;">${d.prof} USD</span></div>
-        <div class="preview-box highlight"><label>📈 Маржа</label><span style="color:var(--warning); font-size: 16px;">${d.margin || '0%'}</span></div>
+        <div class="preview-box highlight"><label>💵 Прибыль</label><span style="color:var(--success); font-size: 15px;">${d.prof} USD</span></div>
+        <div class="preview-box highlight"><label>📈 Маржа %</label><span style="color:var(--warning); font-size: 15px;">${d.margin || '0%'}</span></div>
         
-        <div class="preview-box"><label>👤 Менеджер</label><span>${d.manager}</span></div>
         <div class="preview-box"><label>🏢 Клиент</label><span>${d.company}</span></div>
+        <div class="preview-box"><label>👤 Менеджер</label><span>${d.manager}</span></div>
         
         <div class="preview-box"><label>🚛 Транспорт</label><span>${d.trans.toUpperCase()}</span></div>
         <div class="preview-box"><label>📦 Груз</label><span>${d.cargo}</span></div>
         
         <div class="preview-box" style="grid-column: span 2;"><label>📍 Маршрут</label><span>${d.load} ➔ ${d.unload}</span></div>
-        <div class="preview-box" style="grid-column: span 2;"><label>📝 Инфо</label><span style="font-weight: normal; font-size: 12px; color: #666;">${d.info || '-'}</span></div>
     </div>
-    <!-- Кнопки ниже оставляй как были -->
-`;
-        <button class="btn-pdf" onclick="generateInvoicePDF(${d.id})">📄 Згенерувати пропозицію</button>
-        <div class="file-list-container">
-            <strong>Файли сделки:</strong>
-            <div style="margin-top:5px;">${fHtml || '<small style="color:#999">Нет файлов</small>'}</div>
-            <div class="upload-area">
-                <input type="file" id="dealFileInput" style="font-size:10px; width:150px;">
-                <button onclick="uploadDealFile(${d.id})" style="font-size:10px; padding:2px 5px;">Загрузить</button>
-            </div>
-        </div>`;
+    
+    <button class="btn-pdf" onclick="generateInvoicePDF(${d.id})">📄 Згенерувати пропозицію</button>
+    
+    <div class="file-list-container">
+        <strong>Файли сделки:</strong>
+        <div style="margin-top:5px;">${fHtml || '<small style="color:#999">Нет файлов</small>'}</div>
+        <div class="upload-area">
+            <input type="file" id="dealFileInput" style="font-size:10px; width:150px;">
+            <button class="main" onclick="uploadDealFile(${d.id})" style="width: auto; padding: 4px 10px; font-size:10px;">Загрузить</button>
+        </div>
+    </div>`;
     }
 
 function showCompanyPreview(n) {
@@ -1604,14 +1603,16 @@ function showCompanyPreview(n) {
         <div class="preview-box"><label>✉️ Email</label><span>${c.email || '-'}</span></div>
         
         <div class="preview-box"><label>🌍 Город</label><span>${c.city || '-'}</span></div>
-        <div class="preview-box"><label>📦 Основной продукт</label><span>${c.product || '-'}</span></div>
+        <div class="preview-box"><label>📦 Груз</label><span>${c.product || '-'}</span></div>
         
         <div class="preview-box" style="grid-column: span 2;"><label>🔗 Сайт</label><span>${c.website || '-'}</span></div>
     </div>
-    <div style="margin-top: 15px;">
-         <button class="main" style="background: var(--primary); height: 35px;" onclick="showCompanyHistory('${c.name.replace(/'/g, "\\'")}')">📜 История активности</button>
-    </div>
-`;
+    
+    <div style="margin-top: 15px; display: flex; flex-direction: column; gap: 10px;">
+        <button class="main" onclick="showCompanyHistory('${c.name.replace(/'/g, "\\'")}')">📜 Последние активности</button>
+        ${shareHtml}
+    </div>`;
+    
     function showPartnerPreview(id) {
     const p = partners.find(x => x.id == id);
     if(!p) return;
