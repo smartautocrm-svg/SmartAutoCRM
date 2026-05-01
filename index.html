@@ -333,7 +333,19 @@
         <div class="card">
             <h3>Новый запрос</h3>
             <div class="input-row">
-                <input type="text" id="reqComp" list="allEntitiesData" placeholder="Клиент *"><input type="text" id="reqCargo" placeholder="Груз *">
+                <input type="text" id="reqComp" list="allEntitiesData" placeholder="Клиент *">
+<input type="text" id="reqCargo" placeholder="Груз *">
+<select id="reqType">
+    <option value="">Тип запроса *</option>
+    <option value="карго из Китая">📦 Карго из Китая</option>
+    <option value="карго из Кореи">📦 Карго из Кореи</option>
+    <option value="фрахт">🚢 Фрахт</option>
+    <option value="карго Европа">🇪🇺 Карго Европа</option>
+    <option value="контейнера - очистка">🧾 Контейнера - очистка</option>
+    <option value="LCL">📦 LCL</option>
+    <option value="экспорт">📤 Экспорт</option>
+    <option value="trucking">🚛 Trucking</option>
+</select>
                 <select id="reqTransport" onchange="checkTransportFields('req')">
                     <option value="авто">🚛 Авто</option>
                     <option value="авиа">✈️ Авиа</option>
@@ -1035,8 +1047,8 @@ async function loadCloudData() {
             weight: x[4], vol: x[5], value: x[6], currency: x[7], load: String(x[8]||""), 
             unload: String(x[9]||""), desc: String(x[10]||""), createdAt: x[11], status: x[12], 
             comment: x[13], container: x[14], zip: x[15], manager: String(x[16]||""), 
-            contQty: x[17],
-            isDeleted: x[18] === true || x[18] === 'true'
+            contQty: x[17],type: x[18], 
+            isDeleted: x[19] === true || x[19] === 'true'
         }));
         
         // 3. Сделки (isDeleted - индекс 31)
@@ -1091,7 +1103,7 @@ async function loadCloudData() {
 
     function formatRow(sh, o) {
         if (sh === 'companies') return [o.id, o.name, o.contact, o.phone, o.product || "", o.city || "", o.email || "", o.import || "", o.export || "", o.status, o.createdAt, o.activatedAt || "", o.manager, o.isPrivate, o.sharedWith || "", o.website || "", o.isDeleted || false];
-        if (sh === 'requests') return [o.id, o.company, o.cargo, o.transport, o.weight, o.vol, o.value, o.currency, o.load, o.unload, o.desc, o.createdAt, o.status, o.comment, o.container, o.zip, o.manager, o.contQty || "", o.isDeleted || false];
+        if (sh === 'requests') return [o.id, o.company, o.cargo, o.transport, o.weight, o.vol, o.value, o.currency, o.load, o.unload, o.desc, o.createdAt, o.status, o.comment, o.container, o.zip, o.manager, o.contQty || "", o.type || "", o.isDeleted || false];
        if (sh === 'deals') return [
     o.id, o.num, o.company, o.cargo, o.trans, o.weight, o.vol, o.value, o.curr, 
     o.load, o.zip, o.unload, o.info, o.manager, o.createdAt, o.exp, o.inc, 
@@ -1268,6 +1280,7 @@ function showRequestPreview(id) {
         <h3>Запрос: ${r.company}</h3>
         <div class="preview-grid">
             <div class="preview-box"><label>Груз</label><span>${r.cargo}</span></div>
+            <div class="preview-box"><label>Тип запроса</label><span>${r.type || '-'}</span></div>
             <div class="preview-box"><label>Транспорт</label><span>${r.transport} ${r.container || ''}</span></div>
             <div class="preview-box"><label>Вес/Объем</label><span>${r.weight}кг / ${r.vol}м³</span></div>
             <div class="preview-box"><label>Инвойс</label><span>${r.value} ${r.currency}</span></div>
@@ -1792,8 +1805,53 @@ function renderCompanies() {
             const c = companies.find(x => x.id == id); title.innerText = "Правка компании";
             f.innerHTML = `<input type="text" id="eCompName" value="${c.name}"><input type="text" id="eCompProduct" value="${c.product || ''}" placeholder="Груз *"><input type="text" id="eCompCity" value="${c.city}"><input type="text" id="eCompContact" value="${c.contact}"><input type="text" id="eCompPhone" value="${c.phone}"><input type="email" id="eCompEmail" value="${c.email}"><input type="text" id="eCompWeb" value="${c.website}"><input type="text" id="eCompImp" value="${c.import}"><input type="text" id="eCompExp" value="${c.export}"><select id="eCompMan" style="grid-column: span 2;">${managers.map(m => `<option value="${m}" ${c.manager===m?'selected':''}>${m}</option>`).join('')}</select><select id="eCompStatus"><option value="cold" ${c.status==='cold'?'selected':''}>Холодный</option><option value="warm" ${c.status==='warm'?'selected':''}>Теплый</option><option value="active" ${c.status==='active'?'selected':''}>Активный</option></select><div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" id="eCompPriv" ${c.isPrivate?'checked':''}> Приватная</div>`;
         } else if (type === 'request') {
-            const r = requests.find(x => x.id == id); title.innerText = "Правка запроса";
-            f.innerHTML = `<input type="text" id="eReqComp" value="${r.company}" list="allEntitiesData"><input type="text" id="eReqCargo" value="${r.cargo}"><select id="eReqTrans" onchange="checkTransportFields('eReq')"><option value="авто" ${r.transport==='авто'?'selected':''}>Авто</option><option value="авиа" ${r.transport==='авиа'?'selected':''}>Авиа</option><option value="море" ${r.transport==='море'?'selected':''}>Море</option><option value="ж/д" ${r.transport==='ж/д'?'selected':''}>Ж/Д</option></select><select id="eReqCont" style="display:${r.transport==='море'?'block':'none'}"><option value="20GP" ${r.container==='20GP'?'selected':''}>20GP</option><option value="40HC" ${r.container==='40HC'?'selected':''}>40HC</option></select><input type="number" id="eReqContQty" value="${r.contQty}" style="display:${r.transport==='море'?'block':'none'}" placeholder="Кол-во конт."><input type="number" id="eReqW" value="${r.weight}"><input type="number" id="eReqV" value="${r.vol}"><input type="number" id="eReqVal" value="${r.value}"><select id="eReqCurr"><option value="USD" ${r.currency==='USD'?'selected':''}>USD</option><option value="EUR" ${r.currency==='EUR'?'selected':''}>EUR</option></select><input type="text" id="eReqLoad" value="${r.load}"><input type="text" id="eReqZip" value="${r.zip}"><input type="text" id="eReqUnload" value="${r.unload}"><textarea id="eReqDesc" style="grid-column: span 2;">${r.desc}</textarea>`;
+    const r = requests.find(x => x.id == id); 
+    title.innerText = "Правка запроса";
+
+    // Создаем список типов, проверяя какой тип уже выбран (selected)
+    f.innerHTML = `
+        <input type="text" id="eReqComp" value="${r.company}" list="allEntitiesData" placeholder="Клиент">
+        <input type="text" id="eReqCargo" value="${r.cargo}" placeholder="Груз">
+        
+        <select id="eReqType">
+            <option value="">Тип запроса *</option>
+            <option value="карго из Китая" ${r.type === 'карго из Китая' ? 'selected' : ''}>📦 Карго из Китая</option>
+            <option value="карго из Кореи" ${r.type === 'карго из Кореи' ? 'selected' : ''}>📦 Карго из Кореи</option>
+            <option value="фрахт" ${r.type === 'фрахт' ? 'selected' : ''}>🚢 Фрахт</option>
+            <option value="карго Европа" ${r.type === 'карго Европа' ? 'selected' : ''}>🇪🇺 Карго Европа</option>
+            <option value="контейнера - очистка" ${r.type === 'контейнера - очистка' ? 'selected' : ''}>🧾 Контейнера - очистка</option>
+            <option value="LCL" ${r.type === 'LCL' ? 'selected' : ''}>📦 LCL</option>
+            <option value="экспорт" ${r.type === 'экспорт' ? 'selected' : ''}>📤 Экспорт</option>
+            <option value="trucking" ${r.type === 'trucking' ? 'selected' : ''}>🚛 Trucking</option>
+        </select>
+
+        <select id="eReqTrans" onchange="checkTransportFields('eReq')">
+            <option value="авто" ${r.transport === 'авто' ? 'selected' : ''}>Авто</option>
+            <option value="авиа" ${r.transport === 'авиа' ? 'selected' : ''}>Авиа</option>
+            <option value="море" ${r.transport === 'море' ? 'selected' : ''}>Море</option>
+            <option value="ж/д" ${r.transport === 'ж/д' ? 'selected' : ''}>Ж/Д</option>
+        </select>
+
+        <select id="eReqCont" style="display:${r.transport === 'море' ? 'block' : 'none'}">
+            <option value="20GP" ${r.container === '20GP' ? 'selected' : ''}>20GP</option>
+            <option value="40HC" ${r.container === '40HC' ? 'selected' : ''}>40HC</option>
+        </select>
+
+        <input type="number" id="eReqContQty" value="${r.contQty}" style="display:${r.transport === 'море' ? 'block' : 'none'}" placeholder="Кол-во конт.">
+        <input type="number" id="eReqW" value="${r.weight}" placeholder="Вес">
+        <input type="number" id="eReqV" value="${r.vol}" placeholder="Объем">
+        <input type="number" id="eReqVal" value="${r.value}" placeholder="Инвойс">
+
+        <select id="eReqCurr">
+            <option value="USD" ${r.currency === 'USD' ? 'selected' : ''}>USD</option>
+            <option value="EUR" ${r.currency === 'EUR' ? 'selected' : ''}>EUR</option>
+        </select>
+
+        <input type="text" id="eReqLoad" value="${r.load}" placeholder="Погрузка">
+        <input type="text" id="eReqZip" value="${r.zip}" placeholder="Индекс">
+        <input type="text" id="eReqUnload" value="${r.unload}" placeholder="Выгрузка">
+        <textarea id="eReqDesc" style="grid-column: span 2;">${r.desc}</textarea>
+    `;
         } else if (type === 'deal') {
             const d = deals.find(x => x.id == id); title.innerText = "Правка сделки";
             f.innerHTML = `
@@ -1929,23 +1987,30 @@ async function saveEdit() {
         updatedItem = companies[i];
         renderCompanies();
     } else if (type === 'request') {
-        sheetName = 'requests';
-        const i = requests.findIndex(x => String(x.id) === String(id))
-        requests[i].company = document.getElementById('eReqComp').value;
-        requests[i].cargo = document.getElementById('eReqCargo').value;
-        requests[i].transport = document.getElementById('eReqTrans').value;
-        requests[i].container = document.getElementById('eReqCont').value;
-        requests[i].contQty = document.getElementById('eReqContQty').value;
-        requests[i].weight = document.getElementById('eReqW').value;
-        requests[i].vol = document.getElementById('eReqV').value;
-        requests[i].value = document.getElementById('eReqVal').value;
-        requests[i].currency = document.getElementById('eReqCurr').value;
-        requests[i].load = document.getElementById('eReqLoad').value;
-        requests[i].zip = document.getElementById('eReqZip').value;
-        requests[i].unload = document.getElementById('eReqUnload').value;
-        requests[i].desc = document.getElementById('eReqDesc').value;
-        updatedItem = requests[i];
-        renderRequests();
+    sheetName = 'requests';
+    const i = requests.findIndex(x => String(x.id) === String(id));
+    
+    // Собираем данные из полей
+    requests[i].company = document.getElementById('eReqComp').value;
+    requests[i].cargo = document.getElementById('eReqCargo').value;
+    
+    // ВОТ ЭТА НОВАЯ СТРОКА:
+    requests[i].type = document.getElementById('eReqType').value; 
+    
+    requests[i].transport = document.getElementById('eReqTrans').value;
+    requests[i].container = document.getElementById('eReqCont').value;
+    requests[i].contQty = document.getElementById('eReqContQty').value;
+    requests[i].weight = document.getElementById('eReqW').value;
+    requests[i].vol = document.getElementById('eReqV').value;
+    requests[i].value = document.getElementById('eReqVal').value;
+    requests[i].currency = document.getElementById('eReqCurr').value;
+    requests[i].load = document.getElementById('eReqLoad').value;
+    requests[i].zip = document.getElementById('eReqZip').value;
+    requests[i].unload = document.getElementById('eReqUnload').value;
+    requests[i].desc = document.getElementById('eReqDesc').value;
+    
+    updatedItem = requests[i];
+    renderRequests();
     } else if (type === 'deal') {
         sheetName = 'deals';
         const i = deals.findIndex(x => String(x.id) === String(id))
@@ -2068,7 +2133,17 @@ async function submitFollowUp() {
 
     // --- ФУНКЦИИ ДОБАВЛЕНИЯ ---
     async function addReminder() { const n = document.getElementById('callName').value; if(!n)return alert("Имя?"); const newItem = { id: Date.now(), name: n, date: document.getElementById('callTime').value, topic: document.getElementById('callTopic').value, manager: sessionStorage.getItem('crm_user'), status: "active" }; reminders.push(newItem); renderReminders(); await sync('reminders', reminders, 'append'); ['callName', 'callTime', 'callTopic'].forEach(i=>document.getElementById(i).value=''); }
-    async function addRequest() { const c = document.getElementById('reqComp').value; if(!c)return alert("Клиент?"); const newItem = { id: Date.now(), company: c, cargo: document.getElementById('reqCargo').value, transport: document.getElementById('reqTransport').value, weight: document.getElementById('reqWeight').value, vol: document.getElementById('reqVol').value, value: document.getElementById('reqValue').value, currency: document.getElementById('reqCurrency').value, load: document.getElementById('reqLoad').value, zip: document.getElementById('reqZip').value, unload: document.getElementById('reqUnload').value, desc: document.getElementById('reqDesc').value, createdAt: new Date().toISOString(), status: "active", manager: sessionStorage.getItem('crm_user'), container: document.getElementById('reqContainer').value, contQty: document.getElementById('reqContQty').value }; requests.push(newItem); renderRequests(); await sync('requests', requests, 'append'); ['reqComp', 'reqCargo', 'reqWeight', 'reqVol', 'reqValue', 'reqLoad', 'reqZip', 'reqUnload', 'reqDesc', 'reqContQty'].forEach(i=>document.getElementById(i).value=''); }
+    async function addRequest() { 
+    const c = document.getElementById('reqComp').value; 
+    const t = document.getElementById('reqType').value; // Получаем тип
+    if(!c || !t) return alert("Выберите клиента и тип запроса!"); 
+
+    const newItem = { 
+        id: Date.now(), 
+        company: c, 
+        cargo: document.getElementById('reqCargo').value, 
+        type: t, // Добавляем в объект
+        transport: document.getElementById('reqTransport').value, weight: document.getElementById('reqWeight').value, vol: document.getElementById('reqVol').value, value: document.getElementById('reqValue').value, currency: document.getElementById('reqCurrency').value, load: document.getElementById('reqLoad').value, zip: document.getElementById('reqZip').value, unload: document.getElementById('reqUnload').value, desc: document.getElementById('reqDesc').value, createdAt: new Date().toISOString(), status: "active", manager: sessionStorage.getItem('crm_user'), container: document.getElementById('reqContainer').value, contQty: document.getElementById('reqContQty').value }; requests.push(newItem); renderRequests(); await sync('requests', requests, 'append'); ['reqComp', 'reqCargo', 'reqWeight', 'reqVol', 'reqValue', 'reqLoad', 'reqZip', 'reqUnload', 'reqDesc', 'reqContQty'].forEach(i=>document.getElementById(i).value=''); }
 function convertToDeal(reqId) {
     // Используй безопасный поиск
     const r = requests.find(x => String(x.id) === String(reqId));
@@ -2093,6 +2168,7 @@ function convertToDeal(reqId) {
     document.getElementById('dealLoad').value = r.load || "";
     document.getElementById('dealUnload').value = r.unload || "";
     document.getElementById('dealInfo').value = r.desc || "";
+    document.getElementById('dealType').value = r.type || "";
 
     // Считаем прибыль (чтобы маржа обновилась)
     calcDealProfit(); 
