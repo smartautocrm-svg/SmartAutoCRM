@@ -8,17 +8,14 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     
     <style>
- :root {
-    --primary: #511f54; /* Твой фирменный цвет */
-    --danger: #d93025; 
-    --success: #2e7d32; 
-    --warning: #f29900;
-    --cold: #757575; 
-    --warm: #e67e22; 
-    --active: #27ae60; 
-    --refused: #546e7a;
-    --bg: #f5f2f5;    /* Мягкий фон с фиолетовым отливом */
-    --border: #decadc; /* Цвет границ, гармонирующий с лого */
+:root {
+    --primary: #511f54; 
+    --danger: #d93025; --success: #2e7d32; --warning: #f29900;
+    --cold: #757575; --warm: #e67e22; --active: #27ae60; --refused: #546e7a;
+    --bg: #f8f9fc;    /* Светлый серо-голубой фон, на нем лучше видны тени */
+    --border: #e2e8f0; /* Очень светлые границы */
+    --card-bg: #ffffff;
+    --radius: 12px;    /* Единый стандарт скругления для всей системы */
 }
         body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg); margin: 0; padding: 0; font-size: 13px; color: #3c4043; overflow: hidden; }
         
@@ -131,12 +128,66 @@
 
         
         .input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 5px; }
-        input, textarea, select { width: 100%; padding: 4px 8px; border: 1px solid var(--border); border-radius: 3px; box-sizing: border-box; font-size: 11px; }
+        input, textarea, select { 
+    width: 100%; 
+    padding: 8px 12px; 
+    border: 1.5px solid var(--border); 
+    border-radius: 8px; 
+    box-sizing: border-box; 
+    font-size: 12px; 
+    background: #fdfbff; /* Легкий фиолетовый оттенок внутри поля */
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+input:focus, select:focus, textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    background: #fff;
+    box-shadow: 0 0 0 4px rgba(81, 31, 84, 0.08); /* «Ореол» вокруг поля */
+}
         
-        button.main { width: 100%; padding: 7px; background: var(--primary); color: white; border: none; border-radius: 3px; cursor: pointer; font-weight: bold; font-size: 11px; }
+        button.main { 
+    width: 100%; 
+    padding: 10px 15px; 
+    background: var(--primary); 
+    color: white; 
+    border: none; 
+    border-radius: 30px; /* Кнопка-пилюля */
+    cursor: pointer; 
+    font-weight: 600; 
+    font-size: 12px; 
+    letter-spacing: 0.5px; /* Чуть раздвинули буквы для солидности */
+    transition: filter 0.2s, transform 0.1s;
+}
+
+button.main:hover { 
+    filter: brightness(1.2); /* Кнопка чуть светлеет при наведении */
+}
+
+button.main:active { 
+    transform: scale(0.98); /* Эффект физического нажатия (кнопка сжимается) */
+}
         
-        .list-item { background: white; padding: 4px 10px; border-radius: 3px; border: 1px solid var(--border); margin-bottom: 1px; cursor: pointer; display: flex; align-items: center; gap: 8px; min-height: 32px; }
-        .list-item:hover { border-color: var(--primary); background: #f0f7ff; }
+        .list-item { 
+    background: var(--card-bg); 
+    padding: 10px 15px; /* Увеличили отступы, чтобы текст «дышал» */
+    border-radius: var(--radius); 
+    border: 1px solid var(--border); 
+    margin-bottom: 8px; /* Расстояние между карточками */
+    cursor: pointer; 
+    display: flex; 
+    align-items: center; 
+    gap: 12px; 
+    transition: all 0.2s ease; /* Плавность для всех эффектов */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02); /* Едва заметная тень */
+}
+
+.list-item:hover { 
+    border-color: var(--primary); 
+    background: #fff; 
+    transform: translateY(-2px); /* Карточка приподнимается */
+    box-shadow: 0 10px 15px -3px rgba(81, 31, 84, 0.1); /* Тень становится фиолетовой и глубокой */
+}
         .list-item.completed { background: #f9f9f9 !important; opacity: 0.6; border-left: 4px solid #999; }
         
         .list-item.overdue { background-color: #fff5f5; border-left: 4px solid var(--danger); }
@@ -259,9 +310,16 @@
             animation: slideIn 0.3s ease-out;
             position: relative;
         }
-        @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
+        @keyframes slideUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Применяем анимацию ко всем вкладкам при активации */
+.content.active {
+    display: flex;
+    animation: slideUp 0.3s ease-out;
+}
         }
         .toast h4 { margin: 0; font-size: 12px; color: var(--primary); }
         .toast p { margin: 0; font-size: 11px; color: #555; line-height: 1.3; }
@@ -296,6 +354,24 @@
             border-color: var(--primary);
             box-shadow: 0 0 5px rgba(81, 31, 84, 0.2);
         }
+        /* Весь скроллбар */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+/* Дорожка, по которой едет ползунок */
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+/* Сам ползунок */
+::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 10px;
+}
+/* Ползунок при наведении (становится фиолетовым) */
+::-webkit-scrollbar-thumb:hover {
+    background: var(--primary);
+}
     </style>
 </head>
 <body>
