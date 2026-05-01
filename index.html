@@ -208,10 +208,64 @@ button.main:active {
         .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 7000; }
         .modal-content { background: #fff; padding: 15px; width: 480px; border-radius: 6px; margin: 40px auto; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
 
-        .preview-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 5px; }
-        .preview-box { border-bottom: 1px solid #f1f3f4; padding-bottom: 2px; }
-        .preview-box label { display: block; font-size: 8px; color: #999; text-transform: uppercase; }
-        .preview-box span { font-weight: 500; font-size: 11px; color: #333; }
+        /* Общий контейнер превью */
+.card#preview-deals, .card#preview-companies, .card#preview-requests, .card#preview-partners, .card#preview-calls {
+    padding: 20px;
+    background: #ffffff;
+    border-radius: var(--radius);
+}
+
+/* Заголовок в карточке */
+.card h3 {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--primary);
+    margin-bottom: 15px;
+    border: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Сетка параметров */
+.preview-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+/* Блок одного параметра (Квадратик с данными) */
+.preview-box {
+    background: #fcfaff; /* Очень светлый фиолетовый фон */
+    border: 1px solid #f0eaf0;
+    padding: 10px 12px;
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+/* Подпись (маленький текст сверху) */
+.preview-box label {
+    font-size: 9px;
+    text-transform: uppercase;
+    color: #8e7a8e;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+/* Значение (жирный текст снизу) */
+.preview-box span {
+    font-size: 13px;
+    color: #2d1a2d;
+    font-weight: 600;
+}
+
+/* Особый стиль для важных полей (например, Прибыль) */
+.preview-box.highlight {
+    background: #fdf6ff;
+    border-left: 3px solid var(--primary);
+}
         
         .btn-pdf { 
     background: var(--primary); /* Был var(--success) */
@@ -1500,25 +1554,23 @@ function showRequestPreview(id) {
         
         let fHtml = (d.files || []).map(f => `<div class="file-item"><a href="${f.url}" target="_blank">📄 ${f.name}</a><span class="file-delete" onclick="deleteFile(${d.id}, '${f.id}')">×</span></div>`).join('');
         
-        document.getElementById('preview-deals').innerHTML = `
-        <h3>№ ${d.num} - ${d.company}</h3>
-        <div class="preview-grid">
-            <!-- БЛОК ПРИБЫЛИ И МАРЖИ -->
-            <div class="preview-box"><label>Прибыль</label><span style="color:var(--success); font-weight:bold; font-size: 14px;">${d.prof} USD</span></div>
-            <div class="preview-box"><label>Маржа %</label><span style="color:var(--warning); font-weight:bold; font-size: 14px;">${d.margin || '0%'}</span></div>
-            
-            <div class="preview-box"><label>Доход / Расход</label><span>${d.inc} / ${d.exp}</span></div>
-            <div class="preview-box"><label>Тип сделки</label><span>${d.type || '-'}</span></div>
-            
-            <div class="preview-box"><label>Транспорт</label><span>${d.trans.toUpperCase()}</span></div>
-            <div class="preview-box"><label>Менеджер</label><span>${d.manager}</span></div>
-            
-            <div class="preview-box"><label>Вес/Объем</label><span>${d.weight}кг / ${d.vol}м³</span></div>
-            ${tDetails}
-            
-            <div class="preview-box" style="grid-column: span 2;"><label>Маршрут</label><span>${d.load} → ${d.unload}</span></div>
-            <div class="preview-box" style="grid-column: span 2;"><label>Инфо</label><span>${d.info || '-'}</span></div>
-        </div>
+document.getElementById('preview-deals').innerHTML = `
+    <h3>💰 Сделка № ${d.num}</h3>
+    <div class="preview-grid">
+        <div class="preview-box highlight"><label>💵 Прибыль</label><span style="color:var(--success); font-size: 16px;">${d.prof} USD</span></div>
+        <div class="preview-box highlight"><label>📈 Маржа</label><span style="color:var(--warning); font-size: 16px;">${d.margin || '0%'}</span></div>
+        
+        <div class="preview-box"><label>👤 Менеджер</label><span>${d.manager}</span></div>
+        <div class="preview-box"><label>🏢 Клиент</label><span>${d.company}</span></div>
+        
+        <div class="preview-box"><label>🚛 Транспорт</label><span>${d.trans.toUpperCase()}</span></div>
+        <div class="preview-box"><label>📦 Груз</label><span>${d.cargo}</span></div>
+        
+        <div class="preview-box" style="grid-column: span 2;"><label>📍 Маршрут</label><span>${d.load} ➔ ${d.unload}</span></div>
+        <div class="preview-box" style="grid-column: span 2;"><label>📝 Инфо</label><span style="font-weight: normal; font-size: 12px; color: #666;">${d.info || '-'}</span></div>
+    </div>
+    <!-- Кнопки ниже оставляй как были -->
+`;
         <button class="btn-pdf" onclick="generateInvoicePDF(${d.id})">📄 Згенерувати пропозицію</button>
         <div class="file-list-container">
             <strong>Файли сделки:</strong>
@@ -1543,27 +1595,23 @@ function showCompanyPreview(n) {
     let shareHtml = (c.manager === me || me === 'admin') ? `<div style="grid-column:span 2; border-top:1px solid #eee; margin-top:10px; padding-top:5px;"><label style="font-size:8px;">ДОСТУП</label><div style="display:flex; gap:5px; margin-top:5px;"><select id="shMan" style="flex-grow:1; font-size:10px;"><option value="">Поделиться...</option>${managers.filter(m=>m!==me).map(m=>`<option value="${m}">${m}</option>`).join('')}</select><button onclick="toggleAccess('${c.id}', document.getElementById('shMan').value, 'add')" style="padding:2px 8px; font-size:10px;">+</button></div><div style="margin-top:5px;">${(c.sharedWith || "").split(',').filter(s=>s).map(s=>`<span class="share-tag">${s} <span onclick="toggleAccess('${c.id}','${s}','remove')" style="cursor:pointer">×</span></span>`).join('') || '<small>Никому</small>'}</div></div>` : "";
 
     document.getElementById('preview-companies').innerHTML = `
-    <h3>${c.name}</h3>
+    <h3>🏢 ${c.name}</h3>
     <div class="preview-grid">
-        <div class="preview-box"><label>Статус</label><span>${statusMap[c.status].label}</span></div>
-        <div class="preview-box"><label>Груз</label><span>${c.product || '-'}</span></div>
-        <div class="preview-box"><label>Менеджер</label><span>${c.manager}</span></div>
-        <div class="preview-box"><label>Город</label><span>${c.city || '-'}</span></div>
-        <div class="preview-box"><label>Контакт</label><span>${c.contact || '-'}</span></div>
-        <div class="preview-box"><label>Телефон</label><span>${c.phone || '-'}</span></div>
-        <div class="preview-box"><label>Email</label><span>${c.email || '-'}</span></div>
-        <div class="preview-box"><label>Сайт</label><span>${c.website || '-'}</span></div>
-        <div class="preview-box"><label>Импорт/Экспорт</label><span>${c.import || '-'} / ${c.export || '-'}</span></div>
+        <div class="preview-box highlight"><label>📊 Статус</label><span>${statusMap[c.status].label}</span></div>
+        <div class="preview-box"><label>👤 Менеджер</label><span>${c.manager}</span></div>
         
-        <!-- Кнопка вместо списка -->
-        <div class="preview-box" style="grid-column:span 2; margin-top:10px;">
-            <button class="main" style="background: var(--primary); height: 32px;" onclick="showCompanyHistory('${c.name.replace(/'/g, "\\'")}')">📜 Последние активности</button>
-        </div>
+        <div class="preview-box"><label>📞 Телефон</label><span>${c.phone || '-'}</span></div>
+        <div class="preview-box"><label>✉️ Email</label><span>${c.email || '-'}</span></div>
         
-        ${shareHtml}
-    </div>`;
-}
-
+        <div class="preview-box"><label>🌍 Город</label><span>${c.city || '-'}</span></div>
+        <div class="preview-box"><label>📦 Основной продукт</label><span>${c.product || '-'}</span></div>
+        
+        <div class="preview-box" style="grid-column: span 2;"><label>🔗 Сайт</label><span>${c.website || '-'}</span></div>
+    </div>
+    <div style="margin-top: 15px;">
+         <button class="main" style="background: var(--primary); height: 35px;" onclick="showCompanyHistory('${c.name.replace(/'/g, "\\'")}')">📜 История активности</button>
+    </div>
+`;
     function showPartnerPreview(id) {
     const p = partners.find(x => x.id == id);
     if(!p) return;
