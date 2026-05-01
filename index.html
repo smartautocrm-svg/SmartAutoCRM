@@ -162,8 +162,20 @@
         .preview-box label { display: block; font-size: 8px; color: #999; text-transform: uppercase; }
         .preview-box span { font-weight: 500; font-size: 11px; color: #333; }
         
-        .btn-pdf { background: var(--success); color: white; border: none; padding: 6px 12px; border-radius: 3px; cursor: pointer; font-size: 10px; text-transform: uppercase; font-weight: bold; margin-top: 10px; width: 100%; }
-        .btn-pdf:hover { background: #236327; }
+        .btn-pdf { 
+    background: var(--primary); /* Был var(--success) */
+    color: white; 
+    border: none; 
+    padding: 6px 12px; 
+    border-radius: 3px; 
+    cursor: pointer; 
+    font-size: 10px; 
+    text-transform: uppercase; 
+    font-weight: bold; 
+    margin-top: 10px; 
+    width: 100%; 
+}
+.btn-pdf:hover { opacity: 0.9; } /* Легкое затухание при наведении */
 
         /* Файлы Сделок */
         .file-list-container { margin-top: 10px; border-top: 1px solid #eee; padding-top: 10px; }
@@ -358,7 +370,7 @@
             <input type="text" id="regName" placeholder="Ваше Имя">
             <input type="email" id="regEmail" placeholder="Email">
             <input type="password" id="regPass" placeholder="Пароль">
-            <button class="main" style="background:var(--success);" onclick="handleRegister()">Регистрация</button>
+            <button class="main" style="background:var(--primary);" onclick="handleRegister()">Регистрация</button>
             <div class="login-toggle" onclick="toggleAuthMode(false)">Уже есть аккаунт</div>
         </div>
     </div>
@@ -444,7 +456,7 @@
                 <input type="number" id="reqWeight" placeholder="Вес (кг)"><input type="number" id="reqVol" placeholder="Объем (м³)"><input type="number" id="reqValue" placeholder="Инвойс">
                 <select id="reqCurrency"><option value="USD">USD</option><option value="EUR">EUR</option></select><input type="text" id="reqLoad" placeholder="Загрузка"><input type="text" id="reqZip" placeholder="Индекс"><input type="text" id="reqUnload" placeholder="Выгрузка"><textarea id="reqDesc" style="grid-column: span 2;" placeholder="Детали..."></textarea>
             </div>
-            <button class="main" style="background:#673ab7;" onclick="addRequest()">Сохранить запрос</button>
+            <button class="main" style="background:var(--primary);" onclick="addRequest()">Сохранить запрос</button>
         </div>
         <div class="card" id="preview-requests"><div style="color:#ccc; text-align:center; margin-top:50px;">Выберите запрос</div></div>
     </div>
@@ -522,7 +534,7 @@
                 </select>
             </div>
 
-            <button class="main" style="background:var(--active); margin-top:10px;" onclick="addDeal()">Создать сделку</button>
+            <button class="main" style="background:var(--primary); margin-top:10px;" onclick="addDeal()">Создать сделку</button>
         </div>
 
         <!-- ПРАВАЯ КАРТОЧКА: ПРЕВЬЮ -->
@@ -572,7 +584,7 @@
         </select>
         <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" id="compPrivate"> Приватная</div>
     </div>
-    <button class="main" style="background:var(--success);" onclick="addCompany()">Создать компанию</button>
+    <button class="main" style="background:var(--primary);" onclick="addCompany()">Создать компанию</button>
 </div>
         <div class="card" id="preview-companies"></div>
     </div>
@@ -621,7 +633,7 @@
                 <button type="button" onclick="addContactRow('partContactsList')" style="margin-top: 8px; font-size: 10px; cursor: pointer; padding: 4px 8px;">+ Добавить контакт</button>
             </div>
             
-            <button class="main" style="background:#607d8b; margin-top: 10px;" onclick="addPartner()">Добавить партнера</button>
+            <button class="main" style="background:var(--primary);" margin-top: 10px;" onclick="addPartner()">Добавить партнера</button>
         </div>
         <!-- КАРТОЧКА ПРЕВЬЮ (была пропущена) -->
         <div class="card" id="preview-partners">
@@ -1400,7 +1412,7 @@ function showRequestPreview(id) {
             
             ${shareHtml} 
         </div>
-        <button class="main" style="background:var(--active); margin-top:15px; height: 32px;" onclick="convertToDeal('${r.id}')">💰 Создать сделку из запроса</button>
+        <button class="main" style="background:var(--primary); margin-top:15px; height: 32px;" onclick="convertToDeal('${r.id}')">💰 Создать сделку из запроса</button>
     `;
 }
 
