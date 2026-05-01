@@ -2090,7 +2090,6 @@ async function saveEdit() {
     
     updatedItem = requests[i];
     renderRequests();
-    }
     } else if (type === 'deal') {
         sheetName = 'deals';
         const i = deals.findIndex(x => String(x.id) === String(id))
