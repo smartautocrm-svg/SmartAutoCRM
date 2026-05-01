@@ -1458,7 +1458,7 @@ async function finishRem(e, id) {
     // Заполняем поля в модалке
     document.getElementById('activeRemId').value = id;
     document.getElementById('followUpTargetCompany').innerText = "Компания: " + r.name;
-    document.getElementById('currentCallResult').value = r.topic; // Предзаполняем текущим текстом
+    document.getElementById('currentCallResult').value = r.topic || ""; // Предзаполняем текущим текстом
     document.getElementById('nextCallTime').value = "";
     document.getElementById('nextCallTopic').value = "";
     
@@ -2027,7 +2027,7 @@ async function saveEdit() {
     }
     document.getElementById('editModal').style.display = 'none';
 }
-    async function submitFollowUp() {
+async function submitFollowUp() {
     const oldId = document.getElementById('activeRemId').value;
     const currentResult = document.getElementById('currentCallResult').value;
     const nextTime = document.getElementById('nextCallTime').value;
@@ -2037,19 +2037,16 @@ async function saveEdit() {
     if (i === -1) return;
 
     showLoader(true);
-
-    // 1. Обновляем старую активность
     const oldRem = reminders[i];
     oldRem.status = 'completed';
-    oldRem.topic = currentResult; // Сохраняем итоговый результат
+    oldRem.topic = currentResult; 
     
     await sync('reminders', oldRem, 'update');
 
-    // 2. Если заполнено время следующего шага — создаем новую активность
     if (nextTime && nextTopic) {
         const newRem = {
             id: Date.now(),
-            name: oldRem.name, // Та же компания
+            name: oldRem.name, 
             date: nextTime,
             topic: nextTopic,
             manager: sessionStorage.getItem('crm_user'),
@@ -2058,14 +2055,11 @@ async function saveEdit() {
         };
         reminders.push(newRem);
         await sync('reminders', newRem, 'append');
-        
-        // Уведомление менеджеру
-        alert("Текущая задача закрыта. Новая создана на " + dtFmt(nextTime));
+        alert("Задача завершена. Новая создана.");
     } else {
-        alert("Задача завершена без планирования следующего шага.");
+        alert("Задача завершена.");
     }
 
-    // Закрываем модалку и обновляем интерфейс
     document.getElementById('followUpModal').style.display = 'none';
     renderReminders();
     showLoader(false);
