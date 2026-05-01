@@ -31,20 +31,34 @@
         #loader-bar { width: 30%; height: 100%; background: var(--primary); animation: load 2s infinite; }
         @keyframes load { 0% { margin-left: -30%; } 100% { margin-left: 100%; } }
 
-        .tabs { 
+       .tabs { 
             display: flex; 
             background: #fff; 
             border-bottom: 1px solid var(--border); 
-            height: 45px; /* Увеличили на 5px для удобства */
+            height: 40px; /* Фиксированная высота */
             align-items: center; 
-            padding: 0 5px;
-            position: sticky;
-            top: 0;
-            z-index: 8000;
+            padding: 0 10px;
+            gap: 5px;
+            overflow: hidden;
         }
-        .tab-btn { padding: 0 15px; border: none; background: none; cursor: pointer; font-size: 10px; font-weight: bold; color: #5f6368; border-bottom: 3px solid transparent; text-transform: uppercase; line-height: 40px; display: flex; gap: 5px; }
+        .tab-btn { 
+            padding: 0 8px; 
+            border: none; 
+            background: none; 
+            cursor: pointer; 
+            font-size: 10px; 
+            font-weight: bold; 
+            color: #5f6368; 
+            border-bottom: 3px solid transparent; 
+            line-height: 37px; /* Центровка по вертикали */
+            height: 40px;
+            white-space: nowrap; /* Запрет переноса текста */
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
         .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); background: #f8f9fa; }
-        .tab-counter { background: #eee; padding: 0 6px; border-radius: 10px; height: 16px; line-height: 16px; margin-top: 12px; font-size: 9px; color: #666; }
+        .tab-counter { background: #eee; padding: 0 4px; border-radius: 8px; height: 14px; line-height: 14px; font-size: 9px; color: #666; }
         
         .content { display: none; height: calc(100vh - 40px); flex-direction: column; }
         .content.active { display: flex; }
@@ -307,31 +321,32 @@
 </div>
 
 <div class="tabs">
-    <div class="logo-container"><img src="https://cdn-icons-png.flaticon.com/512/2304/2304226.png" class="logo-img"></div>
-    <button class="tab-btn active" id="btn-calls" onclick="openTab('calls')">📞 Активность <span class="tab-counter" id="count-calls">0</span></button>
-    <button class="tab-btn" id="btn-requests" onclick="openTab('requests')">📦 Запросы <span class="tab-counter" id="count-requests">0</span></button>
-    <button class="tab-btn" id="btn-deals" onclick="openTab('deals')">💰 Сделки <span class="tab-counter" id="count-deals">0</span></button>
-    <button class="tab-btn" id="btn-companies" onclick="openTab('companies')">🏢 Компании <span class="tab-counter" id="count-companies">0</span></button>
-    <button class="tab-btn" id="btn-partners" onclick="openTab('partners')">🤝 Партнеры <span class="tab-counter" id="count-partners">0</span></button>
-    <button class="tab-btn" id="btn-report" onclick="openTab('report')">📊 Отчет</button>
-    <button class="tab-btn" id="btn-stats" onclick="openTab('stats')">📈 Статистика</button>
-    <button class="tab-btn" id="btn-tracking" onclick="openTab('tracking')">🛰️ Трекинг <span class="tab-counter" id="count-tracking">0</span></button>
-    <button class="tab-btn" id="btn-profile" onclick="openTab('profile')">👤 Профиль</button>
-    <button class="tab-btn" id="btn-trash" style="display:none;" onclick="openTab('trash')">🗑️ Корзина</button>
-    <button class="tab-btn" id="btn-logs" style="display:none;" onclick="openTab('logs')">📜 Логи</button>
+    <div class="logo-container" style="padding: 0 10px;"><img src="https://cdn-icons-png.flaticon.com/512/2304/2304226.png" class="logo-img" style="height:24px;"></div>
+    <button class="tab-btn active" id="btn-calls" onclick="openTab('calls')">📞 <span class="tab-label">АКТИВНОСТЬ</span> <span class="tab-counter" id="count-calls">0</span></button>
+    <button class="tab-btn" id="btn-requests" onclick="openTab('requests')">📦 <span class="tab-label">ЗАПРОСЫ</span> <span class="tab-counter" id="count-requests">0</span></button>
+    <button class="tab-btn" id="btn-deals" onclick="openTab('deals')">💰 <span class="tab-label">СДЕЛКИ</span> <span class="tab-counter" id="count-deals">0</span></button>
+    <button class="tab-btn" id="btn-companies" onclick="openTab('companies')">🏢 <span class="tab-label">КОМПАНИИ</span> <span class="tab-counter" id="count-companies">0</span></button>
+    <button class="tab-btn" id="btn-partners" onclick="openTab('partners')">🤝 <span class="tab-label">ПАРТНЕРЫ</span> <span class="tab-counter" id="count-partners">0</span></button>
+    <button class="tab-btn" id="btn-report" onclick="openTab('report')">📊 <span class="tab-label">ОТЧЕТ</span></button>
+    <button class="tab-btn" id="btn-stats" onclick="openTab('stats')">📈 <span class="tab-label">СТАТС</span></button>
+    <button class="tab-btn" id="btn-tracking" onclick="openTab('tracking')">🛰️ <span class="tab-label">ТРЕКИНГ</span> <span class="tab-counter" id="count-tracking">0</span></button>
+    <button class="tab-btn" id="btn-profile" onclick="openTab('profile')">👤</button>
+    <button class="tab-btn" id="btn-trash" style="display:none;" onclick="openTab('trash')">🗑️</button>
+    <button class="tab-btn" id="btn-logs" style="display:none;" onclick="openTab('logs')">📜</button>
 
-    <!-- ГЛОБАЛЬНЫЙ ПОИСК (Центрирован) -->
-    <div style="margin-left: 15px; display: flex; align-items: center; position: relative; flex-grow: 1; max-width: 300px;">
-        <input type="text" id="globalSearchInput" placeholder="🔍 Поиск по базе..." 
-               style="width: 100%; height: 26px; border-radius: 20px; border: 1px solid var(--border); padding: 0 10px 0 30px; font-size: 11px;"
+    <!-- ГЛОБАЛЬНЫЙ ПОИСК -->
+    <div style="position: relative; margin-left: 10px;">
+        <input type="text" id="globalSearchInput" placeholder="🔍 Поиск..." 
+               style="width: 150px; height: 24px; border-radius: 15px; border: 1px solid var(--border); padding: 0 10px 0 25px; font-size: 11px;"
                oninput="debouncedGlobalSearch()">
-        <div id="globalSearchResults" style="display:none; position: absolute; top: 35px; left: 0; width: 400px; background: white; border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 12000; max-height: 500px; overflow-y: auto;"></div>
+        <div id="globalSearchResults" style="display:none; position: absolute; top: 30px; left: 0; width: 350px; background: white; border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 12000; max-height: 400px; overflow-y: auto;"></div>
     </div>
 
-    <!-- ИНФОРМАЦИЯ О ПОЛЬЗОВАТЕЛЕ (Справа) -->
-    <div style="margin-left: auto; padding-right: 15px; display: flex; flex-direction: column; justify-content: center; align-items: flex-end; color: #999; font-size: 9px; line-height: 1.2;">
-        <div><span id="user-display" style="color:var(--primary); font-weight:bold;"></span></div>
-        <div><span id="sync-status">Загрузка...</span> | <a href="#" onclick="logout()" style="color:var(--danger); text-decoration:none;">Выход</a></div>
+    <!-- ИНФО О ЮЗЕРЕ -->
+    <div style="margin-left: auto; display: flex; align-items: center; gap: 10px; font-size: 10px; padding-right: 10px;">
+        <span id="user-display" style="color:var(--primary); font-weight:bold;"></span>
+        <span id="sync-status" style="color:#bbb; font-size: 9px;"></span>
+        <a href="#" onclick="logout()" style="color:var(--danger); text-decoration:none; font-weight:bold;">ВЫХОД</a>
     </div>
 </div>
 
