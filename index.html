@@ -1048,7 +1048,8 @@ async function loadCloudData() {
             unload: String(x[9]||""), desc: String(x[10]||""), createdAt: x[11], status: x[12], 
             comment: x[13], container: x[14], zip: x[15], manager: String(x[16]||""), 
             contQty: x[17],type: x[18], 
-            isDeleted: x[19] === true || x[19] === 'true'
+            sharedWith: String(x[19] || ""), 
+            isDeleted: x[20] === true || x[20] === 'true'
         }));
         
         // 3. Сделки (isDeleted - индекс 31)
@@ -1103,9 +1104,9 @@ async function loadCloudData() {
 
     function formatRow(sh, o) {
         if (sh === 'companies') return [o.id, o.name, o.contact, o.phone, o.product || "", o.city || "", o.email || "", o.import || "", o.export || "", o.status, o.createdAt, o.activatedAt || "", o.manager, o.isPrivate, o.sharedWith || "", o.website || "", o.isDeleted || false];
-        if (sh === 'requests') return [o.id, o.company, o.cargo, o.transport, o.weight, o.vol, o.value, o.currency, o.load, o.unload, o.desc, o.createdAt, o.status, o.comment, o.container, o.zip, o.manager, o.contQty || "", o.type || "", o.isDeleted || false];
-       if (sh === 'deals') return [
-    o.id, o.num, o.company, o.cargo, o.trans, o.weight, o.vol, o.value, o.curr, 
+       if (sh === 'requests') return [o.id, o.company, o.cargo, o.transport, o.weight, o.vol, o.value, o.currency, o.load, o.unload, o.desc, o.createdAt, o.status, o.comment, o.container, o.zip, o.manager, o.contQty || "", o.type || "", o.sharedWith || "", o.isDeleted || false];
+    if (sh === 'deals') return
+        o.id, o.num, o.company, o.cargo, o.trans, o.weight, o.vol, o.value, o.curr, 
     o.load, o.zip, o.unload, o.info, o.manager, o.createdAt, o.exp, o.inc, 
     o.prof, o.container, o.sharedWith || "", o.status, o.type, o.contQty || "", 
     o.blNum || "", o.awbNum || "", JSON.stringify(o.files || []), o.margin, 
@@ -1274,9 +1275,31 @@ function deleteFile(dealId, fileId) {
     }
 
 function showRequestPreview(id) {
-        const r = requests.find(x => x.id == id); 
-        if (!r || !checkAccess(r.company)) return;
-        document.getElementById('preview-requests').innerHTML = `
+    const r = requests.find(x => x.id == id); 
+    if (!r || !checkAccess(r.company)) return;
+
+    const me = sessionStorage.getItem('crm_user');
+
+    // 1. Сначала готовим блок "Поделиться" (только для автора или админа)
+    let shareHtml = (r.manager === me || me === 'admin') ? `
+        <div style="grid-column:span 2; border-top:1px solid #eee; margin-top:10px; padding-top:10px;">
+            <label style="font-size:9px; font-weight:bold; color:var(--primary);">ПОДЕЛИТЬСЯ ЗАПРОСОМ:</label>
+            <div style="display:flex; gap:5px; margin-top:5px;">
+                <select id="shReqMan" style="flex-grow:1; font-size:10px;">
+                    <option value="">Выберите менеджера...</option>
+                    ${managers.filter(m => m !== me).map(m => `<option value="${m}">${m}</option>`).join('')}
+                </select>
+                <button onclick="toggleRequestAccess('${r.id}', document.getElementById('shReqMan').value, 'add')" style="padding:2px 8px; font-size:10px; background:var(--primary); color:white; border:none; border-radius:3px; cursor:pointer;">+</button>
+            </div>
+            <div style="margin-top:5px;">
+                ${(r.sharedWith || "").split(',').filter(s => s).map(s => `
+                    <span class="share-tag">${s} <span onclick="toggleRequestAccess('${r.id}','${s}','remove')" style="cursor:pointer; font-weight:bold;">×</span></span>
+                `).join('') || '<small style="color:#999">Доступ только у автора</small>'}
+            </div>
+        </div>` : "";
+
+    // 2. Теперь формируем весь контент карточки целиком
+    document.getElementById('preview-requests').innerHTML = `
         <h3>Запрос: ${r.company}</h3>
         <div class="preview-grid">
             <div class="preview-box"><label>Груз</label><span>${r.cargo}</span></div>
@@ -1288,11 +1311,12 @@ function showRequestPreview(id) {
             <div class="preview-box"><label>Дата создания</label><span>${dFmt(r.createdAt)}</span></div>
             <div class="preview-box" style="grid-column:span 2;"><label>Маршрут</label><span>${r.load} → ${r.unload}</span></div>
             <div class="preview-box" style="grid-column:span 2;"><label>Детали</label><span>${r.desc || '-'}</span></div>
+            
+            ${shareHtml} 
         </div>
-        <!-- НОВАЯ КНОПКА -->
         <button class="main" style="background:var(--active); margin-top:15px; height: 32px;" onclick="convertToDeal('${r.id}')">💰 Создать сделку из запроса</button>
-        `;
-    }
+    `;
+}
 
     function showDealPreview(id) {
         const d = deals.find(x => x.id == id); if (!d) return;
@@ -1485,14 +1509,29 @@ function renderRequests() {
           
     const limitMs = 2 * 24 * 60 * 60 * 1000, now = new Date();
     
-    let f = requests.filter(r => {
-    if (r.isDeleted) return false; // ДОБАВЛЕНО
+let f = requests.filter(r => {
+    if (r.isDeleted) return false;
+    const me = sessionStorage.getItem('crm_user');
+    
+    // ПРОВЕРКА ДОСТУПА:
+    // 1. Админ
+    // 2. Автор запроса
+    // 3. Запрос пошерен этому юзеру
+    // 4. Юзер имеет доступ к компании (старое условие checkAccess)
+    const hasAccessToRequest = (me === 'admin') || 
+                               (r.manager === me) || 
+                               (r.sharedWith || "").split(',').includes(me) || 
+                               checkAccess(r.company);
+
+    if (!hasAccessToRequest) return false;
+
     const companyText = String(r.company || "").toLowerCase();
     const cargoText = String(r.cargo || "").toLowerCase();
-        const matchesSearch = checkAccess(r.company) && (companyText.includes(s) || cargoText.includes(s));
-        const matchesStatus = hideDone ? r.status !== 'completed' : true;
-        return matchesSearch && matchesStatus;
-    });
+    const matchesSearch = companyText.includes(s) || cargoText.includes(s);
+    const matchesStatus = hideDone ? r.status !== 'completed' : true;
+    
+    return matchesSearch && matchesStatus;
+});
     
     // --- НОВАЯ ЛОГИКА ОГРАНИЧЕНИЯ ---
     const totalFound = f.length;
@@ -2386,6 +2425,22 @@ function getArrayBySheet(sh) {
     showCompanyPreview(companies[i].name); 
     // Обновляем только эту компанию в таблице
     await sync('companies', companies[i], 'update'); 
+}
+    async function toggleRequestAccess(rid, man, act) { 
+    if(!man) return;
+    const i = requests.findIndex(x => String(x.id) === String(rid)); 
+    if(i === -1) return;
+
+    let arr = (requests[i].sharedWith || "").split(',').filter(s => s); 
+    if(act === 'add' && !arr.includes(man)) arr.push(man); 
+    if(act === 'remove') arr = arr.filter(s => s !== man); 
+    
+    requests[i].sharedWith = arr.join(','); 
+    
+    // Перерисовываем превью
+    showRequestPreview(rid); 
+    // Обновляем в таблице
+    await sync('requests', requests[i], 'update'); 
 }
 
 function openTab(id) { 
