@@ -777,6 +777,31 @@
         </div>
     </div>
 </div>
+    <!-- МОДАЛКА ЗАВЕРШЕНИЯ СЛЕДУЮЩЕГО ШАГА -->
+<div id="followUpModal" class="modal-overlay" onclick="if(event.target===this) this.style.display='none'">
+    <div class="modal-content" style="width: 450px; border-top: 5px solid var(--success);">
+        <h3 id="followUpTitle">Завершение задачи</h3>
+        <p id="followUpTargetCompany" style="font-weight: bold; color: var(--primary); margin-bottom: 10px;"></p>
+        
+        <label style="font-size: 10px; color: #666;">РЕЗУЛЬТАТ ТЕКУЩЕГО КОНТАКТА:</label>
+        <textarea id="currentCallResult" style="width: 100%; height: 60px; margin-bottom: 15px; padding: 5px; font-size: 11px; border: 1px solid var(--border);" placeholder="О чем договорились сейчас?"></textarea>
+        
+        <div style="background: #f0f7ff; padding: 10px; border-radius: 4px; border: 1px dashed var(--primary);">
+            <h4 style="margin: 0 0 10px 0; font-size: 11px;">📅 ЗАПЛАНИРОВАТЬ СЛЕДУЮЩИЙ ШАГ?</h4>
+            <div class="input-row">
+                <input type="datetime-local" id="nextCallTime">
+                <input type="text" id="nextCallTopic" placeholder="Что нужно сделать дальше?">
+            </div>
+        </div>
+        
+        <input type="hidden" id="activeRemId">
+        
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+            <button class="main" style="background: var(--success);" onclick="submitFollowUp()">Сохранить и завершить</button>
+            <button class="main" style="background: var(--cold); width: 100px;" onclick="document.getElementById('followUpModal').style.display='none'">Отмена</button>
+        </div>
+    </div>
+</div>
     
 <datalist id="allEntitiesData"></datalist>
 
@@ -1425,19 +1450,20 @@ function renderReminders() {
 async function finishRem(e, id) { 
     e.stopPropagation(); 
     
-    // Приводим к строке, так как из HTML id может прийти как число, 
-    // а в массиве после загрузки из Google он может быть строкой
     const i = reminders.findIndex(x => String(x.id) === String(id)); 
+    if (i === -1) return;
+
+    const r = reminders[i];
+
+    // Заполняем поля в модалке
+    document.getElementById('activeRemId').value = id;
+    document.getElementById('followUpTargetCompany').innerText = "Компания: " + r.name;
+    document.getElementById('currentCallResult').value = r.topic; // Предзаполняем текущим текстом
+    document.getElementById('nextCallTime').value = "";
+    document.getElementById('nextCallTopic').value = "";
     
-    if (i > -1) {
-        reminders[i].status = 'completed'; // Меняем статус локально
-        renderReminders(); // Сразу перерисовываем интерфейс
-        
-        // Отправляем обновление в облако
-        await sync('reminders', reminders[i], 'update'); 
-    } else {
-        console.error("Не удалось найти активность с ID:", id);
-    }
+    // Открываем модалку
+    document.getElementById('followUpModal').style.display = 'block';
 }
     
 function renderRequests() {
@@ -2001,6 +2027,50 @@ async function saveEdit() {
     }
     document.getElementById('editModal').style.display = 'none';
 }
+    async function submitFollowUp() {
+    const oldId = document.getElementById('activeRemId').value;
+    const currentResult = document.getElementById('currentCallResult').value;
+    const nextTime = document.getElementById('nextCallTime').value;
+    const nextTopic = document.getElementById('nextCallTopic').value;
+
+    const i = reminders.findIndex(x => String(x.id) === String(oldId));
+    if (i === -1) return;
+
+    showLoader(true);
+
+    // 1. Обновляем старую активность
+    const oldRem = reminders[i];
+    oldRem.status = 'completed';
+    oldRem.topic = currentResult; // Сохраняем итоговый результат
+    
+    await sync('reminders', oldRem, 'update');
+
+    // 2. Если заполнено время следующего шага — создаем новую активность
+    if (nextTime && nextTopic) {
+        const newRem = {
+            id: Date.now(),
+            name: oldRem.name, // Та же компания
+            date: nextTime,
+            topic: nextTopic,
+            manager: sessionStorage.getItem('crm_user'),
+            status: "active",
+            isDeleted: false
+        };
+        reminders.push(newRem);
+        await sync('reminders', newRem, 'append');
+        
+        // Уведомление менеджеру
+        alert("Текущая задача закрыта. Новая создана на " + dtFmt(nextTime));
+    } else {
+        alert("Задача завершена без планирования следующего шага.");
+    }
+
+    // Закрываем модалку и обновляем интерфейс
+    document.getElementById('followUpModal').style.display = 'none';
+    renderReminders();
+    showLoader(false);
+}
+    
 
     // --- ФУНКЦИИ ДОБАВЛЕНИЯ ---
     async function addReminder() { const n = document.getElementById('callName').value; if(!n)return alert("Имя?"); const newItem = { id: Date.now(), name: n, date: document.getElementById('callTime').value, topic: document.getElementById('callTopic').value, manager: sessionStorage.getItem('crm_user'), status: "active" }; reminders.push(newItem); renderReminders(); await sync('reminders', reminders, 'append'); ['callName', 'callTime', 'callTopic'].forEach(i=>document.getElementById(i).value=''); }
