@@ -210,6 +210,12 @@
             font-weight: bold;
         }
         .toast-close:hover { color: #333; }
+        .search-res-group { background: #f8f9fa; padding: 5px 10px; font-size: 10px; font-weight: bold; color: var(--primary); text-transform: uppercase; border-bottom: 1px solid #eee; }
+        .search-res-item { padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #f1f3f4; display: flex; flex-direction: column; gap: 2px; }
+        .search-res-item:hover { background: #e8f0fe; }
+        .search-res-item .title { font-weight: bold; font-size: 11px; color: #333; }
+        .search-res-item .sub { font-size: 10px; color: #666; }
+        .search-res-item .tag { font-size: 9px; background: #eee; padding: 1px 4px; border-radius: 3px; align-self: flex-start; }
     </style>
 </head>
 <body>
@@ -303,11 +309,14 @@
     <button class="tab-btn" id="btn-profile" onclick="openTab('profile')">👤 Профиль</button>
     <button class="tab-btn" id="btn-trash" style="display:none;" onclick="openTab('trash')">🗑️ Корзина</button>
     <button class="tab-btn" id="btn-logs" style="display:none;" onclick="openTab('logs')">📜 Логи</button>
-    <div style="margin-left: auto; padding: 5px 10px; color: #999; font-size: 9px; text-align: right;">
-        <span id="user-display" style="color:var(--primary); font-weight:bold;"></span><br>
-        <span id="sync-status">Загрузка...</span> | <a href="#" onclick="logout()" style="color:var(--danger); text-decoration:none;">Выход</a>
+    <div style="margin-left: 20px; display: flex; align-items: center; position: relative;">
+        <input type="text" id="globalSearchInput" placeholder="🔍 Поиск по всей базе..." 
+               style="width: 250px; height: 30px; border-radius: 20px; border: 1px solid var(--border); padding-left: 35px;"
+               oninput="debouncedGlobalSearch()">
+        <div id="globalSearchResults" style="display:none; position: absolute; top: 35px; left: 0; width: 400px; background: white; border: 1px solid var(--border); border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); z-index: 12000; max-height: 500px; overflow-y: auto;">
+            <!-- Результаты поиска появятся здесь -->
+        </div>
     </div>
-</div>
 
 <!-- ВКЛАДКА ЗВОНКИ -->
 <div id="calls" class="content active">
@@ -2866,6 +2875,93 @@ function renderLogs() {
 
     document.getElementById('logsTableBody').innerHTML = html || '<tr><td colspan="5" style="padding:50px; color:#999;">Событий не найдено</td></tr>';
 }
+    // Функция глобального поиска
+const debouncedGlobalSearch = debounce(() => {
+    const q = document.getElementById('globalSearchInput').value.trim().toLowerCase();
+    const resBox = document.getElementById('globalSearchResults');
+    
+    if (q.length < 2) {
+        resBox.style.display = 'none';
+        return;
+    }
+
+    let html = '';
+
+    // 1. Поиск в компаниях
+    const fComp = companies.filter(c => !c.isDeleted && (c.name.toLowerCase().includes(q) || (c.phone && c.phone.includes(q))));
+    if (fComp.length > 0) {
+        html += `<div class="search-res-group">🏢 Компании</div>`;
+        fComp.slice(0, 5).forEach(c => {
+            html += `<div class="search-res-item" onclick="goToResult('companies', '${c.name}')">
+                <span class="title">${c.name}</span>
+                <span class="sub">${c.city || ''} | ${c.manager}</span>
+            </div>`;
+        });
+    }
+
+    // 2. Поиск в сделках
+    const fDeals = deals.filter(d => !d.isDeleted && (d.num.toLowerCase().includes(q) || d.company.toLowerCase().includes(q) || d.cargo.toLowerCase().includes(q)));
+    if (fDeals.length > 0) {
+        html += `<div class="search-res-group">💰 Сделки</div>`;
+        fDeals.slice(0, 5).forEach(d => {
+            html += `<div class="search-res-item" onclick="goToResult('deals', '${d.id}')">
+                <span class="title">№ ${d.num} - ${d.company}</span>
+                <span class="sub">${d.cargo} | ${d.prof}$</span>
+            </div>`;
+        });
+    }
+
+    // 3. Поиск в запросах
+    const fReq = requests.filter(r => !r.isDeleted && (r.company.toLowerCase().includes(q) || r.cargo.toLowerCase().includes(q)));
+    if (fReq.length > 0) {
+        html += `<div class="search-res-group">📦 Запросы</div>`;
+        fReq.slice(0, 5).forEach(r => {
+            html += `<div class="search-res-item" onclick="goToResult('requests', '${r.id}')">
+                <span class="title">${r.company}</span>
+                <span class="sub">${r.cargo} | ${r.manager}</span>
+            </div>`;
+        });
+    }
+
+    // 4. Поиск в трекинге
+    const fTrack = tracking.filter(t => !t.isDeleted && (t.num.toLowerCase().includes(q) || t.cargo.toLowerCase().includes(q)));
+    if (fTrack.length > 0) {
+        html += `<div class="search-res-group">🛰️ Трекинг</div>`;
+        fTrack.slice(0, 5).forEach(t => {
+            html += `<div class="search-res-item" onclick="goToResult('tracking', '${t.id}')">
+                <span class="title">${t.num}</span>
+                <span class="sub">${t.cargo} | Статус: ${t.status}</span>
+            </div>`;
+        });
+    }
+
+    if (html === '') {
+        html = '<div style="padding:20px; text-align:center; color:#999;">Ничего не найдено</div>';
+    }
+
+    resBox.innerHTML = html;
+    resBox.style.display = 'block';
+}, 300);
+
+// Функция перехода к результату
+function goToResult(tab, idOrName) {
+    document.getElementById('globalSearchResults').style.display = 'none';
+    document.getElementById('globalSearchInput').value = '';
+    
+    openTab(tab);
+    
+    if (tab === 'companies') showCompanyPreview(idOrName);
+    if (tab === 'deals') showDealPreview(idOrName);
+    if (tab === 'requests') showRequestPreview(idOrName);
+    if (tab === 'tracking') showTrackPreview(idOrName);
+}
+
+// Закрытие поиска при клике мимо
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('#globalSearchInput') && !e.target.closest('#globalSearchResults')) {
+        document.getElementById('globalSearchResults').style.display = 'none';
+    }
+});
     
 </script>
     <div id="notification-container"></div>
