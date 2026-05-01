@@ -2873,77 +2873,86 @@ function calcEditProf() {
     function updateSecondaryFilter() { const p = document.getElementById('sortComp').value, s = document.getElementById('secondarySelect'); if (!p) { s.style.display = 'none'; renderCompanies(); return; } s.style.display = 'inline-block'; s.innerHTML = p === 'manager' ? '<option value="">Все</option>' + managers.map(m => `<option value="${m}">${m}</option>`).join('') : '<option value="">Все</option><option value="cold">Холодный</option><option value="warm">Теплый</option><option value="active">Активный</option>'; renderCompanies(); }
     function clearCallFilters() { document.getElementById('searchCallComp').value = ''; document.getElementById('searchCallDate').value = ''; renderReminders(); }
 
-    function updateDashboard() {
+function updateDashboard() {
     const me = sessionStorage.getItem('crm_user');
     const now = new Date();
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
 
-    // 1. Фильтруем данные (с учетом прав доступа)
+    // 1. Фильтруем данные (только не удаленные и с доступом)
     const myDeals = deals.filter(d => !d.isDeleted && checkDealAccess(d));
     const myReminders = reminders.filter(r => !r.isDeleted && (me === 'admin' || r.manager === me));
     const myRequests = requests.filter(r => !r.isDeleted && checkAccess(r.company));
 
-    // --- РАСЧЕТ ПРИБЫЛИ ---
-    // Текущий месяц
+    // --- ИСПРАВЛЕННЫЙ РАСЧЕТ ПРИБЫЛИ ---
+    // Считаем прибыль, если: 
+    // ЭТАП = "Закрыта" (closed) ИЛИ статус = "completed" ИЛИ стоит галочка "Оплачено" (isPaid)
+    
     const profitThisMonth = myDeals
         .filter(d => {
-            const date = new Date(d.createdAt);
-            return d.status === 'completed' && date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+            const date = new Date(d.createdAt); // Можно заменить на d.payDate, если важна дата оплаты
+            const isFinished = (d.stage === 'closed' || d.status === 'completed' || d.isPaid === true);
+            const isThisMonth = (date.getMonth() === currentMonth && date.getFullYear() === currentYear);
+            return isFinished && isThisMonth;
         })
         .reduce((sum, d) => sum + parseFloat(d.prof || 0), 0);
 
-    // Прошлый месяц (для тренда)
+    // Расчет для прошлого месяца (для тренда)
     const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
     const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+    
     const profitLastMonth = myDeals
         .filter(d => {
             const date = new Date(d.createdAt);
-            return d.status === 'completed' && date.getMonth() === lastMonth && date.getFullYear() === lastMonthYear;
+            const isFinished = (d.stage === 'closed' || d.status === 'completed' || d.isPaid === true);
+            const isLastMonth = (date.getMonth() === lastMonth && date.getFullYear() === lastMonthYear);
+            return isFinished && isLastMonth;
         })
         .reduce((sum, d) => sum + parseFloat(d.prof || 0), 0);
 
-    // Отрисовка прибыли
-    document.getElementById('dash-profit').innerText = profitThisMonth.toLocaleString() + ' USD';
+    // Отрисовка прибыли на экране
+    document.getElementById('dash-profit').innerText = Math.round(profitThisMonth).toLocaleString() + ' USD';
+    
     const trendEl = document.getElementById('dash-profit-trend');
     if (profitLastMonth > 0) {
         const diff = ((profitThisMonth - profitLastMonth) / profitLastMonth * 100).toFixed(1);
         if (diff > 0) {
             trendEl.className = 'dash-trend up';
             trendEl.innerText = `↑ +${diff}% к прошлому месяцу`;
-        } else {
+        } else if (diff < 0) {
             trendEl.className = 'dash-trend down';
             trendEl.innerText = `↓ ${diff}% к прошлому месяцу`;
+        } else {
+            trendEl.innerText = `0% к прошлому месяцу`;
         }
+    } else {
+        trendEl.innerText = `Первый месяц работы`;
     }
 
-    // --- СДЕЛКИ В РАБОТЕ ---
-    const activeDeals = myDeals.filter(d => d.status !== 'completed');
+    // --- СДЕЛКИ В РАБОТЕ (Те, что НЕ закрыты и НЕ оплачены) ---
+    const activeDeals = myDeals.filter(d => d.stage !== 'closed' && d.status !== 'completed' && !d.isPaid);
     const activeSum = activeDeals.reduce((sum, d) => sum + parseFloat(d.inc || 0), 0);
     document.getElementById('dash-deals-count').innerText = activeDeals.length;
-    document.getElementById('dash-deals-sum').innerText = `на сумму ${activeSum.toLocaleString()} USD`;
+    document.getElementById('dash-deals-sum').innerText = `потенциал: ${Math.round(activeSum).toLocaleString()} USD`;
 
-    // --- ПРОСРОЧЕННЫЕ ЗАДАЧИ ---
-    const overdueCount = myReminders.filter(r => {
-        return r.status !== 'completed' && new Date(r.date) < now;
-    }).length;
+    // --- ОСТАЛЬНЫЕ ВИДЖЕТЫ ---
+    const overdueCount = myReminders.filter(r => r.status !== 'completed' && new Date(r.date) < now).length;
     document.getElementById('dash-overdue-count').innerText = overdueCount;
 
-    // --- НОВЫЕ ЗАПРОСЫ (за 7 дней) ---
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const newReqCount = myRequests.filter(r => new Date(r.createdAt) > sevenDaysAgo).length;
     document.getElementById('dash-req-count').innerText = newReqCount;
 
-    // --- СПИСОК ПОСЛЕДНИХ СДЕЛОК ---
-    const recentHtml = myDeals.slice(-5).reverse().map(d => `
-        <div style="border-bottom:1px solid #eee; padding:8px 0; display:flex; justify-content:space-between;">
-            <span><b>${d.num}</b> ${d.company}</span>
-            <span style="color:var(--success)">+${d.prof}$</span>
+    const recentHtml = myDeals
+        .filter(d => (d.stage === 'closed' || d.isPaid))
+        .slice(-5).reverse().map(d => `
+        <div style="border-bottom:1px solid #eee; padding:8px 0; display:flex; justify-content:space-between; align-items:center;">
+            <span style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><b>${d.num}</b> ${d.company}</span>
+            <span style="color:var(--success); font-weight:bold;">+${Math.round(d.prof)}$</span>
         </div>
     `).join('');
-    document.getElementById('dash-recent-list').innerHTML = recentHtml || 'Сделок пока нет';
+    document.getElementById('dash-recent-list').innerHTML = recentHtml || 'Завершенных сделок нет';
 
-    // --- ОБНОВЛЕНИЕ ГРАФИКА ---
     updateDashChart(myDeals);
 }
 
@@ -2962,11 +2971,13 @@ function updateDashChart(myDeals) {
         });
     }
 
-    last6Months.forEach(m => {
+last6Months.forEach(m => {
         m.profit = myDeals
             .filter(d => {
                 const dd = new Date(d.createdAt);
-                return d.status === 'completed' && dd.getMonth() === m.month && dd.getFullYear() === m.year;
+                // Считаем только закрытые/оплаченные сделки
+                const isFinished = (d.stage === 'closed' || d.status === 'completed' || d.isPaid === true);
+                return isFinished && dd.getMonth() === m.month && dd.getFullYear() === m.year;
             })
             .reduce((sum, d) => sum + parseFloat(d.prof || 0), 0);
     });
