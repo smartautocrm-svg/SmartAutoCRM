@@ -2909,44 +2909,58 @@ function renderLogs() {
 }
     // Функция глобального поиска
 const debouncedGlobalSearch = debounce(() => {
-    const q = document.getElementById('globalSearchInput').value.trim().toLowerCase();
+    const query = document.getElementById('globalSearchInput').value.trim().toLowerCase();
     const resBox = document.getElementById('globalSearchResults');
     
-    if (q.length < 2) {
+    // Если введено меньше 2 символов - прячем окно
+    if (query.length < 2) {
         resBox.style.display = 'none';
         return;
     }
 
+    console.log("Поиск по запросу:", query); // Отладка в консоль
+
     let html = '';
 
-    // 1. Поиск в компаниях
-    const fComp = companies.filter(c => !c.isDeleted && (c.name.toLowerCase().includes(q) || (c.phone && c.phone.includes(q))));
+    // 1. Поиск в КОМПАНИЯХ (по имени и телефону)
+    const fComp = companies.filter(c => 
+        !c.isDeleted && 
+        (String(c.name).toLowerCase().includes(query) || String(c.phone || "").includes(query))
+    );
     if (fComp.length > 0) {
-        html += `<div class="search-res-group">🏢 Компании</div>`;
+        html += `<div class="search-res-group">🏢 Компании (${fComp.length})</div>`;
         fComp.slice(0, 5).forEach(c => {
-            html += `<div class="search-res-item" onclick="goToResult('companies', '${c.name}')">
+            html += `<div class="search-res-item" onclick="goToResult('companies', '${c.name.replace(/'/g, "\\'")}')">
                 <span class="title">${c.name}</span>
                 <span class="sub">${c.city || ''} | ${c.manager}</span>
             </div>`;
         });
     }
 
-    // 2. Поиск в сделках
-    const fDeals = deals.filter(d => !d.isDeleted && (d.num.toLowerCase().includes(q) || d.company.toLowerCase().includes(q) || d.cargo.toLowerCase().includes(q)));
+    // 2. Поиск в СДЕЛКАХ (по номеру, клиенту и грузу)
+    const fDeals = deals.filter(d => 
+        !d.isDeleted && 
+        (String(d.num).toLowerCase().includes(query) || 
+         String(d.company).toLowerCase().includes(query) || 
+         String(d.cargo).toLowerCase().includes(query))
+    );
     if (fDeals.length > 0) {
-        html += `<div class="search-res-group">💰 Сделки</div>`;
+        html += `<div class="search-res-group">💰 Сделки (${fDeals.length})</div>`;
         fDeals.slice(0, 5).forEach(d => {
             html += `<div class="search-res-item" onclick="goToResult('deals', '${d.id}')">
                 <span class="title">№ ${d.num} - ${d.company}</span>
-                <span class="sub">${d.cargo} | ${d.prof}$</span>
+                <span class="sub">${d.cargo} | Прибыль: ${d.prof}$</span>
             </div>`;
         });
     }
 
-    // 3. Поиск в запросах
-    const fReq = requests.filter(r => !r.isDeleted && (r.company.toLowerCase().includes(q) || r.cargo.toLowerCase().includes(q)));
+    // 3. Поиск в ЗАПРОСАХ
+    const fReq = requests.filter(r => 
+        !r.isDeleted && 
+        (String(r.company).toLowerCase().includes(query) || String(r.cargo).toLowerCase().includes(query))
+    );
     if (fReq.length > 0) {
-        html += `<div class="search-res-group">📦 Запросы</div>`;
+        html += `<div class="search-res-group">📦 Запросы (${fReq.length})</div>`;
         fReq.slice(0, 5).forEach(r => {
             html += `<div class="search-res-item" onclick="goToResult('requests', '${r.id}')">
                 <span class="title">${r.company}</span>
@@ -2955,10 +2969,13 @@ const debouncedGlobalSearch = debounce(() => {
         });
     }
 
-    // 4. Поиск в трекинге
-    const fTrack = tracking.filter(t => !t.isDeleted && (t.num.toLowerCase().includes(q) || t.cargo.toLowerCase().includes(q)));
+    // 4. Поиск в ТРЕКИНГЕ
+    const fTrack = tracking.filter(t => 
+        !t.isDeleted && 
+        (String(t.num).toLowerCase().includes(query) || String(t.cargo).toLowerCase().includes(query))
+    );
     if (fTrack.length > 0) {
-        html += `<div class="search-res-group">🛰️ Трекинг</div>`;
+        html += `<div class="search-res-group">🛰️ Трекинг (${fTrack.length})</div>`;
         fTrack.slice(0, 5).forEach(t => {
             html += `<div class="search-res-item" onclick="goToResult('tracking', '${t.id}')">
                 <span class="title">${t.num}</span>
@@ -2967,27 +2984,31 @@ const debouncedGlobalSearch = debounce(() => {
         });
     }
 
+    // Если ничего не нашли
     if (html === '') {
-        html = '<div style="padding:20px; text-align:center; color:#999;">Ничего не найдено</div>';
+        html = '<div style="padding:15px; text-align:center; color:#999; font-size:11px;">Ничего не найдено</div>';
     }
 
     resBox.innerHTML = html;
     resBox.style.display = 'block';
 }, 300);
 
-// Функция перехода к результату
+// Улучшенная функция перехода
 function goToResult(tab, idOrName) {
+    console.log("Переход:", tab, idOrName);
     document.getElementById('globalSearchResults').style.display = 'none';
     document.getElementById('globalSearchInput').value = '';
     
     openTab(tab);
     
-    if (tab === 'companies') showCompanyPreview(idOrName);
-    if (tab === 'deals') showDealPreview(idOrName);
-    if (tab === 'requests') showRequestPreview(idOrName);
-    if (tab === 'tracking') showTrackPreview(idOrName);
+    // Даем 50мс на переключение вкладки, затем вызываем превью
+    setTimeout(() => {
+        if (tab === 'companies') showCompanyPreview(idOrName);
+        else if (tab === 'deals') showDealPreview(idOrName);
+        else if (tab === 'requests') showRequestPreview(idOrName);
+        else if (tab === 'tracking') showTrackPreview(idOrName);
+    }, 50);
 }
-
 // Закрытие поиска при клике мимо
 document.addEventListener('click', (e) => {
     if (!e.target.closest('#globalSearchInput') && !e.target.closest('#globalSearchResults')) {
