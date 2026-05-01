@@ -2,11 +2,14 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>SmartAuto CRM PRO+ (v9.1.2) - Stable</title>
-    <!-- Подключаем библиотеки для графиков и PDF -->
+    <title>SmartAuto CRM PRO+</title>
+
+    <!-- ВОТ ЭТА СТРОКА ДОЛЖНА БЫТЬ ЗДЕСЬ: -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     
+    <!-- Также убедитесь, что библиотека для PDF тоже на месте (она была в вашем коде): -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
     <style>
 :root {
     --primary: #511f54; 
@@ -16,6 +19,7 @@
     --border: #e2e8f0; /* Очень светлые границы */
     --card-bg: #ffffff;
     --radius: 12px;    /* Единый стандарт скругления для всей системы */
+    --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
 }
         body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg); margin: 0; padding: 0; font-size: 13px; color: #3c4043; overflow: hidden; }
         
@@ -266,6 +270,67 @@ button.main:active {
     background: #fdf6ff;
     border-left: 3px solid var(--primary);
 }
+        /* Сетка виджетов */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 20px;
+}
+
+/* Карточка виджета */
+.dash-card {
+    background: white;
+    padding: 20px;
+    border-radius: var(--radius);
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    transition: transform 0.2s;
+}
+
+.dash-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow);
+}
+
+/* Иконка в кружочке */
+.dash-icon {
+    width: 50px;
+    height: 50px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+}
+
+.dash-info label {
+    font-size: 12px;
+    color: var(--text-muted);
+    display: block;
+    margin-bottom: 4px;
+}
+
+.dash-value {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text-main);
+}
+
+.dash-trend {
+    font-size: 11px;
+    margin-top: 4px;
+    font-weight: 600;
+}
+
+.dash-trend.up { color: #10b981; }   /* Зеленый */
+.dash-trend.down { color: #f43f5e; } /* Красный */
+
+.dash-sub {
+    font-size: 11px;
+    color: #9ca3af;
+}
         
         .btn-pdf { 
     background: var(--primary); /* Был var(--success) */
@@ -507,10 +572,11 @@ button.main:active {
 </div>
 
     <div class="tabs">
-<div class="logo-container" style="padding: 0 10px; display: flex; align-items: center;">
+<div class="logo-container" style="min-width: 50px; padding: 0 10px;">
     <img src="https://i.ibb.co/QjcfFR9c/image.jpg" class="logo-img" style="height: 30px; width: 30px; border-radius: 50%; object-fit: cover;">
 </div>
-    <button class="tab-btn active" id="btn-calls" onclick="openTab('calls')">📞 <span class="tab-label">АКТИВНОСТЬ</span> <span class="tab-counter" id="count-calls">0</span></button>
+    <button class="tab-btn active" id="btn-dashboard" onclick="openTab('dashboard')">🏠 <span class="tab-label">ГЛАВНАЯ</span></button>    
+    <button class="tab-btn" id="btn-calls" onclick="openTab('calls')">📞 <span class="tab-label">АКТИВНОСТЬ</span> <span class="tab-counter" id="count-calls">0</span></button>
     <button class="tab-btn" id="btn-requests" onclick="openTab('requests')">📦 <span class="tab-label">ЗАПРОСЫ</span> <span class="tab-counter" id="count-requests">0</span></button>
     <button class="tab-btn" id="btn-deals" onclick="openTab('deals')">💰 <span class="tab-label">СДЕЛКИ</span> <span class="tab-counter" id="count-deals">0</span></button>
     <button class="tab-btn" id="btn-companies" onclick="openTab('companies')">🏢 <span class="tab-label">КОМПАНИИ</span> <span class="tab-counter" id="count-companies">0</span></button>
@@ -537,9 +603,71 @@ button.main:active {
         <a href="#" onclick="logout()" style="color:var(--danger); text-decoration:none; font-weight:bold;">ВЫХОД</a>
     </div>
 </div>
+    
+    <div id="dashboard" class="content active">
+    <div class="scroll-list" style="padding: 20px; background: #f3f4f6;">
+        <h2 style="margin-bottom: 20px; color: var(--primary);">Сводка за месяц</h2>
+        
+        <!-- Сетка виджетов -->
+        <div class="dashboard-grid">
+            <!-- Виджет 1: Прибыль -->
+            <div class="dash-card">
+                <div class="dash-icon" style="background: #eef2ff; color: #6366f1;">💵</div>
+                <div class="dash-info">
+                    <label>Прибыль за месяц</label>
+                    <div class="dash-value" id="dash-profit">0 USD</div>
+                    <div class="dash-trend" id="dash-profit-trend">--</div>
+                </div>
+            </div>
+
+            <!-- Виджет 2: Активные сделки -->
+            <div class="dash-card">
+                <div class="dash-icon" style="background: #ecfdf5; color: #10b981;">💰</div>
+                <div class="dash-info">
+                    <label>Сделок в работе</label>
+                    <div class="dash-value" id="dash-deals-count">0</div>
+                    <div class="dash-sub" id="dash-deals-sum">на сумму 0 USD</div>
+                </div>
+            </div>
+
+            <!-- Виджет 3: Просроченные задачи -->
+            <div class="dash-card" onclick="openTab('calls')" style="cursor:pointer;">
+                <div class="dash-icon" style="background: #fff1f2; color: #f43f5e;">⚠️</div>
+                <div class="dash-info">
+                    <label>Просроченные задачи</label>
+                    <div class="dash-value" id="dash-overdue-count" style="color: #f43f5e;">0</div>
+                    <div class="dash-sub">Требуют внимания</div>
+                </div>
+            </div>
+            
+            <!-- Виджет 4: Новые запросы -->
+            <div class="dash-card">
+                <div class="dash-icon" style="background: #fef3c7; color: #f59e0b;">📦</div>
+                <div class="dash-info">
+                    <label>Новые запросы</label>
+                    <div class="dash-value" id="dash-req-count">0</div>
+                    <div class="dash-sub">за последние 7 дней</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Секция с графиком и последними событиями -->
+        <div class="dashboard-lower-grid" style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-top: 20px;">
+            <div class="card" style="height: 350px;">
+                <h3>Динамика прибыли</h3>
+                <canvas id="dash-main-chart"></canvas>
+            </div>
+            <div class="card" style="height: 350px;">
+                <h3>Последние сделки</h3>
+                <div id="dash-recent-list" style="font-size: 11px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
 
 <!-- ВКЛАДКА ЗВОНКИ -->
-<div id="calls" class="content active">
+<div id="calls" class="content">
     <div class="top-section">
         <div class="card">
             <h3>Запись звонка / Напоминание</h3>
@@ -2671,7 +2799,7 @@ function openTab(id) {
         document.querySelectorAll('.content, .tab-btn').forEach(x => x.classList.remove('active')); 
         document.getElementById(id).classList.add('active'); 
         document.getElementById('btn-'+id).classList.add('active'); 
-        
+        if(id==='dashboard') updateDashboard();
         if(id==='report') generateReport(); 
         if(id==='stats') renderManagerStats(); 
         if(id==='profile') loadProfile();
@@ -2692,6 +2820,7 @@ function openTab(id) {
     renderPartners(); 
     renderTracking(); 
     if(sessionStorage.getItem('crm_user') === 'admin') renderLogs(); // Добавь это
+    updateDashboard(); 
     updateCounters(); 
     updateDatalists(); 
 }
@@ -2743,6 +2872,124 @@ function calcEditProf() {
 }
     function updateSecondaryFilter() { const p = document.getElementById('sortComp').value, s = document.getElementById('secondarySelect'); if (!p) { s.style.display = 'none'; renderCompanies(); return; } s.style.display = 'inline-block'; s.innerHTML = p === 'manager' ? '<option value="">Все</option>' + managers.map(m => `<option value="${m}">${m}</option>`).join('') : '<option value="">Все</option><option value="cold">Холодный</option><option value="warm">Теплый</option><option value="active">Активный</option>'; renderCompanies(); }
     function clearCallFilters() { document.getElementById('searchCallComp').value = ''; document.getElementById('searchCallDate').value = ''; renderReminders(); }
+
+    function updateDashboard() {
+    const me = sessionStorage.getItem('crm_user');
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    // 1. Фильтруем данные (с учетом прав доступа)
+    const myDeals = deals.filter(d => !d.isDeleted && checkDealAccess(d));
+    const myReminders = reminders.filter(r => !r.isDeleted && (me === 'admin' || r.manager === me));
+    const myRequests = requests.filter(r => !r.isDeleted && checkAccess(r.company));
+
+    // --- РАСЧЕТ ПРИБЫЛИ ---
+    // Текущий месяц
+    const profitThisMonth = myDeals
+        .filter(d => {
+            const date = new Date(d.createdAt);
+            return d.status === 'completed' && date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+        })
+        .reduce((sum, d) => sum + parseFloat(d.prof || 0), 0);
+
+    // Прошлый месяц (для тренда)
+    const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+    const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+    const profitLastMonth = myDeals
+        .filter(d => {
+            const date = new Date(d.createdAt);
+            return d.status === 'completed' && date.getMonth() === lastMonth && date.getFullYear() === lastMonthYear;
+        })
+        .reduce((sum, d) => sum + parseFloat(d.prof || 0), 0);
+
+    // Отрисовка прибыли
+    document.getElementById('dash-profit').innerText = profitThisMonth.toLocaleString() + ' USD';
+    const trendEl = document.getElementById('dash-profit-trend');
+    if (profitLastMonth > 0) {
+        const diff = ((profitThisMonth - profitLastMonth) / profitLastMonth * 100).toFixed(1);
+        if (diff > 0) {
+            trendEl.className = 'dash-trend up';
+            trendEl.innerText = `↑ +${diff}% к прошлому месяцу`;
+        } else {
+            trendEl.className = 'dash-trend down';
+            trendEl.innerText = `↓ ${diff}% к прошлому месяцу`;
+        }
+    }
+
+    // --- СДЕЛКИ В РАБОТЕ ---
+    const activeDeals = myDeals.filter(d => d.status !== 'completed');
+    const activeSum = activeDeals.reduce((sum, d) => sum + parseFloat(d.inc || 0), 0);
+    document.getElementById('dash-deals-count').innerText = activeDeals.length;
+    document.getElementById('dash-deals-sum').innerText = `на сумму ${activeSum.toLocaleString()} USD`;
+
+    // --- ПРОСРОЧЕННЫЕ ЗАДАЧИ ---
+    const overdueCount = myReminders.filter(r => {
+        return r.status !== 'completed' && new Date(r.date) < now;
+    }).length;
+    document.getElementById('dash-overdue-count').innerText = overdueCount;
+
+    // --- НОВЫЕ ЗАПРОСЫ (за 7 дней) ---
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const newReqCount = myRequests.filter(r => new Date(r.createdAt) > sevenDaysAgo).length;
+    document.getElementById('dash-req-count').innerText = newReqCount;
+
+    // --- СПИСОК ПОСЛЕДНИХ СДЕЛОК ---
+    const recentHtml = myDeals.slice(-5).reverse().map(d => `
+        <div style="border-bottom:1px solid #eee; padding:8px 0; display:flex; justify-content:space-between;">
+            <span><b>${d.num}</b> ${d.company}</span>
+            <span style="color:var(--success)">+${d.prof}$</span>
+        </div>
+    `).join('');
+    document.getElementById('dash-recent-list').innerHTML = recentHtml || 'Сделок пока нет';
+
+    // --- ОБНОВЛЕНИЕ ГРАФИКА ---
+    updateDashChart(myDeals);
+}
+
+// Вспомогательная функция для мини-графика на дашборде
+function updateDashChart(myDeals) {
+    const ctx = document.getElementById('dash-main-chart').getContext('2d');
+    const last6Months = [];
+    for(let i=5; i>=0; i--) {
+        const d = new Date();
+        d.setMonth(d.getMonth() - i);
+        last6Months.push({
+            month: d.getMonth(),
+            year: d.getFullYear(),
+            label: d.toLocaleDateString('ru-RU', {month:'short'}),
+            profit: 0
+        });
+    }
+
+    last6Months.forEach(m => {
+        m.profit = myDeals
+            .filter(d => {
+                const dd = new Date(d.createdAt);
+                return d.status === 'completed' && dd.getMonth() === m.month && dd.getFullYear() === m.year;
+            })
+            .reduce((sum, d) => sum + parseFloat(d.prof || 0), 0);
+    });
+
+    if (window.myDashChart) window.myDashChart.destroy();
+    window.myDashChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: last6Months.map(m => m.label),
+            datasets: [{
+                label: 'Прибыль',
+                data: last6Months.map(m => m.profit),
+                backgroundColor: '#6366f1',
+                borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } }
+        }
+    });
+}
 
     // --- СТАТИСТИКА И ОТЧЕТЫ ---
     function renderManagerStats() {
