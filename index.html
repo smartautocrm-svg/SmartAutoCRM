@@ -1612,6 +1612,7 @@ function showCompanyPreview(n) {
         <button class="main" onclick="showCompanyHistory('${c.name.replace(/'/g, "\\'")}')">📜 Последние активности</button>
         ${shareHtml}
     </div>`;
+    }
     
     function showPartnerPreview(id) {
     const p = partners.find(x => x.id == id);
