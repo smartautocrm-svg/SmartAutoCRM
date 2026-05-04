@@ -2409,6 +2409,7 @@ async function saveEdit() {
         
         updatedItem = companies[i];
         renderCompanies();
+        updateDatalists();
     } else if (type === 'request') {
     sheetName = 'requests';
     const i = requests.findIndex(x => String(x.id) === String(id));
@@ -2462,6 +2463,8 @@ async function saveEdit() {
         deals[i].isPrivateDeal = document.getElementById('eDealPrivacy').value === 'true';
         updatedItem = deals[i];
         renderDeals();
+        updateDashboard(); // <--- Убедись, что эта строка есть
+    }
 } else if (type === 'partner') {
         sheetName = 'partners';
         const i = partners.findIndex(x => String(x.id) === String(id))
@@ -2555,7 +2558,7 @@ async function submitFollowUp() {
     
 
     // --- ФУНКЦИИ ДОБАВЛЕНИЯ ---
-    async function addReminder() { const n = document.getElementById('callName').value; if(!n)return alert("Имя?"); const newItem = { id: Date.now(), name: n, date: document.getElementById('callTime').value, topic: document.getElementById('callTopic').value, manager: sessionStorage.getItem('crm_user'), status: "active" }; reminders.push(newItem); renderReminders(); await sync('reminders', reminders, 'append'); ['callName', 'callTime', 'callTopic'].forEach(i=>document.getElementById(i).value=''); }
+    async function addReminder() { const n = document.getElementById('callName').value; if(!n)return alert("Имя?"); const newItem = { id: Date.now(), name: n, date: document.getElementById('callTime').value, topic: document.getElementById('callTopic').value, manager: sessionStorage.getItem('crm_user'), status: "active" }; reminders.push(newItem); renderReminders();  updateCounters(); await sync('reminders', reminders, 'append'); ['callName', 'callTime', 'callTopic'].forEach(i=>document.getElementById(i).value=''); }
     async function addRequest() { 
     const c = document.getElementById('reqComp').value; 
     const t = document.getElementById('reqType').value; // Получаем тип
@@ -2566,7 +2569,7 @@ async function submitFollowUp() {
         company: c, 
         cargo: document.getElementById('reqCargo').value, 
         type: t, // Добавляем в объект
-        transport: document.getElementById('reqTransport').value, weight: document.getElementById('reqWeight').value, vol: document.getElementById('reqVol').value, value: document.getElementById('reqValue').value, currency: document.getElementById('reqCurrency').value, load: document.getElementById('reqLoad').value, zip: document.getElementById('reqZip').value, unload: document.getElementById('reqUnload').value, desc: document.getElementById('reqDesc').value, createdAt: new Date().toISOString(), status: "active", manager: sessionStorage.getItem('crm_user'), container: document.getElementById('reqContainer').value, contQty: document.getElementById('reqContQty').value }; requests.push(newItem); renderRequests(); await sync('requests', requests, 'append'); ['reqComp', 'reqCargo', 'reqWeight', 'reqVol', 'reqValue', 'reqLoad', 'reqZip', 'reqUnload', 'reqDesc', 'reqContQty'].forEach(i=>document.getElementById(i).value=''); }
+        transport: document.getElementById('reqTransport').value, weight: document.getElementById('reqWeight').value, vol: document.getElementById('reqVol').value, value: document.getElementById('reqValue').value, currency: document.getElementById('reqCurrency').value, load: document.getElementById('reqLoad').value, zip: document.getElementById('reqZip').value, unload: document.getElementById('reqUnload').value, desc: document.getElementById('reqDesc').value, createdAt: new Date().toISOString(), status: "active", manager: sessionStorage.getItem('crm_user'), container: document.getElementById('reqContainer').value, contQty: document.getElementById('reqContQty').value }; requests.push(newItem); renderRequests(); updateCounters(); await sync('requests', requests, 'append'); ['reqComp', 'reqCargo', 'reqWeight', 'reqVol', 'reqValue', 'reqLoad', 'reqZip', 'reqUnload', 'reqDesc', 'reqContQty'].forEach(i=>document.getElementById(i).value=''); }
 function convertToDeal(reqId) {
     // Используй безопасный поиск
     const r = requests.find(x => String(x.id) === String(reqId));
@@ -2603,6 +2606,8 @@ function convertToDeal(reqId) {
         requests[reqIndex].comment = "✅ Конвертировано в сделку"; // Авто-комментарий
         
         renderRequests(); // Перерисовываем список запросов
+        renderDeals();
+        updateDashboard();
         sync('requests', requests[reqIndex], 'update'); // Отправляем обновление в таблицу
     }
 
@@ -2646,6 +2651,8 @@ isPrivateDeal: document.getElementById('dealPrivacy').value === 'true'
 
         deals.push(newItem); 
         renderDeals(); 
+        updateDashboard(); // Чтобы на главной сразу выросла прибыль
+        updateCounters();  // Чтобы обновилась цифра на вкладке "Сделки"
         await sync('deals', deals, 'append'); 
         // ... (очистка полей остается как была)
     }
@@ -2704,7 +2711,9 @@ isPrivateDeal: document.getElementById('dealPrivacy').value === 'true'
     };
 
     companies.push(newItem); 
-    renderCompanies(); 
+    renderCompanies();
+    updateCounters();  // Обновить счетчик компаний
+    updateDatalists(); // ОБЯЗАТЕЛЬНО: чтобы компания появилась в подсказках (список клиентов)
     await sync('companies', companies, 'append'); 
     
     // Очистка полей
@@ -2739,6 +2748,7 @@ isPrivateDeal: document.getElementById('dealPrivacy').value === 'true'
 
     partners.push(newItem);
     renderPartners();
+    updateCounters();
     await sync('partners', partners, 'append');
 
     // Очистка
@@ -2746,7 +2756,7 @@ isPrivateDeal: document.getElementById('dealPrivacy').value === 'true'
     document.getElementById('partContactsList').innerHTML = '';
     addContactRow('partContactsList'); // Возвращаем одну пустую строку
 }
-    async function addTracking() { const num = document.getElementById('trackNum').value, cargo = document.getElementById('trackCargo').value; if (!num || !cargo) return alert("Заполните Номер и Груз!"); const newItem = { id: Date.now(), num: num, cargo: cargo, weight: document.getElementById('trackWeight').value, vol: document.getElementById('trackVol').value, qty: document.getElementById('trackQty').value, pack: document.getElementById('trackPack').value, trans: document.getElementById('trackTrans').value, status: document.getElementById('trackStatus').value, manager: sessionStorage.getItem('crm_user'), sharedWith: document.getElementById('trackShare').value }; tracking.push(newItem); renderTracking(); await sync('tracking', tracking, 'append'); ['trackNum', 'trackCargo', 'trackWeight', 'trackVol', 'trackQty', 'trackShare'].forEach(i => document.getElementById(i).value = ''); }
+    async function addTracking() { const num = document.getElementById('trackNum').value, cargo = document.getElementById('trackCargo').value; if (!num || !cargo) return alert("Заполните Номер и Груз!"); const newItem = { id: Date.now(), num: num, cargo: cargo, weight: document.getElementById('trackWeight').value, vol: document.getElementById('trackVol').value, qty: document.getElementById('trackQty').value, pack: document.getElementById('trackPack').value, trans: document.getElementById('trackTrans').value, status: document.getElementById('trackStatus').value, manager: sessionStorage.getItem('crm_user'), sharedWith: document.getElementById('trackShare').value }; tracking.push(newItem); renderTracking(); updateCounters(); await sync('tracking', tracking, 'append'); ['trackNum', 'trackCargo', 'trackWeight', 'trackVol', 'trackQty', 'trackShare'].forEach(i => document.getElementById(i).value = ''); }
 
     // --- СИСТЕМНЫЕ ФУНКЦИИ ---
 async function deleteItem(sh, id) { 
@@ -2759,13 +2769,17 @@ async function deleteItem(sh, id) {
 
     if(!confirm("Переместить в корзину?")) return; 
 
-    itm.isDeleted = true; // Помечаем локально
-    await sync(sh, itm, 'update'); // Отправляем в Google Таблицу
+    itm.isDeleted = true; 
     
-    renderAll(); // Обновляем основные списки
-    if (document.getElementById('trash').classList.contains('active')) {
-        renderTrash(); // Если открыта корзина — обновляем и её
-    }
+    // --- УМНАЯ ОТРИСОВКА ВМЕСТО renderAll ---
+    if (sh === 'reminders') renderReminders();
+    else if (sh === 'requests') renderRequests();
+    else if (sh === 'deals') { renderDeals(); updateDashboard(); }
+    else if (sh === 'companies') renderCompanies();
+    else if (sh === 'partners') renderPartners();
+    else if (sh === 'tracking') renderTracking();
+
+    await sync(sh, itm, 'update'); 
     alert("Удалено в корзину.");
 }
 
@@ -3221,29 +3235,41 @@ function renderTrash() {
     document.getElementById('trashList').innerHTML = html || '<div style="text-align:center; padding:50px; color:#999;">В корзине пусто</div>';
 }
 
-// 3. Восстановление объекта
+// 3. Восстановление объекта (изменяем только нужный список)
 async function restoreItem(sh, id) {
     if (!confirm("Восстановить этот объект в общую базу?")) return;
     let arr = getArrayBySheet(sh);
     const itm = arr.find(x => String(x.id) === String(id));
     if (itm) {
         itm.isDeleted = false; // Убираем метку удаления
-        await sync(sh, itm, 'update'); // Сохраняем изменение в таблицу
+
+        // Обновляем саму корзину, чтобы карточка исчезла
         renderTrash();
-        renderAll();
+
+        // УМНАЯ ОТРИСОВКА: обновляем только тот список, куда вернулся объект
+        if (sh === 'reminders') renderReminders();
+        else if (sh === 'requests') renderRequests();
+        else if (sh === 'deals') { renderDeals(); updateDashboard(); }
+        else if (sh === 'companies') { renderCompanies(); updateDatalists(); }
+        else if (sh === 'partners') renderPartners();
+        else if (sh === 'tracking') renderTracking();
+
+        updateCounters(); // Обновляем цифры на вкладках
+
+        await sync(sh, itm, 'update'); // Сохраняем в таблицу
         alert("Объект успешно восстановлен!");
     }
 }
 
-// 4. Окончательное удаление (Hard Delete)
+// 4. Окончательное удаление (Hard Delete) — Удаляет строку из таблицы навсегда
 async function hardDeleteItem(sh, id) {
     if (!confirm("ВНИМАНИЕ! Вы удаляете данные навсегда из Google Таблицы. Продолжить?")) return;
     
     let arr = getArrayBySheet(sh);
-    // Физически удаляем из массива (все, кроме этого ID)
+    // Физически удаляем из массива в памяти браузера
     const filteredData = arr.filter(x => String(x.id) !== String(id));
 
-    // В зависимости от типа, обновляем глобальную переменную
+    // Обновляем глобальные массивы
     if(sh==='requests') requests = filteredData;
     else if(sh==='deals') deals = filteredData;
     else if(sh==='companies') companies = filteredData;
@@ -3251,9 +3277,11 @@ async function hardDeleteItem(sh, id) {
     else if(sh==='partners') partners = filteredData;
     else if(sh==='tracking') tracking = filteredData;
 
-    // Перезаписываем весь лист в таблице (без этой строки)
+    renderTrash(); // Перерисовываем корзину
+    updateCounters(); // Обновляем счетчики
+
+    // Перезаписываем весь лист в таблице (режим saveAll)
     await sync(sh, filteredData, 'saveAll');
-    renderTrash();
     alert("Данные стерты окончательно.");
 }
 
