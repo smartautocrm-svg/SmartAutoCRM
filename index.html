@@ -1727,20 +1727,22 @@ function showCompanyPreview(n) {
         <div class="preview-box highlight"><label>📊 Статус</label><span>${statusMap[c.status].label}</span></div>
         <div class="preview-box"><label>👤 Менеджер</label><span>${c.manager}</span></div>
         
+        <!-- ВОТ ВОЗВРАЩЕННЫЙ БЛОК КОНТАКТ -->
+        <div class="preview-box"><label>🤝 Контактное лицо</label><span>${c.contact || '-'}</span></div>
         <div class="preview-box"><label>📞 Телефон</label><span>${c.phone || '-'}</span></div>
+        
         <div class="preview-box"><label>✉️ Email</label><span>${c.email || '-'}</span></div>
-        
         <div class="preview-box"><label>🌍 Город</label><span>${c.city || '-'}</span></div>
-        <div class="preview-box"><label>📦 Груз</label><span>${c.product || '-'}</span></div>
         
-        <div class="preview-box" style="grid-column: span 2;"><label>🔗 Сайт</label><span>${c.website || '-'}</span></div>
+        <div class="preview-box"><label>📦 Груз</label><span>${c.product || '-'}</span></div>
+        <div class="preview-box"><label>🔗 Сайт</label><span>${c.website || '-'}</span></div>
     </div>
     
     <div style="margin-top: 15px; display: flex; flex-direction: column; gap: 10px;">
         <button class="main" onclick="showCompanyHistory('${c.name.replace(/'/g, "\\'")}')">📜 Последние активности</button>
         ${shareHtml}
     </div>`;
-    }
+}
     
     function showPartnerPreview(id) {
     const p = partners.find(x => x.id == id);
