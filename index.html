@@ -1436,11 +1436,12 @@ async function loadCloudData() {
         }));
 
         // 5. Активности/Напоминания (isDeleted - индекс 6)
-        reminders = (d.reminders || []).map(x => ({ 
-            id: x[0], name: String(x[1]||""), date: x[2], topic: String(x[3]||""), 
-            manager: String(x[4]||""), status: x[5],
-            isDeleted: x[6] === true || x[6] === 'true'
-        }));
+    reminders = (d.reminders || []).map(x => ({ 
+    id: x[0], name: String(x[1]||""), date: x[2], topic: String(x[3]||""), 
+    manager: String(x[4]||""), status: x[5],
+    isDeleted: x[6] === true || x[6] === 'true',
+    sharedWith: String(x[7] || "") // ДОБАВЛЕНО: читаем 8-ю колонку
+}));
 
         // 6. Партнеры (isDeleted - индекс 9)
         partners = (d.partners || []).map(x => ({ 
@@ -1470,7 +1471,7 @@ if (sh === 'deals') return [
     o.blNum || "", o.awbNum || "", JSON.stringify(o.files || []), o.margin, 
     o.stage || "docs", o.isPaid || false, o.payDate || "", o.isPrivateDeal || false, o.isDeleted || false
 ];
-        if (sh === 'reminders') return [o.id, o.name, o.date, o.topic, o.manager, o.status, o.isDeleted || false];
+        if (sh === 'reminders') return [o.id, o.name, o.date, o.topic, o.manager, o.status, o.isDeleted || false, o.sharedWith || ""];
         if (sh === 'partners') return [o.id, o.name, o.status, o.country, o.contact, o.phone, o.email, o.website, o.desc, o.isDeleted || false];
         if (sh === 'tracking') return [o.id, o.num, o.cargo, o.weight, o.vol, o.qty, o.pack, o.trans, o.status, o.manager, o.sharedWith || "", o.isDeleted || false];
         return [];
@@ -1618,17 +1619,40 @@ function deleteFile(dealId, fileId) {
         html2pdf().set(opt).from(element).save().then(() => showLoader(false));
     }
 
-    function showCallPreview(id) { 
-        const r = reminders.find(x=>x.id==id); 
-        if(r) { 
-            document.getElementById('preview-calls').innerHTML = `
-            <h3>${r.name}</h3>
+function showCallPreview(id) { 
+    const r = reminders.find(x=>x.id==id); 
+    if(!r) return;
+
+    const me = sessionStorage.getItem('crm_user');
+    
+    // Блок шеринга
+    let shareHtml = (r.manager === me || me === 'admin') ? `
+        <div style="grid-column:span 2; border-top:1px solid #eee; margin-top:10px; padding-top:10px;">
+            <label style="font-size:9px; font-weight:bold; color:var(--primary);">ПОДЕЛИТЬСЯ ЗАДАЧЕЙ:</label>
+            <div style="display:flex; gap:5px; margin-top:5px;">
+                <select id="shRemMan" style="flex-grow:1; font-size:10px;">
+                    <option value="">Выберите менеджера...</option>
+                    ${managers.filter(m => m !== me).map(m => `<option value="${m}">${m}</option>`).join('')}
+                </select>
+                <button onclick="toggleReminderAccess('${r.id}', document.getElementById('shRemMan').value, 'add')" style="padding:2px 8px; font-size:10px; background:var(--primary); color:white; border:none; border-radius:3px; cursor:pointer;">+</button>
+            </div>
+            <div style="margin-top:5px;">
+                ${(r.sharedWith || "").split(',').filter(s => s).map(s => `
+                    <span class="share-tag">${s} <span onclick="toggleReminderAccess('${r.id}','${s}','remove')" style="cursor:pointer; font-weight:bold;">×</span></span>
+                `).join('') || '<small style="color:#999">Доступ только у автора</small>'}
+            </div>
+        </div>` : "";
+
+    document.getElementById('preview-calls').innerHTML = `
+        <h3>${r.name}</h3>
+        <div class="preview-grid">
             <div class="preview-box"><label>Дата</label><span>${dtFmt(r.date)}</span></div>
             <div class="preview-box"><label>Менеджер</label><span>${r.manager}</span></div>
             <div class="preview-box"><label>Статус</label><span>${r.status}</span></div>
-            <div class="preview-box" style="grid-column:span 2;"><label>Результат</label><p style="font-size:11px; margin-top:5px;">${r.topic}</p></div>`; 
-        } 
-    }
+            <div class="preview-box" style="grid-column:span 2;"><label>Результат</label><p style="font-size:11px; margin-top:5px;">${r.topic}</p></div>
+            ${shareHtml}
+        </div>`; 
+}
 
 function showRequestPreview(id) {
     const r = requests.find(x => x.id == id); 
@@ -1806,7 +1830,13 @@ function renderReminders() {
     });
     
     // Фильтр по менеджеру (если не админ)
-    if (me !== 'admin') f = f.filter(r => r.manager === me);
+    if (me !== 'admin') {
+    f = f.filter(r => {
+        const isAuthor = r.manager === me;
+        const isSharedWithMe = (r.sharedWith || "").split(',').includes(me);
+        return isAuthor || isSharedWithMe;
+    });
+}
     
     // Фильтр "Скрыть завершенные"
     if (hideDone) f = f.filter(r => r.status !== 'completed');
@@ -3448,6 +3478,22 @@ document.addEventListener('click', (e) => {
         searchResults.style.display = 'none';
     }
 });
+
+    async function toggleReminderAccess(rid, man, act) { 
+    if(!man) return;
+    const i = reminders.findIndex(x => String(x.id) === String(rid)); 
+    if(i === -1) return;
+
+    let arr = (reminders[i].sharedWith || "").split(',').filter(s => s); 
+    if(act === 'add' && !arr.includes(man)) arr.push(man); 
+    if(act === 'remove') arr = arr.filter(s => s !== man); 
+    
+    reminders[i].sharedWith = arr.join(','); 
+    
+    showCallPreview(rid); 
+    await sync('reminders', reminders[i], 'update'); 
+    alert("Доступ обновлен");
+}
     
 </script>
     <div id="notification-container"></div>
