@@ -439,7 +439,6 @@ button.main:active {
     display: flex;
     animation: slideUp 0.3s ease-out;
 }
-        }
         .toast h4 { margin: 0; font-size: 12px; color: var(--primary); }
         .toast p { margin: 0; font-size: 11px; color: #555; line-height: 1.3; }
         .toast-close {
@@ -1450,7 +1449,14 @@ async function loadCloudData() {
             isDeleted: x[9] === true || x[9] === 'true'
         }));
         crmLogs = d.logs || [];
-        renderAll(); 
+        
+        // Общие системные обновления (легкие)
+        updateCounters(); 
+        updateDatalists();
+        
+        // Умная отрисовка только активной вкладки
+        const activeTab = document.querySelector('.content.active').id;
+        renderTabById(activeTab);
         document.getElementById('sync-status').innerText = "Обновлено: " + new Date().toLocaleTimeString();
     } catch (e) { 
         console.error("Критическая ошибка загрузки:", e); 
@@ -2841,21 +2847,27 @@ function getArrayBySheet(sh) {
 }
 
 function openTab(id) { 
-        document.querySelectorAll('.content, .tab-btn').forEach(x => x.classList.remove('active')); 
-        document.getElementById(id).classList.add('active'); 
-        document.getElementById('btn-'+id).classList.add('active'); 
-        if(id==='dashboard') updateDashboard();
-        if(id==='report') generateReport(); 
-        if(id==='stats') renderManagerStats(); 
-        if(id==='profile') loadProfile();
-        if(id==='tracking') { 
-            renderTracking(); 
-            updateTrackStatusOptions('admin'); 
-        }
-        // Вынесли проверку корзины отдельно:
-        if(id === 'trash') renderTrash();
-    if(id === 'logs') renderLogs();
-    }
+    document.querySelectorAll('.content, .tab-btn').forEach(x => x.classList.remove('active')); 
+    document.getElementById(id).classList.add('active'); 
+    document.getElementById('btn-'+id).classList.add('active'); 
+    if(id === 'dashboard') updateDashboard();
+    
+    // Отрисовываем вкладку только в момент открытия
+    renderTabById(id);
+}
+
+    function renderTabById(id) {
+    console.log("Отрисовка вкладки:", id); // Для отладки в консоли
+    if (id === 'dashboard') updateDashboard();
+    else if (id === 'calls') renderReminders();
+    else if (id === 'requests') renderRequests();
+    else if (id === 'deals') renderDeals();
+    else if (id === 'companies') renderCompanies();
+    else if (id === 'partners') renderPartners();
+    else if (id === 'tracking') renderTracking();
+    else if (id === 'logs') renderLogs();
+    else if (id === 'trash') renderTrash();
+}
 
     function renderAll() { 
     renderReminders(); 
