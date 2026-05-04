@@ -2464,7 +2464,6 @@ async function saveEdit() {
         updatedItem = deals[i];
         renderDeals();
         updateDashboard(); // <--- Убедись, что эта строка есть
-    }
 } else if (type === 'partner') {
         sheetName = 'partners';
         const i = partners.findIndex(x => String(x.id) === String(id))
