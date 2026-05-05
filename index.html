@@ -2418,161 +2418,119 @@ async function applyBulkDelete() {
 }
 
   // --- ФУНКЦИИ РЕДАКТИРОВАНИЯ ---
-    function openEdit(id, type) {
-        event.stopPropagation(); 
-        document.getElementById('editId').value = id; 
-        document.getElementById('editType').value = type;
-        const f = document.getElementById('editFields'), title = document.getElementById('editModalTitle');
+   function openEdit(id, type) {
+    event.stopPropagation(); 
+    document.getElementById('editId').value = id; 
+    document.getElementById('editType').value = type;
+    const f = document.getElementById('editFields'), title = document.getElementById('editModalTitle');
+    
+    if (type === 'reminder') {
+        const r = reminders.find(x => x.id == id); 
+        title.innerText = "Правка активности";
+        f.innerHTML = `<input type="text" id="eRemName" value="${r.name}" list="allEntitiesData"><input type="datetime-local" id="eRemDate" value="${forInput(r.date)}"><textarea id="eRemTopic" style="grid-column: span 2;">${r.topic}</textarea>`;
+    
+    } else if (type === 'company') {
+        const c = companies.find(x => x.id == id); 
+        title.innerText = "Правка компании";
+        f.innerHTML = `<input type="text" id="eCompName" value="${c.name}"><input type="text" id="eCompProduct" value="${c.product || ''}" placeholder="Груз *"><input type="text" id="eCompCity" value="${c.city}"><input type="text" id="eCompContact" value="${c.contact}"><input type="text" id="eCompPhone" value="${c.phone}"><input type="email" id="eCompEmail" value="${c.email}"><input type="text" id="eCompWeb" value="${c.website}"><input type="text" id="eCompImp" value="${c.import}"><input type="text" id="eCompExp" value="${c.export}"><select id="eCompMan" style="grid-column: span 2;">${managers.map(m => `<option value="${m}" ${c.manager===m?'selected':''}>${m}</option>`).join('')}</select><select id="eCompStatus"><option value="cold" ${c.status==='cold'?'selected':''}>Холодный</option><option value="warm" ${c.status==='warm'?'selected':''}>Теплый</option><option value="active" ${c.status==='active'?'selected':''}>Активный</option></select><div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" id="eCompPriv" ${c.isPrivate?'checked':''}> Приватная</div>`;
+    
+    } else if (type === 'request') {
+        const r = requests.find(x => x.id == id); 
+        title.innerText = "Правка запроса";
+        f.innerHTML = `
+            <input type="text" id="eReqComp" value="${r.company}" list="allEntitiesData" placeholder="Клиент">
+            <input type="text" id="eReqCargo" value="${r.cargo}" placeholder="Груз">
+            <select id="eReqType">
+                <option value="">Тип запроса *</option>
+                <option value="карго из Китая" ${r.type === 'карго из Китая' ? 'selected' : ''}>📦 Карго из Китая</option>
+                <option value="карго из Кореи" ${r.type === 'карго из Кореи' ? 'selected' : ''}>📦 Карго из Кореи</option>
+                <option value="фрахт" ${r.type === 'фрахт' ? 'selected' : ''}>🚢 Фрахт</option>
+                <option value="карго Европа" ${r.type === 'карго Европа' ? 'selected' : ''}>🇪🇺 Карго Европа</option>
+                <option value="контейнера - очистка" ${r.type === 'контейнера - очистка' ? 'selected' : ''}>🧾 Контейнера - очистка</option>
+                <option value="LCL" ${r.type === 'LCL' ? 'selected' : ''}>📦 LCL</option>
+                <option value="экспорт" ${r.type === 'экспорт' ? 'selected' : ''}>📤 Экспорт</option>
+                <option value="trucking" ${r.type === 'trucking' ? 'selected' : ''}>🚛 Trucking</option>
+            </select>
+            <select id="eReqTrans" onchange="checkTransportFields('eReq')">
+                <option value="авто" ${r.transport === 'авто' ? 'selected' : ''}>Авто</option>
+                <option value="авиа" ${r.transport === 'авиа' ? 'selected' : ''}>Авиа</option>
+                <option value="море" ${r.transport === 'море' ? 'selected' : ''}>Море</option>
+                <option value="ж/д" ${r.transport === 'ж/д' ? 'selected' : ''}>Ж/Д</option>
+            </select>
+            <select id="eReqCont" style="display:${r.transport === 'море' ? 'block' : 'none'}">
+                <option value="20GP" ${r.container === '20GP' ? 'selected' : ''}>20GP</option>
+                <option value="40HC" ${r.container === '40HC' ? 'selected' : ''}>40HC</option>
+            </select>
+            <input type="number" id="eReqContQty" value="${r.contQty}" style="display:${r.transport === 'море' ? 'block' : 'none'}" placeholder="Кол-во конт.">
+            <input type="number" id="eReqW" value="${r.weight}" placeholder="Вес">
+            <input type="number" id="eReqV" value="${r.vol}" placeholder="Объем">
+            <input type="number" id="eReqVal" value="${r.value}" placeholder="Инвойс">
+            <select id="eReqCurr">
+                <option value="USD" ${r.currency === 'USD' ? 'selected' : ''}>USD</option>
+                <option value="EUR" ${r.currency === 'EUR' ? 'selected' : ''}>EUR</option>
+            </select>
+            <input type="text" id="eReqLoad" value="${r.load}" placeholder="Погрузка">
+            <input type="text" id="eReqZip" value="${r.zip}" placeholder="Индекс">
+            <input type="text" id="eReqUnload" value="${r.unload}" placeholder="Выгрузка">
+            <textarea id="eReqDesc" style="grid-column: span 2;">${r.desc}</textarea>`;
+
+    } else if (type === 'deal') {
+        const d = deals.find(x => x.id == id); 
+        title.innerText = "Правка сделки";
+        f.innerHTML = `
+            <input type="text" id="eDealNum" value="${d.num}" placeholder="№ Сделки">
+            <input type="text" id="eDealComp" value="${d.company}" list="allEntitiesData" placeholder="Клиент">
+            <input type="text" id="eDealCargo" value="${d.cargo}" placeholder="Груз">
+            <label style="font-size:9px; color:var(--primary); grid-column: span 2;">ТЕКУЩИЙ ЭТАП:</label>
+            <select id="eDealStage" style="grid-column: span 2; font-weight:bold; border: 1px solid var(--primary); background: #f0f7ff;">
+                ${Object.keys(stageMap).map(k => `<option value="${k}" ${d.stage===k?'selected':''}>${stageMap[k].label}</option>`).join('')}
+            </select>
+            <select id="eDealTrans" onchange="checkTransportFields('eDeal')">
+                <option value="авто" ${d.trans==='авто'?'selected':''}>🚛 Авто</option>
+                <option value="море" ${d.trans==='море'?'selected':''}>🚢 Море</option>
+                <option value="авиа" ${d.trans==='авиа'?'selected':''}>✈️ Авиа</option>
+                <option value="ж/д" ${d.trans==='ж/д'?'selected':''}>🚂 Ж/Д</option>
+            </select>
+            <select id="eDealCont" style="display:none;"><option value="20GP" ${d.container==='20GP'?'selected':''}>20GP</option><option value="40HC" ${d.container==='40HC'?'selected':''}>40HC</option></select>
+            <input type="number" id="eDealContQty" value="${d.contQty || ''}" style="display:none;" placeholder="Кол-во конт.">
+            <input type="text" id="eDealBL" value="${d.blNum || ''}" style="display:none;" placeholder="№ Коносамента">
+            <input type="text" id="eDealAWB" value="${d.awbNum || ''}" style="display:none;" placeholder="№ Авианакладной">
+            <input type="number" id="eDealW" value="${d.weight}" placeholder="Вес">
+            <input type="number" id="eDealV" value="${d.vol}" placeholder="Объем">
+            <input type="number" id="eDealVal" value="${d.value}" placeholder="Инвойс">
+            <input type="number" id="eDealExp" value="${d.exp}" oninput="calcEditProf()" placeholder="Расходы">
+            <input type="number" id="eDealInc" value="${d.inc}" oninput="calcEditProf()" placeholder="Доходы">
+            <input type="number" id="eDealProf" value="${d.prof}" readonly style="background:#f0f7ff;" placeholder="Прибыль">
+            <input type="text" id="eDealMargin" value="${d.margin || '0%'}" readonly style="background:#fff3e0; font-weight:bold;">
+            <input type="text" id="eDealL" value="${d.load}" style="grid-column: span 2;" placeholder="Загрузка">
+            <input type="text" id="eDealU" value="${d.unload}" style="grid-column: span 2;" placeholder="Выгрузка">
+            <textarea id="eDealI" style="grid-column: span 2;">${d.info}</textarea>
+            <div style="grid-column: span 2; border-top: 1px solid #eee; padding-top: 10px; margin-top: 5px;">
+                <label style="font-size:10px; color:var(--danger); font-weight:bold;">ДОСТУП К СДЕЛКЕ:</label>
+                <select id="eDealPrivacy" style="font-weight:bold;">
+                    <option value="false" ${!d.isPrivateDeal ? 'selected' : ''}>🔓 ОТКРЫТАЯ (доступна коллегам)</option>
+                    <option value="true" ${d.isPrivateDeal ? 'selected' : ''}>🔒 ЗАКРЫТАЯ (только для меня)</option>
+                </select>
+            </div>`;
         
-        if (type === 'reminder') {
-            const r = reminders.find(x => x.id == id); title.innerText = "Правка активности";
-            f.innerHTML = `<input type="text" id="eRemName" value="${r.name}" list="allEntitiesData"><input type="datetime-local" id="eRemDate" value="${forInput(r.date)}"><textarea id="eRemTopic" style="grid-column: span 2;">${r.topic}</textarea>`;
-        } else if (type === 'company') {
-            const c = companies.find(x => x.id == id); title.innerText = "Правка компании";
-            f.innerHTML = `<input type="text" id="eCompName" value="${c.name}"><input type="text" id="eCompProduct" value="${c.product || ''}" placeholder="Груз *"><input type="text" id="eCompCity" value="${c.city}"><input type="text" id="eCompContact" value="${c.contact}"><input type="text" id="eCompPhone" value="${c.phone}"><input type="email" id="eCompEmail" value="${c.email}"><input type="text" id="eCompWeb" value="${c.website}"><input type="text" id="eCompImp" value="${c.import}"><input type="text" id="eCompExp" value="${c.export}"><select id="eCompMan" style="grid-column: span 2;">${managers.map(m => `<option value="${m}" ${c.manager===m?'selected':''}>${m}</option>`).join('')}</select><select id="eCompStatus"><option value="cold" ${c.status==='cold'?'selected':''}>Холодный</option><option value="warm" ${c.status==='warm'?'selected':''}>Теплый</option><option value="active" ${c.status==='active'?'selected':''}>Активный</option></select><div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" id="eCompPriv" ${c.isPrivate?'checked':''}> Приватная</div>`;
-        } else if (type === 'request') {
-    const r = requests.find(x => x.id == id); 
-    title.innerText = "Правка запроса";
+        setTimeout(() => checkTransportFields('eDeal'), 50);
 
-    // Создаем список типов, проверяя какой тип уже выбран (selected)
-    f.innerHTML = `
-        <input type="text" id="eReqComp" value="${r.company}" list="allEntitiesData" placeholder="Клиент">
-        <input type="text" id="eReqCargo" value="${r.cargo}" placeholder="Груз">
-        
-        <select id="eReqType">
-            <option value="">Тип запроса *</option>
-            <option value="карго из Китая" ${r.type === 'карго из Китая' ? 'selected' : ''}>📦 Карго из Китая</option>
-            <option value="карго из Кореи" ${r.type === 'карго из Кореи' ? 'selected' : ''}>📦 Карго из Кореи</option>
-            <option value="фрахт" ${r.type === 'фрахт' ? 'selected' : ''}>🚢 Фрахт</option>
-            <option value="карго Европа" ${r.type === 'карго Европа' ? 'selected' : ''}>🇪🇺 Карго Европа</option>
-            <option value="контейнера - очистка" ${r.type === 'контейнера - очистка' ? 'selected' : ''}>🧾 Контейнера - очистка</option>
-            <option value="LCL" ${r.type === 'LCL' ? 'selected' : ''}>📦 LCL</option>
-            <option value="экспорт" ${r.type === 'экспорт' ? 'selected' : ''}>📤 Экспорт</option>
-            <option value="trucking" ${r.type === 'trucking' ? 'selected' : ''}>🚛 Trucking</option>
-        </select>
+    } else if (type === 'partner') {
+        const p = partners.find(x => x.id == id);
+        title.innerText = "Правка партнера";
+        let currentContacts = [];
+        try { if (p.contact && p.contact.startsWith('[')) { currentContacts = JSON.parse(p.contact); } else { currentContacts = [{ name: p.contact || '', phone: p.phone || '', email: p.email || '' }]; } } catch(e) { currentContacts = []; }
+        f.innerHTML = `<input type="text" id="ePartName" value="${p.name}" placeholder="Название компании *"><select id="ePartStatus"><option value="агент" ${p.status==='агент'?'selected':''}>🤝 Агент</option><option value="перевозчик" ${p.status==='перевозчик'?'selected':''}>🚛 Перевозчик</option><option value="брокер" ${p.status==='брокер'?'selected':''}>📑 Брокер</option></select><input type="text" id="ePartCountry" value="${p.country || ''}" placeholder="Страна"><input type="text" id="ePartWeb" value="${p.website || ''}" placeholder="Сайт"><textarea id="ePartDesc" style="grid-column: span 2;" placeholder="Описание...">${p.desc || ''}</textarea><div id="ePartContactsContainer" style="grid-column: span 2; margin-top: 10px; border: 1px solid #ddd; padding: 10px; border-radius: 4px; background: #fff;"><label style="font-weight: bold; font-size: 11px; color: var(--primary);">КОНТАКТНЫЕ ЛИЦА:</label><div id="ePartContactsList"></div><button type="button" onclick="addContactRow('ePartContactsList')" style="margin-top: 8px; font-size: 10px; cursor: pointer; padding: 4px 8px;">+ Добавить контакт</button></div>`;
+        if (currentContacts.length > 0) { currentContacts.forEach(c => addContactRow('ePartContactsList', c)); } else { addContactRow('ePartContactsList'); }
 
-        <select id="eReqTrans" onchange="checkTransportFields('eReq')">
-            <option value="авто" ${r.transport === 'авто' ? 'selected' : ''}>Авто</option>
-            <option value="авиа" ${r.transport === 'авиа' ? 'selected' : ''}>Авиа</option>
-            <option value="море" ${r.transport === 'море' ? 'selected' : ''}>Море</option>
-            <option value="ж/д" ${r.transport === 'ж/д' ? 'selected' : ''}>Ж/Д</option>
-        </select>
-
-        <select id="eReqCont" style="display:${r.transport === 'море' ? 'block' : 'none'}">
-            <option value="20GP" ${r.container === '20GP' ? 'selected' : ''}>20GP</option>
-            <option value="40HC" ${r.container === '40HC' ? 'selected' : ''}>40HC</option>
-        </select>
-
-        <input type="number" id="eReqContQty" value="${r.contQty}" style="display:${r.transport === 'море' ? 'block' : 'none'}" placeholder="Кол-во конт.">
-        <input type="number" id="eReqW" value="${r.weight}" placeholder="Вес">
-        <input type="number" id="eReqV" value="${r.vol}" placeholder="Объем">
-        <input type="number" id="eReqVal" value="${r.value}" placeholder="Инвойс">
-
-        <select id="eReqCurr">
-            <option value="USD" ${r.currency === 'USD' ? 'selected' : ''}>USD</option>
-            <option value="EUR" ${r.currency === 'EUR' ? 'selected' : ''}>EUR</option>
-        </select>
-
-        <input type="text" id="eReqLoad" value="${r.load}" placeholder="Погрузка">
-        <input type="text" id="eReqZip" value="${r.zip}" placeholder="Индекс">
-        <input type="text" id="eReqUnload" value="${r.unload}" placeholder="Выгрузка">
-        <textarea id="eReqDesc" style="grid-column: span 2;">${r.desc}</textarea>
-    `;
-        } else if (type === 'deal') {
-            const d = deals.find(x => x.id == id); title.innerText = "Правка сделки";
-            f.innerHTML = `
-                <input type="text" id="eDealNum" value="${d.num}" placeholder="№ Сделки">
-                <input type="text" id="eDealComp" value="${d.company}" list="allEntitiesData" placeholder="Клиент">
-                <input type="text" id="eDealCargo" value="${d.cargo}" placeholder="Груз">
-                
-                <!-- ВЫБОР ЭТАПА (Добавляем эту часть) -->
-                <label style="font-size:9px; color:var(--primary); grid-column: span 2;">ТЕКУЩИЙ ЭТАП:</label>
-                <select id="eDealStage" style="grid-column: span 2; font-weight:bold; border: 1px solid var(--primary); background: #f0f7ff;">
-                    ${Object.keys(stageMap).map(k => `<option value="${k}" ${d.stage===k?'selected':''}>${stageMap[k].label}</option>`).join('')}
-                </select>
-
-                <select id="eDealTrans" onchange="checkTransportFields('eDeal')">
-                    <option value="авто" ${d.trans==='авто'?'selected':''}>🚛 Авто</option>
-                    <option value="море" ${d.trans==='море'?'selected':''}>🚢 Море</option>
-                    <option value="авиа" ${d.trans==='авиа'?'selected':''}>✈️ Авиа</option>
-                    <option value="ж/д" ${d.trans==='ж/д'?'selected':''}>🚂 Ж/Д</option>
-                </select>
-
-                <select id="eDealCont" style="display:none;"><option value="20GP" ${d.container==='20GP'?'selected':''}>20GP</option><option value="40HC" ${d.container==='40HC'?'selected':''}>40HC</option></select>
-                <input type="number" id="eDealContQty" value="${d.contQty || ''}" style="display:none;" placeholder="Кол-во конт.">
-                <input type="text" id="eDealBL" value="${d.blNum || ''}" style="display:none;" placeholder="№ Коносамента">
-                <input type="text" id="eDealAWB" value="${d.awbNum || ''}" style="display:none;" placeholder="№ Авианакладной">
-
-                <input type="number" id="eDealW" value="${d.weight}" placeholder="Вес">
-                <input type="number" id="eDealV" value="${d.vol}" placeholder="Объем">
-                <input type="number" id="eDealVal" value="${d.value}" placeholder="Инвойс">
-                <input type="number" id="eDealExp" value="${d.exp}" oninput="calcEditProf()" placeholder="Расходы">
-                <input type="number" id="eDealInc" value="${d.inc}" oninput="calcEditProf()" placeholder="Доходы">
-                <input type="number" id="eDealProf" value="${d.prof}" readonly style="background:#f0f7ff;" placeholder="Прибыль">
-                <input type="text" id="eDealMargin" value="${d.margin || '0%'}" readonly style="background:#fff3e0; font-weight:bold;">
-                <input type="text" id="eDealL" value="${d.load}" style="grid-column: span 2;" placeholder="Загрузка">
-                <input type="text" id="eDealU" value="${d.unload}" style="grid-column: span 2;" placeholder="Выгрузка">
-                <textarea id="eDealI" style="grid-column: span 2;">${d.info}</textarea>
-                <div style="grid-column: span 2; border-top: 1px solid #eee; padding-top: 10px; margin-top: 5px;">
-                    <label style="font-size:10px; color:var(--danger); font-weight:bold;">ДОСТУП К СДЕЛКЕ:</label>
-                    <select id="eDealPrivacy" style="font-weight:bold;">
-                        <option value="false" ${!d.isPrivateDeal ? 'selected' : ''}>🔓 ОТКРЫТАЯ (доступна коллегам)</option>
-                        <option value="true" ${d.isPrivateDeal ? 'selected' : ''}>🔒 ЗАКРЫТАЯ (только для меня)</option>
-                    </select>
-                </div>`;
-            
-            setTimeout(() => checkTransportFields('eDeal'), 50);
-} else if (type === 'partner') {
-            const p = partners.find(x => x.id == id);
-            title.innerText = "Правка партнера";
-
-            // 1. Извлекаем контакты (из JSON или старого формата)
-            let currentContacts = [];
-            try {
-                if (p.contact && p.contact.startsWith('[')) {
-                    currentContacts = JSON.parse(p.contact);
-                } else {
-                    currentContacts = [{ 
-                        name: p.contact || '', 
-                        phone: p.phone || '', 
-                        email: p.email || '' 
-                    }];
-                }
-            } catch(e) { currentContacts = []; }
-
-            // 2. Формируем HTML (структура как при создании)
-            f.innerHTML = `
-                <input type="text" id="ePartName" value="${p.name}" placeholder="Название компании *">
-                <select id="ePartStatus">
-                    <option value="агент" ${p.status==='агент'?'selected':''}>🤝 Агент</option>
-                    <option value="перевозчик" ${p.status==='перевозчик'?'selected':''}>🚛 Перевозчик</option>
-                    <option value="брокер" ${p.status==='брокер'?'selected':''}>📑 Брокер</option>
-                </select>
-                <input type="text" id="ePartCountry" value="${p.country || ''}" placeholder="Страна">
-                <input type="text" id="ePartWeb" value="${p.website || ''}" placeholder="Сайт">
-                <textarea id="ePartDesc" style="grid-column: span 2;" placeholder="Описание...">${p.desc || ''}</textarea>
-
-                <div id="ePartContactsContainer" style="grid-column: span 2; margin-top: 10px; border: 1px solid #ddd; padding: 10px; border-radius: 4px; background: #fff;">
-                    <label style="font-weight: bold; font-size: 11px; color: var(--primary);">КОНТАКТНЫЕ ЛИЦА:</label>
-                    <div id="ePartContactsList"></div>
-                    <button type="button" onclick="addContactRow('ePartContactsList')" style="margin-top: 8px; font-size: 10px; cursor: pointer; padding: 4px 8px;">+ Добавить контакт</button>
-                </div>
-            `;
-
-            // 3. Заполняем контакты
-            if (currentContacts.length > 0) {
-                currentContacts.forEach(c => addContactRow('ePartContactsList', c));
-            } else {
-                addContactRow('ePartContactsList');
-            }
-        } else if (type === 'tracking') {
-            const t = tracking.find(x => x.id == id);
-            title.innerText = "Правка трекинга";
-            f.innerHTML = `<input type="text" id="eTrackNum" value="${t.num}"><input type="text" id="eTrackCargo" value="${t.cargo}"><input type="number" id="eTrackW" value="${t.weight}"><input type="number" id="eTrackV" value="${t.vol}"><input type="number" id="eTrackQty" value="${t.qty}"><select id="eTrackPack"><option value="коробки" ${t.pack==='коробки'?'selected':''}>📦 Коробки</option><option value="мешки" ${t.pack==='мешки'?'selected':''}>🥡 Мешки</option><option value="паллеты" ${t.pack==='паллеты'?'selected':''}>🧱 Паллеты</option><option value=" бочки" ${t.pack==='бочки'?'selected':''}>🛢️ Бочки</option></select><select id="eTrackTrans" onchange="updateTrackStatusOptions('edit')"><option value="авто" ${t.trans==='авто'?'selected':''}>🚛 Авто</option><option value="авиа" ${t.trans==='авиа'?'selected':''}>✈️ Авиа</option><option value="море" ${t.trans==='море'?'selected':''}>🚢 Море</option><option value="жд" ${t.trans==='жд'?'selected':''}>🚂 ЖД</option></select><select id="eTrackStatus" style="grid-column: span 2;"></select><input type="text" id="eTrackShare" value="${t.sharedWith || ''}" style="grid-column: span 2;" placeholder="Доступ (имена через запятую)">`;
-            setTimeout(() => updateTrackStatusOptions('edit', t.status), 50);
-        }
-        document.getElementById('editModal').style.display = 'block';
+    } else if (type === 'tracking') {
+        const t = tracking.find(x => x.id == id);
+        title.innerText = "Правка трекинга";
+        f.innerHTML = `<input type="text" id="eTrackNum" value="${t.num}"><input type="text" id="eTrackCargo" value="${t.cargo}"><input type="number" id="eTrackW" value="${t.weight}"><input type="number" id="eTrackV" value="${t.vol}"><input type="number" id="eTrackQty" value="${t.qty}"><select id="eTrackPack"><option value="коробки" ${t.pack==='коробки'?'selected':''}>📦 Коробки</option><option value="мешки" ${t.pack==='мешки'?'selected':''}>🥡 Мешки</option><option value="паллеты" ${t.pack==='паллеты'?'selected':''}>🧱 Паллеты</option><option value=" бочки" ${t.pack==='бочки'?'selected':''}>🛢️ Бочки</option></select><select id="eTrackTrans" onchange="updateTrackStatusOptions('edit')"><option value="авто" ${t.trans==='авто'?'selected':''}>🚛 Авто</option><option value="авиа" ${t.trans==='авиа'?'selected':''}>✈️ Авиа</option><option value="море" ${t.trans==='море'?'selected':''}>🚢 Море</option><option value="жд" ${t.trans==='жд'?'selected':''}>🚂 ЖД</option></select><select id="eTrackStatus" style="grid-column: span 2;"></select><input type="text" id="eTrackShare" value="${t.sharedWith || ''}" style="grid-column: span 2;" placeholder="Доступ (имена через запятую)">`;
+        setTimeout(() => updateTrackStatusOptions('edit', t.status), 50);
     }
+    document.getElementById('editModal').style.display = 'block';
+}
 
 async function saveEdit() {
     const id = document.getElementById('editId').value;
@@ -3735,15 +3693,13 @@ document.addEventListener('click', (e) => {
     }
 
     // --- ФУНКЦИЯ ЗАКРЫТИЯ ЗАПРОСА ---
-   async function submitRequestClose() {
+  async function submitRequestClose() {
     console.log("Кнопка подтверждения нажата");
 
-    // 1. Получаем данные из полей модалки
     const id = document.getElementById('reqCloseId').value;
     const reason = document.getElementById('reqCloseReason').value;
     const comment = document.getElementById('reqCloseComment').value.trim();
 
-    // 2. Проверяем, всё ли заполнено
     if (!reason) {
         alert("Пожалуйста, выберите причину закрытия запроса.");
         return;
@@ -3753,37 +3709,28 @@ document.addEventListener('click', (e) => {
         return;
     }
 
-    // 3. Ищем этот запрос в нашем массиве данных
     const index = requests.findIndex(x => String(x.id) === String(id));
 
     if (index > -1) {
         showLoader(true);
         try {
-            // Обновляем данные локально
             requests[index].status = 'completed';
             requests[index].comment = `[${reason}] ${comment}`; 
             
-            // Скрываем окно
             document.getElementById('requestCloseModal').style.display = 'none';
 
-            // 4. Отправляем обновление в Google Таблицу
-            // Используем режим 'update', чтобы обновить только одну строку, а не всю базу
             await sync('requests', requests[index], 'update'); 
             
-            // Обновляем интерфейс
             renderRequests();
             updateCounters();
             
             alert("Запрос успешно закрыт и перемещен в историю.");
         } catch (err) {
-            console.error("Ошибка при сохранении в Google Таблицу:", err);
-            alert("Ошибка сохранения. Проверьте интернет или консоль браузера.");
+            console.error("Ошибка сохранения:", err);
+            alert("Ошибка сохранения.");
         } finally {
             showLoader(false);
         }
-    } else {
-        alert("Ошибка: Запрос не найден в списке. Попробуйте обновить страницу.");
-        console.log("Не найден ID:", id);
     }
 }
 
