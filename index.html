@@ -407,7 +407,12 @@ button.main:active {
         .admin-controls { background: #fffde7; padding: 10px; border: 1px solid #fff59d; margin-bottom: 15px; border-radius: 4px; display: flex; gap: 10px; align-items: center; }
         .period-controls { background: #f0f7ff; padding: 10px; border: 1px solid var(--border); margin-bottom: 15px; border-radius: 4px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
         
-        .charts-container { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
+        .charts-container { 
+    display: grid; 
+    grid-template-columns: 1fr 1fr 1fr; /* Теперь три колонки */
+    gap: 15px; 
+    margin-bottom: 20px; 
+}
         .chart-box { background: white; padding: 15px; border: 1px solid var(--border); border-radius: 6px; height: 260px; }
         .chart-box h4 { margin: 0 0 10px 0; font-size: 11px; color: #666; text-transform: uppercase; text-align: center; }
 
@@ -1006,24 +1011,29 @@ button.main:active {
             </select>
         </div>
 
-        <div class="charts-container">
-            <div class="chart-box">
-                <h4>Динамика прибыли (USD)</h4>
-                <canvas id="chartProfitDynamics"></canvas>
-            </div>
-            <div class="chart-box">
-                <h4>Прибыль по типам сделок</h4>
-                <canvas id="chartProfitByType"></canvas>
-            </div>
-            <div class="chart-box" style="grid-column: span 2;">
-                <h4>Прибыль по менеджерам (ТОП)</h4>
-                <canvas id="chartManagerPerformance"></canvas>
-            </div>
-        </div>
-
-        <div id="statsContent"></div>
+<div class="charts-container">
+    <div class="chart-box">
+        <h4>Динамика прибыли (USD)</h4>
+        <canvas id="chartProfitDynamics"></canvas>
+    </div>
+    <div class="chart-box">
+        <h4>Прибыль по типам сделок</h4>
+        <canvas id="chartProfitByType"></canvas>
+    </div>
+    <!-- ВОТ ТВОЙ НОВЫЙ ГРАФИК ТЕПЕРЬ ТУТ -->
+    <div class="chart-box">
+        <h4>Причины потерь запросов</h4>
+        <canvas id="chartLostReasons"></canvas>
+    </div>
+    <!-- График по менеджерам растянем на всю ширину (3 колонки), если графиков стало 3 в ряду -->
+    <div class="chart-box" style="grid-column: span 3;"> 
+        <h4>Прибыль по менеджерам (ТОП)</h4>
+        <canvas id="chartManagerPerformance"></canvas>
     </div>
 </div>
+
+<!-- statsContent должен быть ПУСТЫМ, сюда JS будет рисовать таблицу -->
+<div id="statsContent"></div>
     
     <!-- ВКЛАДКА ТРЕКИНГ -->
 <div id="tracking" class="content">
@@ -1175,12 +1185,22 @@ button.main:active {
     <div class="modal-content" style="width: 400px; border-top: 5px solid var(--danger);">
         <h3>Завершение запроса</h3>
         <p style="font-size: 11px; color: #666; margin-bottom: 10px;">
-            Пожалуйста, укажите причину закрытия запроса (почему не дошли до сделки?):
+            Укажите причину, по которой запрос не перерос в сделку:
         </p>
-        <!-- Поле для ввода комментария -->
-        <textarea id="reqCloseComment" style="width: 100%; height: 100px; padding: 8px; border: 1px solid var(--border); border-radius: 4px;" placeholder="Пример: Клиент ушел к конкурентам из-за цены / Груз отменился..."></textarea>
         
-        <!-- Скрытое поле для хранения ID запроса -->
+        <!-- Выбор категории причины -->
+        <select id="reqCloseReason" style="margin-bottom: 10px; border: 1.5px solid var(--danger); background: #fff5f5;">
+            <option value="">-- Выберите причину отмены * --</option>
+            <option value="Цена (Дорого)">💸 Цена (Дорого)</option>
+            <option value="Сроки (Долго)">⏳ Сроки (Долго)</option>
+            <option value="Нет транспорта/места">🚛 Нет транспорта/места</option>
+            <option value="Клиент передумал/пропал">👻 Клиент передумал/пропал</option>
+            <option value="Ошибка/Дубль">❌ Ошибка/Дубль</option>
+            <option value="Другое">📝 Другое (указать в комм.)</option>
+        </select>
+
+        <textarea id="reqCloseComment" style="width: 100%; height: 80px; padding: 8px; border: 1px solid var(--border); border-radius: 4px;" placeholder="Дополнительные детали (минимум 5 символов)..."></textarea>
+        
         <input type="hidden" id="reqCloseId">
         
         <div style="display: flex; gap: 10px; margin-top: 15px;">
@@ -1294,7 +1314,7 @@ function forInput(v) {
         unloaded: { label: '🏁 Выгружен/Оплата', color: '#e67e22' },
         closed: { label: '✅ Закрыта', color: '#2e7d32' }
     };
-    let charts = { dyn: null, type: null, perf: null };
+    let charts = { dyn: null, type: null, perf: null, lost: null };
 
     function showLoader(s) { document.getElementById('loader').style.display = s ? 'block' : 'none'; }
     function logout() { sessionStorage.clear(); location.reload(); }
@@ -3250,17 +3270,49 @@ last6Months.forEach(m => {
     }
 
     function updateCharts(monthly, types, managersData) {
-        const ctxDyn = document.getElementById('chartProfitDynamics').getContext('2d');
-        const ctxType = document.getElementById('chartProfitByType').getContext('2d');
-        const ctxPerf = document.getElementById('chartManagerPerformance').getContext('2d');
-        if (charts.dyn) charts.dyn.destroy();
-        const sortedMonths = Object.keys(monthly).sort();
-        charts.dyn = new Chart(ctxDyn, { type: 'line', data: { labels: sortedMonths, datasets: [{ label: 'Прибыль USD', data: sortedMonths.map(m => monthly[m]), borderColor: '#1a73e8', backgroundColor: 'rgba(26, 115, 232, 0.1)', fill: true, tension: 0.3 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } });
-        if (charts.type) charts.type.destroy();
-        charts.type = new Chart(ctxType, { type: 'doughnut', data: { labels: Object.keys(types), datasets: [{ data: Object.values(types), backgroundColor: ['#4285F4', '#34A853', '#FBBC05', '#EA4335', '#673AB7', '#00ACC1', '#FF7043', '#9E9E9E'] }] }, options: { responsive: true, maintainAspectRatio: false } });
-        if (charts.perf) charts.perf.destroy();
-        charts.perf = new Chart(ctxPerf, { type: 'bar', data: { labels: Object.keys(managersData), datasets: [{ label: 'Прибыль по менеджерам', data: Object.values(managersData), backgroundColor: '#34A853' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } });
-    }
+    const ctxDyn = document.getElementById('chartProfitDynamics').getContext('2d');
+    const ctxType = document.getElementById('chartProfitByType').getContext('2d');
+    const ctxPerf = document.getElementById('chartManagerPerformance').getContext('2d');
+    const ctxLost = document.getElementById('chartLostReasons').getContext('2d'); // Новый контекст
+
+    // --- ЛОГИКА СБОРА ПРИЧИН ОТКАЗОВ ---
+    let lostReasons = {};
+    requests.forEach(r => {
+        // Ищем только закрытые запросы, где комментарий начинается с "["
+        if (r.status === 'completed' && r.comment && r.comment.startsWith('[')) {
+            const reason = r.comment.split(']')[0].replace('[', '');
+            lostReasons[reason] = (lostReasons[reason] || 0) + 1;
+        }
+    });
+
+    if (charts.dyn) charts.dyn.destroy();
+    const sortedMonths = Object.keys(monthly).sort();
+    charts.dyn = new Chart(ctxDyn, { type: 'line', data: { labels: sortedMonths, datasets: [{ label: 'Прибыль USD', data: sortedMonths.map(m => monthly[m]), borderColor: '#1a73e8', backgroundColor: 'rgba(26, 115, 232, 0.1)', fill: true, tension: 0.3 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } });
+
+    if (charts.type) charts.type.destroy();
+    charts.type = new Chart(ctxType, { type: 'doughnut', data: { labels: Object.keys(types), datasets: [{ data: Object.values(types), backgroundColor: ['#4285F4', '#34A853', '#FBBC05', '#EA4335', '#673AB7', '#00ACC1', '#FF7043', '#9E9E9E'] }] }, options: { responsive: true, maintainAspectRatio: false } });
+
+    if (charts.perf) charts.perf.destroy();
+    charts.perf = new Chart(ctxPerf, { type: 'bar', data: { labels: Object.keys(managersData), datasets: [{ label: 'Прибыль по менеджерам', data: Object.values(managersData), backgroundColor: '#34A853' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } });
+
+    // --- ОТРИСОВКА ГРАФИКА ОТКАЗОВ ---
+    if (charts.lost) charts.lost.destroy();
+    charts.lost = new Chart(ctxLost, {
+        type: 'pie',
+        data: {
+            labels: Object.keys(lostReasons),
+            datasets: [{
+                data: Object.values(lostReasons),
+                backgroundColor: ['#f43f5e', '#fbbf24', '#8b5cf6', '#3b82f6', '#10b981', '#94a3b8']
+            }]
+        },
+        options: { 
+            responsive: true, 
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, fontSize: 10 } } }
+        }
+    });
+}
 
     function showStatsDetail(key, manager, type) {
         const [y, m] = key.split('-').map(Number);
@@ -3345,35 +3397,38 @@ last6Months.forEach(m => {
         document.getElementById('preview-tracking').innerHTML = `<h3>Детали: ${t.num}</h3><div class="preview-grid"><div class="preview-box"><label>Груз</label><span>${t.cargo}</span></div><div class="preview-box"><label>Статус</label><span style="color:var(--primary); font-weight:bold;">${t.status}</span></div><div class="preview-box"><label>Вес/Объем</label><span>${t.weight}кг / ${t.vol}м³</span></div><div class="preview-box"><label>Упаковка</label><span>${t.qty} (${t.pack})</span></div><div class="preview-box"><label>Транспорт</label><span>${t.trans.toUpperCase()}</span></div></div>`;
     }
 
-    async function submitRequestClose() {
+async function submitRequestClose() {
     const id = document.getElementById('reqCloseId').value;
+    const reason = document.getElementById('reqCloseReason').value;
     const comment = document.getElementById('reqCloseComment').value.trim();
 
-    // ПРОВЕРКА НА ОБЯЗАТЕЛЬНОСТЬ (минимум 5 символов)
+    if (!reason) {
+        alert("Пожалуйста, выберите категорию причины из списка.");
+        return;
+    }
     if (comment.length < 5) {
-        alert("Пожалуйста, укажите причину закрытия (минимум 5 символов). Это поле обязательно.");
+        alert("Пожалуйста, напишите краткое пояснение (минимум 5 символов).");
         return;
     }
 
-    const i = requests.findIndex(x => x.id == id);
+    const i = requests.findIndex(x => String(x.id) === String(id));
     if (i > -1) {
-        // Меняем статус на завершенный и сохраняем причину
+        showLoader(true);
         requests[i].status = 'completed';
-        requests[i].comment = comment; 
+        // Сохраняем в формате [Причина] Текст
+        requests[i].comment = `[${reason}] ${comment}`; 
         
-        // Обновляем список на экране
         renderRequests();
-        
-        // Закрываем модалку
         document.getElementById('requestCloseModal').style.display = 'none';
 
-        // Синхронизируем только одну измененную строку в Google Таблицу
         await sync('requests', requests[i], 'update'); 
+        showLoader(false);
+        alert("Запрос закрыт. Причина зафиксирована.");
         
-        alert("Запрос успешно закрыт.");
+        // Обновим статистику, если мы на этой вкладке
+        if (document.getElementById('stats').classList.contains('active')) renderManagerStats();
     }
 }
-    // --- ФУНКЦИИ КОРЗИНЫ (ADMIN ONLY) ---
 
 // 1. Проверяем, админ ли зашел, и показываем кнопку
 function updateAdminUI() {
