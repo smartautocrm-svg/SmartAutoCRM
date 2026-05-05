@@ -129,49 +129,6 @@
     border-bottom: 1px solid #efe6ef; /* Тонкая разделительная линия */
     padding-bottom: 4px; 
 }
-        /* Стиль для чекбокса внутри карточки */
-.item-checkbox {
-    width: 18px !important;
-    height: 18px !important;
-    margin-right: 10px !important;
-    cursor: pointer;
-}
-
-/* Панель массовых действий (появляется внизу) */
-#bulk-action-bar {
-    display: none; 
-    position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: var(--primary);
-    color: white;
-    padding: 12px 25px;
-    border-radius: 50px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-    z-index: 9999; /* Должен быть выше всех */
-    align-items: center;
-    gap: 15px;
-}
-
-#bulk-action-bar select, #bulk-action-bar button {
-    height: 30px;
-    padding: 0 10px;
-    border-radius: 5px;
-    border: none;
-    font-size: 11px;
-    cursor: pointer;
-}
-
-#bulk-action-bar .btn-bulk-delete {
-    background: var(--danger);
-    color: white;
-}
-
-#bulk-action-bar .btn-bulk-close {
-    background: rgba(255,255,255,0.2);
-    color: white;
-}
 
         
         .input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 5px; }
@@ -406,12 +363,7 @@ button.main:active {
         .admin-controls { background: #fffde7; padding: 10px; border: 1px solid #fff59d; margin-bottom: 15px; border-radius: 4px; display: flex; gap: 10px; align-items: center; }
         .period-controls { background: #f0f7ff; padding: 10px; border: 1px solid var(--border); margin-bottom: 15px; border-radius: 4px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
         
-        .charts-container { 
-    display: grid; 
-    grid-template-columns: 1fr 1fr 1fr; /* Теперь три колонки */
-    gap: 15px; 
-    margin-bottom: 20px; 
-}
+        .charts-container { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
         .chart-box { background: white; padding: 15px; border: 1px solid var(--border); border-radius: 6px; height: 260px; }
         .chart-box h4 { margin: 0 0 10px 0; font-size: 11px; color: #666; text-transform: uppercase; text-align: center; }
 
@@ -1010,29 +962,24 @@ button.main:active {
             </select>
         </div>
 
-<div class="charts-container">
-    <div class="chart-box">
-        <h4>Динамика прибыли (USD)</h4>
-        <canvas id="chartProfitDynamics"></canvas>
-    </div>
-    <div class="chart-box">
-        <h4>Прибыль по типам сделок</h4>
-        <canvas id="chartProfitByType"></canvas>
-    </div>
-    <!-- ВОТ ТВОЙ НОВЫЙ ГРАФИК ТЕПЕРЬ ТУТ -->
-    <div class="chart-box">
-        <h4>Причины потерь запросов</h4>
-        <canvas id="chartLostReasons"></canvas>
-    </div>
-    <!-- График по менеджерам растянем на всю ширину (3 колонки), если графиков стало 3 в ряду -->
-    <div class="chart-box" style="grid-column: span 3;"> 
-        <h4>Прибыль по менеджерам (ТОП)</h4>
-        <canvas id="chartManagerPerformance"></canvas>
+        <div class="charts-container">
+            <div class="chart-box">
+                <h4>Динамика прибыли (USD)</h4>
+                <canvas id="chartProfitDynamics"></canvas>
+            </div>
+            <div class="chart-box">
+                <h4>Прибыль по типам сделок</h4>
+                <canvas id="chartProfitByType"></canvas>
+            </div>
+            <div class="chart-box" style="grid-column: span 2;">
+                <h4>Прибыль по менеджерам (ТОП)</h4>
+                <canvas id="chartManagerPerformance"></canvas>
+            </div>
+        </div>
+
+        <div id="statsContent"></div>
     </div>
 </div>
-
-<!-- statsContent должен быть ПУСТЫМ, сюда JS будет рисовать таблицу -->
-<div id="statsContent"></div>
     
     <!-- ВКЛАДКА ТРЕКИНГ -->
 <div id="tracking" class="content">
@@ -1179,27 +1126,17 @@ button.main:active {
     </div>
 </div>
     
-   <!-- МОДАЛКА ЗАКРЫТИЯ ЗАПРОСА (ИСПРАВЛЕННАЯ) -->
+    <!-- МОДАЛКА ЗАКРЫТИЯ ЗАПРОСА (ОБЯЗАТЕЛЬНЫЙ КОММЕНТАРИЙ) -->
 <div id="requestCloseModal" class="modal-overlay" onclick="if(event.target===this) this.style.display='none'">
     <div class="modal-content" style="width: 400px; border-top: 5px solid var(--danger);">
         <h3>Завершение запроса</h3>
         <p style="font-size: 11px; color: #666; margin-bottom: 10px;">
-            Укажите причину, по которой запрос не перерос в сделку:
+            Пожалуйста, укажите причину закрытия запроса (почему не дошли до сделки?):
         </p>
+        <!-- Поле для ввода комментария -->
+        <textarea id="reqCloseComment" style="width: 100%; height: 100px; padding: 8px; border: 1px solid var(--border); border-radius: 4px;" placeholder="Пример: Клиент ушел к конкурентам из-за цены / Груз отменился..."></textarea>
         
-        <!-- ВОТ ЭТО ПОЛЕ БЫЛО ПРОПУЩЕНО: -->
-        <select id="reqCloseReason" style="margin-bottom: 10px; border: 1.5px solid var(--danger); background: #fff5f5; width: 100%; padding: 8px; border-radius: 4px;">
-            <option value="">-- Выберите причину отмены * --</option>
-            <option value="Цена (Дорого)">💸 Цена (Дорого)</option>
-            <option value="Сроки (Долго)">⏳ Сроки (Долго)</option>
-            <option value="Нет транспорта/места">🚛 Нет транспорта/места</option>
-            <option value="Клиент передумал/пропал">👻 Клиент передумал/пропал</option>
-            <option value="Ошибка/Дубль">❌ Ошибка/Дубль</option>
-            <option value="Другое">📝 Другое (указать в комм.)</option>
-        </select>
-
-        <textarea id="reqCloseComment" style="width: 100%; height: 80px; padding: 8px; border: 1px solid var(--border); border-radius: 4px;" placeholder="Дополнительные детали (минимум 5 символов)..."></textarea>
-        
+        <!-- Скрытое поле для хранения ID запроса -->
         <input type="hidden" id="reqCloseId">
         
         <div style="display: flex; gap: 10px; margin-top: 15px;">
@@ -1283,7 +1220,7 @@ function forInput(v) {
     container.appendChild(div);
 }
     
-    let reminders = [], companies = [], partners = [], requests = [], managers = [], deals = [], tracking = [], crmLogs = []; let selectedItemIds = new Set();
+    let reminders = [], companies = [], partners = [], requests = [], managers = [], deals = [], tracking = [], crmLogs = [];
     let listLimits = { 
         calls: 30, 
         requests: 30, 
@@ -1313,7 +1250,7 @@ function forInput(v) {
         unloaded: { label: '🏁 Выгружен/Оплата', color: '#e67e22' },
         closed: { label: '✅ Закрыта', color: '#2e7d32' }
     };
-    let charts = { dyn: null, type: null, perf: null, lost: null };
+    let charts = { dyn: null, type: null, perf: null };
 
     function showLoader(s) { document.getElementById('loader').style.display = s ? 'block' : 'none'; }
     function logout() { sessionStorage.clear(); location.reload(); }
@@ -2223,7 +2160,7 @@ function renderCompanies() {
             const dates = [...reminders.filter(r => r.name === c.name).map(r => new Date(r.date)), ...requests.filter(r => r.company === c.name).map(r => new Date(r.createdAt)), ...deals.filter(d => d.company === c.name).map(d => new Date(d.createdAt))].filter(d => !isNaN(d));
             if (dates.length === 0 || (now - new Date(Math.max(...dates))) > limitMs) isForgotten = true;
         }
-        return `<div class="list-item ${isForgotten ? 'forgotten' : ''}" onclick="showCompanyPreview('${c.name}')"><input type="checkbox" class="item-checkbox" data-id="${c.id}" onclick="handleItemCheck(event)"><div class="item-main"><h4>${c.name} ${isForgotten ? '<span class="forgotten-tag">⚠️ В работу</span>' : ''}</h4><p>${checkAccess(c.name) ? statusMap[c.status].label : '🔒 Ограничен'} | ${c.manager}</p></div><div class="item-actions"><button class="action-btn" onclick="openEdit('${c.id}','company')">✎</button><button class="action-btn btn-delete" onclick="deleteItem('companies', '${c.id}')">×</button></div></div>`;
+        return `<div class="list-item ${isForgotten ? 'forgotten' : ''}" onclick="showCompanyPreview('${c.name}')"><div class="item-main"><h4>${c.name} ${isForgotten ? '<span class="forgotten-tag">⚠️ В работу</span>' : ''}</h4><p>${checkAccess(c.name) ? statusMap[c.status].label : '🔒 Ограничен'} | ${c.manager}</p></div><div class="item-actions"><button class="action-btn" onclick="openEdit('${c.id}','company')">✎</button><button class="action-btn btn-delete" onclick="deleteItem('companies', '${c.id}')">×</button></div></div>`;
     }).join('');
 
     // Кнопка
@@ -2233,130 +2170,6 @@ function renderCompanies() {
 
     document.getElementById('companiesList').innerHTML = html;
     updateCounters();
-}
-    let selectedItemIds = new Set();
-
-// Обработка клика по чекбоксу
-function handleItemCheck(e) {
-    e.stopPropagation(); // Важно! Чтобы не открывалось превью компании при клике на чекбокс
-    const id = e.target.getAttribute('data-id');
-    
-    if (e.target.checked) {
-        selectedItemIds.add(id);
-    } else {
-        selectedItemIds.delete(id);
-    }
-    
-    updateBulkBar(); // Вызываем обновление панели после каждого клика
-}
-
-// Обновление состояния панели
-function updateBulkBar() {
-    const bar = document.getElementById('bulk-action-bar');
-    const countEl = document.getElementById('bulk-count');
-    const managerSection = document.getElementById('bulk-manager-section');
-    const managerSelect = document.getElementById('bulk-new-manager');
-    const me = sessionStorage.getItem('crm_user');
-
-    // 1. Проверяем, выбрано ли что-нибудь
-    if (selectedItemIds.size > 0) {
-        // Показываем панель (она появится и у менеджера, и у админа)
-        bar.style.display = 'flex';
-        countEl.innerText = `Выбрано компаний: ${selectedItemIds.size}`;
-        
-        // 2. Логика прав доступа (Админ vs Менеджер)
-        if (me === 'admin') {
-            // Если админ — показываем блок смены менеджера
-            managerSection.style.display = 'flex';
-            
-            // Заполняем выпадающий список менеджеров (всегда актуальными данными)
-            // Добавляем пустой вариант в начале
-            let optionsHtml = '<option value="">-- Назначить менеджера --</option>';
-            
-            if (managers && managers.length > 0) {
-                managers.forEach(m => {
-                    optionsHtml += `<option value="${m}">${m}</option>`;
-                });
-            }
-            
-            managerSelect.innerHTML = optionsHtml;
-        } else {
-            // Если обычный пользователь — скрываем блок смены менеджера, 
-            // но сама панель (с кнопкой Удалить) остается видна
-            managerSection.style.display = 'none';
-        }
-    } else {
-        // Если ничего не выбрано — полностью скрываем всю панель
-        bar.style.display = 'none';
-    }
-}
-
-// Сброс выбора
-function cancelBulkSelection() {
-    selectedItemIds.clear();
-    document.querySelectorAll('.item-checkbox').forEach(cb => cb.checked = false);
-    updateBulkBar();
-}
-
-// ПРИМЕНЕНИЕ: Смена менеджера
-async function applyBulkManager() {
-    const me = sessionStorage.getItem('crm_user');
-    if (me !== 'admin') return alert("Доступ запрещен. Только администратор может менять ответственных.");
-
-    const newManager = document.getElementById('bulk-new-manager').value;
-    if (!newManager) return alert("Выберите менеджера!");
-    
-    if (!confirm(`Передать ${selectedItemIds.size} компаний менеджеру ${newManager}?`)) return;
-
-    showLoader(true);
-    
-    // Обновляем локально
-    selectedItemIds.forEach(id => {
-        const idx = companies.findIndex(c => String(c.id) === String(id));
-        if (idx !== -1) {
-            companies[idx].manager = newManager;
-        }
-    });
-
-    // Сохраняем весь лист (так быстрее для массовых действий)
-    await sync('companies', companies, 'saveAll');
-    
-    showLoader(false);
-    cancelBulkSelection();
-    renderCompanies();
-    alert("Данные обновлены!");
-}
-
-// ПРИМЕНЕНИЕ: Массовое удаление
-async function applyBulkDelete() {
-    const me = sessionStorage.getItem('crm_user');
-    let canDeleteAll = (me === 'admin');
-    let countToDeleted = 0;
-
-    selectedItemIds.forEach(id => {
-        const idx = companies.findIndex(c => String(c.id) === String(id));
-        if (idx !== -1) {
-            // Если админ — удаляет всё. Если менеджер — только свои.
-            if (canDeleteAll || companies[idx].manager === me) {
-                companies[idx].isDeleted = true;
-                countToDeleted++;
-            }
-        }
-    });
-
-    if (countToDeleted === 0) {
-        alert("Вы не можете удалить выбранные записи (они принадлежат другим менеджерам).");
-        return;
-    }
-
-    if (!confirm(`Будет удалено ${countToDeleted} записей из ${selectedItemIds.size} выбранных. Продолжить?`)) return;
-
-    showLoader(true);
-    await sync('companies', companies, 'saveAll');
-    showLoader(false);
-    cancelBulkSelection();
-    renderCompanies();
-    alert("Операция завершена.");
 }
     function renderPartners() {
     // 1. Получаем значения из всех полей фильтрации
@@ -3283,49 +3096,17 @@ last6Months.forEach(m => {
     }
 
     function updateCharts(monthly, types, managersData) {
-    const ctxDyn = document.getElementById('chartProfitDynamics').getContext('2d');
-    const ctxType = document.getElementById('chartProfitByType').getContext('2d');
-    const ctxPerf = document.getElementById('chartManagerPerformance').getContext('2d');
-    const ctxLost = document.getElementById('chartLostReasons').getContext('2d'); // Новый контекст
-
-    // --- ЛОГИКА СБОРА ПРИЧИН ОТКАЗОВ ---
-    let lostReasons = {};
-    requests.forEach(r => {
-        // Ищем только закрытые запросы, где комментарий начинается с "["
-        if (r.status === 'completed' && r.comment && r.comment.startsWith('[')) {
-            const reason = r.comment.split(']')[0].replace('[', '');
-            lostReasons[reason] = (lostReasons[reason] || 0) + 1;
-        }
-    });
-
-    if (charts.dyn) charts.dyn.destroy();
-    const sortedMonths = Object.keys(monthly).sort();
-    charts.dyn = new Chart(ctxDyn, { type: 'line', data: { labels: sortedMonths, datasets: [{ label: 'Прибыль USD', data: sortedMonths.map(m => monthly[m]), borderColor: '#1a73e8', backgroundColor: 'rgba(26, 115, 232, 0.1)', fill: true, tension: 0.3 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } });
-
-    if (charts.type) charts.type.destroy();
-    charts.type = new Chart(ctxType, { type: 'doughnut', data: { labels: Object.keys(types), datasets: [{ data: Object.values(types), backgroundColor: ['#4285F4', '#34A853', '#FBBC05', '#EA4335', '#673AB7', '#00ACC1', '#FF7043', '#9E9E9E'] }] }, options: { responsive: true, maintainAspectRatio: false } });
-
-    if (charts.perf) charts.perf.destroy();
-    charts.perf = new Chart(ctxPerf, { type: 'bar', data: { labels: Object.keys(managersData), datasets: [{ label: 'Прибыль по менеджерам', data: Object.values(managersData), backgroundColor: '#34A853' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } });
-
-    // --- ОТРИСОВКА ГРАФИКА ОТКАЗОВ ---
-    if (charts.lost) charts.lost.destroy();
-    charts.lost = new Chart(ctxLost, {
-        type: 'pie',
-        data: {
-            labels: Object.keys(lostReasons),
-            datasets: [{
-                data: Object.values(lostReasons),
-                backgroundColor: ['#f43f5e', '#fbbf24', '#8b5cf6', '#3b82f6', '#10b981', '#94a3b8']
-            }]
-        },
-        options: { 
-            responsive: true, 
-            maintainAspectRatio: false,
-            plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, fontSize: 10 } } }
-        }
-    });
-}
+        const ctxDyn = document.getElementById('chartProfitDynamics').getContext('2d');
+        const ctxType = document.getElementById('chartProfitByType').getContext('2d');
+        const ctxPerf = document.getElementById('chartManagerPerformance').getContext('2d');
+        if (charts.dyn) charts.dyn.destroy();
+        const sortedMonths = Object.keys(monthly).sort();
+        charts.dyn = new Chart(ctxDyn, { type: 'line', data: { labels: sortedMonths, datasets: [{ label: 'Прибыль USD', data: sortedMonths.map(m => monthly[m]), borderColor: '#1a73e8', backgroundColor: 'rgba(26, 115, 232, 0.1)', fill: true, tension: 0.3 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } });
+        if (charts.type) charts.type.destroy();
+        charts.type = new Chart(ctxType, { type: 'doughnut', data: { labels: Object.keys(types), datasets: [{ data: Object.values(types), backgroundColor: ['#4285F4', '#34A853', '#FBBC05', '#EA4335', '#673AB7', '#00ACC1', '#FF7043', '#9E9E9E'] }] }, options: { responsive: true, maintainAspectRatio: false } });
+        if (charts.perf) charts.perf.destroy();
+        charts.perf = new Chart(ctxPerf, { type: 'bar', data: { labels: Object.keys(managersData), datasets: [{ label: 'Прибыль по менеджерам', data: Object.values(managersData), backgroundColor: '#34A853' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } });
+    }
 
     function showStatsDetail(key, manager, type) {
         const [y, m] = key.split('-').map(Number);
@@ -3410,41 +3191,35 @@ last6Months.forEach(m => {
         document.getElementById('preview-tracking').innerHTML = `<h3>Детали: ${t.num}</h3><div class="preview-grid"><div class="preview-box"><label>Груз</label><span>${t.cargo}</span></div><div class="preview-box"><label>Статус</label><span style="color:var(--primary); font-weight:bold;">${t.status}</span></div><div class="preview-box"><label>Вес/Объем</label><span>${t.weight}кг / ${t.vol}м³</span></div><div class="preview-box"><label>Упаковка</label><span>${t.qty} (${t.pack})</span></div><div class="preview-box"><label>Транспорт</label><span>${t.trans.toUpperCase()}</span></div></div>`;
     }
 
-async function submitRequestClose() {
+    async function submitRequestClose() {
     const id = document.getElementById('reqCloseId').value;
-    const reasonEl = document.getElementById('reqCloseReason');
-    const commentEl = document.getElementById('reqCloseComment');
+    const comment = document.getElementById('reqCloseComment').value.trim();
 
-    if (!reasonEl || !commentEl) return console.error("Поля модалки не найдены");
-
-    const reason = reasonEl.value;
-    const comment = commentEl.value.trim();
-
-    if (!reason) {
-        alert("Пожалуйста, выберите категорию причины из списка.");
-        return;
-    }
+    // ПРОВЕРКА НА ОБЯЗАТЕЛЬНОСТЬ (минимум 5 символов)
     if (comment.length < 5) {
-        alert("Пожалуйста, напишите краткое пояснение (минимум 5 символов).");
+        alert("Пожалуйста, укажите причину закрытия (минимум 5 символов). Это поле обязательно.");
         return;
     }
 
-    const i = requests.findIndex(x => String(x.id) === String(id));
+    const i = requests.findIndex(x => x.id == id);
     if (i > -1) {
-        showLoader(true);
+        // Меняем статус на завершенный и сохраняем причину
         requests[i].status = 'completed';
-        requests[i].comment = `[${reason}] ${comment}`; 
+        requests[i].comment = comment; 
         
+        // Обновляем список на экране
         renderRequests();
+        
+        // Закрываем модалку
         document.getElementById('requestCloseModal').style.display = 'none';
 
+        // Синхронизируем только одну измененную строку в Google Таблицу
         await sync('requests', requests[i], 'update'); 
-        showLoader(false);
-        alert("Запрос закрыт. Причина зафиксирована.");
         
-        if (document.getElementById('stats').classList.contains('active')) renderManagerStats();
+        alert("Запрос успешно закрыт.");
     }
 }
+    // --- ФУНКЦИИ КОРЗИНЫ (ADMIN ONLY) ---
 
 // 1. Проверяем, админ ли зашел, и показываем кнопку
 function updateAdminUI() {
@@ -3771,22 +3546,5 @@ document.addEventListener('click', (e) => {
     
 </script>
     <div id="notification-container"></div>
-    <div id="bulk-action-bar">
-    <span id="bulk-count">Выбрано: 0</span>
-    
-    <!-- Смена менеджера (будет видна только админу) -->
-    <div id="bulk-manager-section" style="display:none; align-items:center; gap:10px;">
-        <select id="bulk-new-manager">
-            <option value="">Сменить менеджера на...</option>
-        </select>
-        <button onclick="applyBulkManager()">Применить</button>
-    </div>
-
-    <!-- Действие: Удаление (видят все для своих записей) -->
-    <button class="btn-bulk-delete" onclick="applyBulkDelete()">🗑️ Удалить выбранные</button>
-    
-    <!-- Кнопка закрытия -->
-    <button class="btn-bulk-close" onclick="cancelBulkSelection()">Отмена</button>
-</div>
 </body>
 </html> 
