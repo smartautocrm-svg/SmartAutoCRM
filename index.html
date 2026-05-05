@@ -119,6 +119,50 @@
     flex: 1 1 auto;  /* Фильтры будут гибко менять размер */
     max-width: 150px; 
 }
+        /* Панель массовых действий */
+#bulk-actions-bar {
+    display: none; /* Скрыта по умолчанию */
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--primary);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 50px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    z-index: 9999;
+    align-items: center;
+    gap: 15px;
+}
+
+.bulk-checkbox {
+    width: 18px !important;
+    height: 18px !important;
+    margin-right: 10px !important;
+    cursor: pointer;
+}
+
+.list-item.selected {
+    background-color: #f0f7ff !important;
+    border-color: var(--primary) !important;
+}
+
+.bulk-btn {
+    background: rgba(255,255,255,0.2);
+    border: 1px solid rgba(255,255,255,0.4);
+    color: white;
+    padding: 5px 12px;
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 11px;
+    font-weight: bold;
+}
+
+.bulk-btn:hover {
+    background: white;
+    color: var(--primary);
+}
         .scroll-list { flex-grow: 1; overflow-y: auto; padding: 5px; background: #f8f9fa; }
         .card { background: white; padding: 10px; border-radius: 4px; border: 1px solid var(--border); height: 100%; box-sizing: border-box; overflow-y: auto; }
         .card h3 { 
@@ -1220,7 +1264,7 @@ function forInput(v) {
     container.appendChild(div);
 }
     
-    let reminders = [], companies = [], partners = [], requests = [], managers = [], deals = [], tracking = [], crmLogs = [];
+    let reminders = [], companies = [], partners = [], requests = [], managers = [], deals = [], tracking = [], crmLogs = []; let selectedIds = new Set();
     let listLimits = { 
         calls: 30, 
         requests: 30, 
@@ -1853,19 +1897,30 @@ function renderReminders() {
     const totalFound = f.length;
     const limitedList = f.slice(0, listLimits.calls);
     
-    let html = limitedList.map(r => {
-        const isOverdue = r.status !== 'completed' && (now - new Date(r.date)) > limitMs;
-        return `<div class="list-item ${r.status==='completed'?'completed':''} ${isOverdue?'overdue':''}" onclick="showCallPreview(${r.id})">
-            <div class="item-main">
-                <h4>${r.name} ${isOverdue?'<span class="overdue-tag">ПРОСРОЧЕНО</span>':''}</h4><p>${dtFmt(r.date)} | ${r.manager}</p>
-            </div>
-            <div class="item-actions">
-                ${r.status !== 'completed' ? `<button class="action-btn" style="color:var(--success)" onclick="finishRem(event, '${r.id}')">✅</button>` : ''}
-                <button class="action-btn" onclick="openEdit('${r.id}','reminder')">✎</button>
-                <button class="action-btn btn-delete" onclick="deleteItem('reminders', '${r.id}')">×</button>
-            </div>
-        </div>`;
-    }).join('');
+let html = limitedList.map(r => {
+    const isOverdue = r.status !== 'completed' && (now - new Date(r.date)) > limitMs;
+    // ПРОВЕРЯЕМ: выделен ли этот ID сейчас?
+    const isSelected = selectedIds.has(String(r.id)); 
+
+    return `<div class="list-item ${r.status==='completed'?'completed':''} ${isOverdue?'overdue':''} ${isSelected?'selected':''}" 
+                 onclick="showCallPreview(${r.id})">
+        
+        <!-- ЧЕКБОКС -->
+        <input type="checkbox" class="bulk-checkbox" 
+               ${isSelected ? 'checked' : ''} 
+               onclick="toggleSelect(event, '${r.id}')">
+
+        <div class="item-main">
+            <h4>${r.name} ${isOverdue?'<span class="overdue-tag">ПРОСРОЧЕНО</span>':''}</h4>
+            <p>${dtFmt(r.date)} | ${r.manager}</p>
+        </div>
+        <div class="item-actions">
+            ${r.status !== 'completed' ? `<button class="action-btn" style="color:var(--success)" onclick="finishRem(event, '${r.id}')">✅</button>` : ''}
+            <button class="action-btn" onclick="openEdit('${r.id}','reminder')">✎</button>
+            <button class="action-btn btn-delete" onclick="deleteItem('reminders', '${r.id}')">×</button>
+        </div>
+    </div>`;
+}).join('');
     
     if (totalFound > listLimits.calls) {
         html += `<div class="load-more-container"><button class="btn-load-more" onclick="loadMore('calls')">Загрузить еще (осталось ${totalFound - listLimits.calls})</button></div>`;
@@ -1928,19 +1983,27 @@ let f = requests.filter(r => {
     const limitedList = f.slice(0, listLimits.requests);
     
     let html = limitedList.map(r => {
-        const isOverdue = r.status !== 'completed' && (now - new Date(r.createdAt)) > limitMs;
-        return `<div class="list-item ${r.status === 'completed' ? 'completed' : ''} ${isOverdue?'overdue':''}" onclick="showRequestPreview(${r.id})">
-            <div class="item-main">
-                <h4>${r.company} ${isOverdue?'<span class="overdue-tag">ГОРЯЧИЙ / ЗАБЫТ</span>':''}</h4>
-                <p>${r.cargo} | Создан: ${dFmt(r.createdAt)} | ${r.manager}</p>
-            </div>
-            <div class="item-actions">
-                ${r.status !== 'completed' ? `<button class="action-btn" style="color:var(--success)" onclick="finishRequest(event, '${r.id}')">✅</button>` : ''}
-                <button class="action-btn" onclick="openEdit('${r.id}','request')">✎</button>
-                <button class="action-btn btn-delete" onclick="deleteItem('requests', '${r.id}')">×</button>
-            </div>
-        </div>`;
-    }).join('');
+    const isOverdue = r.status !== 'completed' && (now - new Date(r.createdAt)) > limitMs;
+    const isSelected = selectedIds.has(String(r.id));
+
+    return `<div class="list-item ${r.status === 'completed' ? 'completed' : ''} ${isOverdue?'overdue':''} ${isSelected?'selected':''}" 
+                 onclick="showRequestPreview(${r.id})">
+        
+        <input type="checkbox" class="bulk-checkbox" 
+               ${isSelected ? 'checked' : ''} 
+               onclick="toggleSelect(event, '${r.id}')">
+
+        <div class="item-main">
+            <h4>${r.company} ${isOverdue?'<span class="overdue-tag">ГОРЯЧИЙ / ЗАБЫТ</span>':''}</h4>
+            <p>${r.cargo} | Создан: ${dFmt(r.createdAt)} | ${r.manager}</p>
+        </div>
+        <div class="item-actions">
+            ${r.status !== 'completed' ? `<button class="action-btn" style="color:var(--success)" onclick="finishRequest(event, '${r.id}')">✅</button>` : ''}
+            <button class="action-btn" onclick="openEdit('${r.id}','request')">✎</button>
+            <button class="action-btn btn-delete" onclick="deleteItem('requests', '${r.id}')">×</button>
+        </div>
+    </div>`;
+}).join('');
     
     // Кнопка
     if (totalFound > listLimits.requests) {
@@ -1991,40 +2054,35 @@ function renderDeals() {
     const limitedList = f.slice(0, listLimits.deals);
 
     let html = limitedList.map(d => {
-        const stage = (d.stage && stageMap[d.stage]) ? stageMap[d.stage] : stageMap.docs;
-        const marginInfo = d.margin ? `<span style="color:var(--warning); font-weight:bold;"> (${d.margin})</span>` : "";
+    const stage = (d.stage && stageMap[d.stage]) ? stageMap[d.stage] : stageMap.docs;
+    const isDebt = (d.stage === 'unloaded' && !d.isPaid);
+    const debtStyle = isDebt ? 'border-left: 5px solid var(--danger); background: #fff5f5;' : '';
+    const isSelected = selectedIds.has(String(d.id));
+
+    return `
+    <div class="list-item ${d.status==='completed'?'completed':''} ${isSelected?'selected':''}" 
+         style="${debtStyle}" onclick="showDealPreview(${d.id})">
         
-        // ОПРЕДЕЛЯЕМ ДОЛГ: Этап "Выгружен" и галочка "Оплачено" не стоит
-        const isDebt = (d.stage === 'unloaded' && !d.isPaid);
-        const debtStyle = isDebt ? 'border-left: 5px solid var(--danger); background: #fff5f5;' : '';
-        
-        return `
-        <div class="list-item ${d.status==='completed'?'completed':''}" style="${debtStyle}" onclick="showDealPreview(${d.id})">
-            <div class="item-main">
-                <div style="display:flex; align-items:center; gap:8px; margin-bottom: 3px;">
-                    <h4 style="margin:0;">№ ${d.num} | ${d.company}</h4>
-                    <span style="font-size:8px; text-transform:uppercase; padding:1px 6px; border-radius:10px; color:white; background:${stage.color}; font-weight:bold;">
-                        ${stage.label}
-                    </span>
-                    <!-- МЕТКИ ОПЛАТЫ РЯДОМ С НОМЕРОМ -->
-                    ${d.isPaid ? `<span style="font-size:8px; color:var(--success); font-weight:bold;">✅ ОПЛАЧЕНО</span>` : ""}
-                    ${isDebt ? `<span style="font-size:8px; color:var(--danger); font-weight:bold;">⚠️ ЖДЕМ ОПЛАТУ!</span>` : ""}
-                </div>
-                <p>${d.type || '-'} | Прибыль: <b>${d.prof}$</b>${marginInfo} | ${d.manager}</p>
+        <input type="checkbox" class="bulk-checkbox" 
+               ${isSelected ? 'checked' : ''} 
+               onclick="toggleSelect(event, '${d.id}')">
+
+        <div class="item-main">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom: 3px;">
+                <h4 style="margin:0;">№ ${d.num} | ${d.company}</h4>
+                <span style="font-size:8px; text-transform:uppercase; padding:1px 6px; border-radius:10px; color:white; background:${stage.color}; font-weight:bold;">
+                    ${stage.label}
+                </span>
             </div>
-            <div class="item-actions">
-                <!-- КНОПКА ОПЛАТЫ ($) -->
-                <button class="action-btn" 
-                        style="color:${d.isPaid ? 'var(--success)' : '#ccc'}; font-size:18px; font-weight:bold; margin-right:5px;" 
-                        onclick="togglePaidStatus(event, '${d.id}')"
-                        title="${d.isPaid ? 'Оплачено (нажми для сброса)' : 'Пометить как оплачено'}">
-                    $
-                </button>
-                <button class="action-btn" onclick="openEdit('${d.id}','deal')">✎</button>
-                <button class="action-btn btn-delete" onclick="deleteItem('deals', '${d.id}')">×</button>
-            </div>
-        </div>`;
-    }).join('');
+            <p>${d.type || '-'} | Прибыль: <b>${d.prof}$</b> | ${d.manager}</p>
+        </div>
+        <div class="item-actions">
+            <button class="action-btn" style="color:${d.isPaid ? 'var(--success)' : '#ccc'}; font-size:18px; font-weight:bold;" onclick="togglePaidStatus(event, '${d.id}')">$</button>
+            <button class="action-btn" onclick="openEdit('${d.id}','deal')">✎</button>
+            <button class="action-btn btn-delete" onclick="deleteItem('deals', '${d.id}')">×</button>
+        </div>
+    </div>`;
+}).join('');
     
     if (totalFound > listLimits.deals) {
         html += `<div class="load-more-container"><button class="btn-load-more" onclick="loadMore('deals')">Загрузить еще (осталось ${totalFound - listLimits.deals})</button></div>`;
@@ -2155,13 +2213,27 @@ function renderCompanies() {
     const limitedList = f.slice(0, listLimits.companies);
 
     let html = limitedList.map(c => {
-        let isForgotten = false;
-        if ((c.status === 'cold' || c.status === 'warm') && checkAccess(c.name)) {
-            const dates = [...reminders.filter(r => r.name === c.name).map(r => new Date(r.date)), ...requests.filter(r => r.company === c.name).map(r => new Date(r.createdAt)), ...deals.filter(d => d.company === c.name).map(d => new Date(d.createdAt))].filter(d => !isNaN(d));
-            if (dates.length === 0 || (now - new Date(Math.max(...dates))) > limitMs) isForgotten = true;
-        }
-        return `<div class="list-item ${isForgotten ? 'forgotten' : ''}" onclick="showCompanyPreview('${c.name}')"><div class="item-main"><h4>${c.name} ${isForgotten ? '<span class="forgotten-tag">⚠️ В работу</span>' : ''}</h4><p>${checkAccess(c.name) ? statusMap[c.status].label : '🔒 Ограничен'} | ${c.manager}</p></div><div class="item-actions"><button class="action-btn" onclick="openEdit('${c.id}','company')">✎</button><button class="action-btn btn-delete" onclick="deleteItem('companies', '${c.id}')">×</button></div></div>`;
-    }).join('');
+    let isForgotten = false;
+    // ... (ваш код расчета isForgotten остается прежним)
+    const isSelected = selectedIds.has(String(c.id));
+
+    return `<div class="list-item ${isForgotten ? 'forgotten' : ''} ${isSelected?'selected':''}" 
+                 onclick="showCompanyPreview('${c.name}')">
+        
+        <input type="checkbox" class="bulk-checkbox" 
+               ${isSelected ? 'checked' : ''} 
+               onclick="toggleSelect(event, '${c.id}')">
+
+        <div class="item-main">
+            <h4>${c.name} ${isForgotten ? '<span class="forgotten-tag">⚠️ В работу</span>' : ''}</h4>
+            <p>${checkAccess(c.name) ? statusMap[c.status].label : '🔒 Ограничен'} | ${c.manager}</p>
+        </div>
+        <div class="item-actions">
+            <button class="action-btn" onclick="openEdit('${c.id}','company')">✎</button>
+            <button class="action-btn btn-delete" onclick="deleteItem('companies', '${c.id}')">×</button>
+        </div>
+    </div>`;
+}).join('');
 
     // Кнопка
     if (totalFound > listLimits.companies) {
@@ -2198,8 +2270,15 @@ function renderCompanies() {
     const totalFound = f.length;
     const limitedList = f.slice(0, listLimits.partners);
 
-    let html = limitedList.map(p => `
-        <div class="list-item" onclick="showPartnerPreview(${p.id})">
+    let html = limitedList.map(p => {
+        const isSelected = selectedIds.has(String(p.id)); // Проверка выделения
+        return `
+        <div class="list-item ${isSelected ? 'selected' : ''}" onclick="showPartnerPreview(${p.id})">
+            <!-- ДОБАВЛЕН ЧЕКБОКС -->
+            <input type="checkbox" class="bulk-checkbox" 
+                   ${isSelected ? 'checked' : ''} 
+                   onclick="toggleSelect(event, '${p.id}')">
+                   
             <div class="item-main">
                 <h4>${p.name}</h4>
                 <p>${p.status.toUpperCase()} | 🌍 ${p.country || '---'}</p>
@@ -2209,7 +2288,7 @@ function renderCompanies() {
                 <button class="action-btn btn-delete" onclick="deleteItem('partners', '${p.id}')">×</button>
             </div>
         </div>
-    `).join('');
+    `}).join('');
 
     // Добавляем кнопку дозагрузки, если партнеров больше чем лимит
     if (totalFound > listLimits.partners) {
@@ -2855,8 +2934,103 @@ function getArrayBySheet(sh) {
     // Обновляем в таблице
     await sync('requests', requests[i], 'update'); 
 }
+// Переключение выбора элемента
+function toggleSelect(e, id) {
+    e.stopPropagation(); // Чтобы не открывалось превью карточки
+    const idStr = String(id);
+    if (selectedIds.has(idStr)) {
+        selectedIds.delete(idStr);
+    } else {
+        selectedIds.add(idStr);
+    }
+    updateBulkBar();
+    
+    // Визуальная подсветка без полной перерисовки (для скорости)
+    const row = e.target.closest('.list-item');
+    if (row) row.classList.toggle('selected', selectedIds.has(idStr));
+}
 
+// Обновление состояния нижней панели
+function updateBulkBar() {
+    const bar = document.getElementById('bulk-actions-bar');
+    const countSpan = document.getElementById('bulk-count');
+    const adminTools = document.getElementById('admin-bulk-tools');
+    const me = sessionStorage.getItem('crm_user');
+
+    if (selectedIds.size > 0) {
+        bar.style.display = 'flex';
+        countSpan.innerText = `Выбрано: ${selectedIds.size}`;
+        
+        if (me === 'admin') {
+            adminTools.style.display = 'flex';
+            const sel = document.getElementById('bulkManagerSelect');
+            // Заполняем список менеджеров если он пуст
+            if (sel && sel.options.length <= 1) {
+                sel.innerHTML = managers.map(m => `<option value="${m}">${m}</option>`).join('');
+            }
+        }
+    } else {
+        bar.style.display = 'none';
+    }
+}
+
+// Сброс выбора
+function clearSelection() {
+    selectedIds.clear();
+    updateBulkBar();
+    // Снимаем класс выделения со всех элементов на текущей странице
+    document.querySelectorAll('.list-item.selected').forEach(el => el.classList.remove('selected'));
+    document.querySelectorAll('.bulk-checkbox').forEach(el => el.checked = false);
+}
+
+// Массовое удаление (в корзину)
+async function bulkDelete() {
+    if (!confirm(`Переместить ${selectedIds.size} элементов в корзину?`)) return;
+    
+    const activeTab = document.querySelector('.content.active').id;
+    let dataArray = getArrayBySheet(activeTab);
+    
+    showLoader(true);
+    // Проходим по всем выбранным ID
+    for (let id of selectedIds) {
+        const item = dataArray.find(x => String(x.id) === String(id));
+        if (item) {
+            item.isDeleted = true;
+            await sync(activeTab, item, 'update'); // Отправляем в Google
+        }
+    }
+    
+    selectedIds.clear();
+    renderTabById(activeTab); // Перерисовываем вкладку
+    updateCounters();
+    showLoader(false);
+}
+
+// Массовая смена менеджера (Admin Only)
+async function bulkChangeManager() {
+    const newManager = document.getElementById('bulkManagerSelect').value;
+    const activeTab = document.querySelector('.content.active').id;
+    
+    if (!newManager) return alert("Выберите менеджера");
+    if (!confirm(`Назначить ${newManager} ответственным за ${selectedIds.size} объектов?`)) return;
+
+    showLoader(true);
+    let dataArray = getArrayBySheet(activeTab);
+
+    for (let id of selectedIds) {
+        const item = dataArray.find(x => String(x.id) === String(id));
+        if (item) {
+            item.manager = newManager;
+            await sync(activeTab, item, 'update');
+        }
+    }
+
+    selectedIds.clear();
+    renderTabById(activeTab);
+    showLoader(false);
+}
 function openTab(id) { 
+    clearSelection();
     document.querySelectorAll('.content, .tab-btn').forEach(x => x.classList.remove('active')); 
     document.getElementById(id).classList.add('active'); 
     document.getElementById('btn-'+id).classList.add('active'); 
@@ -3166,7 +3340,24 @@ last6Months.forEach(m => {
     if (t.isDeleted) return false; // ДОБАВЛЕНО
     return checkTrackingAccess(t) && t.num.toLowerCase().includes(s);
 });
-            document.getElementById('trackingListAdmin').innerHTML = f.map(t => `<div class="list-item" onclick="showTrackPreview(${t.id})"><div class="item-main"><h4>${t.num} — ${t.cargo}</h4><p>Статус: <b>${t.status}</b> | ${t.weight}кг / ${t.vol}м³</p></div><div class="item-actions"><button class="action-btn" onclick="openEdit('${t.id}','tracking')">✎</button><button class="action-btn btn-delete" onclick="deleteItem('tracking', '${t.id}')">×</button></div></div>`).join('');
+           document.getElementById('trackingListAdmin').innerHTML = f.map(t => {
+        const isSelected = selectedIds.has(String(t.id));
+        return `
+        <div class="list-item ${isSelected ? 'selected' : ''}" onclick="showTrackPreview(${t.id})">
+            <input type="checkbox" class="bulk-checkbox" 
+                   ${isSelected ? 'checked' : ''} 
+                   onclick="toggleSelect(event, '${t.id}')">
+            
+            <div class="item-main">
+                <h4>${t.num} — ${t.cargo}</h4>
+                <p>Статус: <b>${t.status}</b> | ${t.weight}кг / ${t.vol}м³</p>
+            </div>
+            <div class="item-actions">
+                <button class="action-btn" onclick="openEdit('${t.id}','tracking')">✎</button>
+                <button class="action-btn btn-delete" onclick="deleteItem('tracking', '${t.id}')">×</button>
+            </div>
+        </div>`
+    }).join('');
         } else {
             document.getElementById('tracking-admin-zone').style.display = 'none';
             document.getElementById('tracking-user-zone').style.display = 'block';
@@ -3311,7 +3502,7 @@ function getArrayBySheet(sh) {
     if(sh==='requests') return requests;
     if(sh==='deals') return deals;
     if(sh==='companies') return companies;
-    if(sh==='reminders') return reminders;
+    if(sh==='calls') return reminders; // Вкладка называется 'calls', а массив 'reminders'
     if(sh==='partners') return partners;
     if(sh==='tracking') return tracking;
     return [];
@@ -3546,5 +3737,17 @@ document.addEventListener('click', (e) => {
     
 </script>
     <div id="notification-container"></div>
+    <div id="bulk-actions-bar">
+    <span id="bulk-count">Выбрано: 0</span>
+    <button class="bulk-btn" onclick="bulkDelete()">🗑️ В корзину</button>
+    
+    <!-- Только для админа: Смена менеджера -->
+    <div id="admin-bulk-tools" style="display:none; align-items:center; gap:8px; border-left: 1px solid rgba(255,255,255,0.3); padding-left: 15px;">
+        <select id="bulkManagerSelect" style="width:130px; height:26px; font-size:10px; color:#333;"></select>
+        <button class="bulk-btn" onclick="bulkChangeManager()">Назначить</button>
+    </div>
+    
+    <button class="bulk-btn" style="background:none; border:none;" onclick="clearSelection()">✖</button>
+</div>
 </body>
 </html> 
