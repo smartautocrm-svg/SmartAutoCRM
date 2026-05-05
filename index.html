@@ -961,7 +961,7 @@ body.dark-mode .list-item:hover { background-color: #252525; }
                 <button type="button" onclick="addContactRow('partContactsList')" style="margin-top: 8px; font-size: 10px; cursor: pointer; padding: 4px 8px;">+ Добавить контакт</button>
             </div>
             
-            <button class="main" style="background:var(--primary);" margin-top: 10px;" onclick="addPartner()">Добавить партнера</button>
+            <button class="main" style="background:var(--primary); margin-top: 10px;" onclick="addPartner()">Добавить партнера</button>
         </div>
         <!-- КАРТОЧКА ПРЕВЬЮ (была пропущена) -->
         <div class="card" id="preview-partners">
@@ -2034,32 +2034,18 @@ let f = requests.filter(r => {
 }
     // Функция, которая открывает окно закрытия запроса
 function finishRequest(e, id) { 
-    if (e) e.stopPropagation(); // Останавливаем всплытие события, чтобы не открылось превью
+    if (e) e.stopPropagation(); // Чтобы не открылось превью при клике на галочку
     
-    console.log("Открываем окно закрытия для запроса ID:", id);
-
-    // 1. Находим скрытое поле в модалке и записываем туда ID запроса
+    // Записываем ID в скрытое поле модалки
     const idField = document.getElementById('reqCloseId');
-    if (idField) {
-        idField.value = id;
-    } else {
-        console.error("Поле reqCloseId не найдено в HTML!");
-    }
+    if (idField) idField.value = id;
 
-    // 2. Очищаем поля в модальном окне
-    const reasonField = document.getElementById('reqCloseReason');
-    const commentField = document.getElementById('reqCloseComment');
+    // Очищаем поля формы
+    document.getElementById('reqCloseReason').value = ""; 
+    document.getElementById('reqCloseComment').value = ""; 
     
-    if (reasonField) reasonField.value = ""; 
-    if (commentField) commentField.value = ""; 
-    
-    // 3. Показываем само модальное окно
-    const modal = document.getElementById('requestCloseModal');
-    if (modal) {
-        modal.style.display = 'block';
-    } else {
-        alert("Ошибка: Модальное окно 'requestCloseModal' не найдено в коде!");
-    }
+    // Открываем окно
+    document.getElementById('requestCloseModal').style.display = 'block';
 }
 function renderDeals() {
     const s = document.getElementById('searchDeals').value.toLowerCase();
@@ -3519,16 +3505,6 @@ async function hardDeleteItem(sh, id) {
     alert("Данные стерты окончательно.");
 }
 
-// Вспомогательная функция (чтобы код понимал, с каким массивом работать)
-function getArrayBySheet(sh) {
-    if(sh==='requests') return requests;
-    if(sh==='deals') return deals;
-    if(sh==='companies') return companies;
-    if(sh==='reminders') return reminders;
-    if(sh==='partners') return partners;
-    if(sh==='tracking') return tracking;
-    return [];
-}
 // --- СИСТЕМА ЖИВЫХ УВЕДОМЛЕНИЙ ---
     
     // Хранилище ID напоминаний, которые мы уже показали за текущую сессию
@@ -3594,7 +3570,7 @@ function getArrayBySheet(sh) {
             }
         });
     }
-    window.onload = startApp;
+    
 const debouncedRenderDeals = debounce(() => renderDeals());
 const debouncedRenderCompanies = debounce(() => renderCompanies());
 const debouncedRenderRequests = debounce(() => renderRequests());
