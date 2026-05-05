@@ -2533,32 +2533,42 @@ async function submitFollowUp() {
     if (i === -1) return;
 
     showLoader(true);
-    const oldRem = reminders[i];
-    oldRem.status = 'completed';
-    oldRem.topic = currentResult; 
-    
-    await sync('reminders', oldRem, 'update');
+    try {
+        const oldRem = reminders[i];
+        oldRem.status = 'completed';
+        oldRem.topic = currentResult; 
+        
+        // 1. Обновляем текущую задачу
+        await sync('reminders', oldRem, 'update');
 
-    if (nextTime && nextTopic) {
-        const newRem = {
-            id: Date.now(),
-            name: oldRem.name, 
-            date: nextTime,
-            topic: nextTopic,
-            manager: sessionStorage.getItem('crm_user'),
-            status: "active",
-            isDeleted: false
-        };
-        reminders.push(newRem);
-        await sync('reminders', newRem, 'append');
-        alert("Задача завершена. Новая создана.");
-    } else {
-        alert("Задача завершена.");
+        // 2. Если запланирован следующий шаг
+        if (nextTime && nextTopic) {
+            const newRem = {
+                id: Date.now(),
+                name: oldRem.name, 
+                date: nextTime,
+                topic: nextTopic,
+                manager: sessionStorage.getItem('crm_user'),
+                status: "active",
+                isDeleted: false,
+                sharedWith: oldRem.sharedWith || ""
+            };
+            reminders.push(newRem);
+            // ПЕРЕДАЕМ ВЕСЬ МАССИВ reminders, чтобы sync корректно взял последний элемент
+            await sync('reminders', reminders, 'append');
+            alert("Задача завершена. Новая создана.");
+        } else {
+            alert("Задача завершена.");
+        }
+
+        document.getElementById('followUpModal').style.display = 'none';
+        renderReminders();
+    } catch (e) {
+        console.error("Ошибка при сохранении:", e);
+        alert("Произошла ошибка при сохранении данных.");
+    } finally {
+        showLoader(false);
     }
-
-    document.getElementById('followUpModal').style.display = 'none';
-    renderReminders();
-    showLoader(false);
 }
     
 
