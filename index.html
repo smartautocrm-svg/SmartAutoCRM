@@ -2235,16 +2235,23 @@ function handleItemCheck(e) {
 function updateBulkBar() {
     const bar = document.getElementById('bulk-action-bar');
     const countEl = document.getElementById('bulk-count');
+    const managerSection = document.getElementById('bulk-manager-section');
     const managerSelect = document.getElementById('bulk-new-manager');
+    const me = sessionStorage.getItem('crm_user');
 
     if (selectedItemIds.size > 0) {
         bar.style.display = 'flex';
         countEl.innerText = `Выбрано: ${selectedItemIds.size}`;
         
-        // Заполняем список менеджеров, если он пуст
-        if (managerSelect.options.length <= 1) {
-            managerSelect.innerHTML = '<option value="">Сменить менеджера на...</option>' + 
-                managers.map(m => `<option value="${m}">${m}</option>`).join('');
+        // ПРОВЕРКА: Только админ видит функционал смены менеджера
+        if (me === 'admin') {
+            managerSection.style.display = 'flex';
+            if (managerSelect.options.length <= 1) {
+                managerSelect.innerHTML = '<option value="">Сменить менеджера на...</option>' + 
+                    managers.map(m => `<option value="${m}">${m}</option>`).join('');
+            }
+        } else {
+            managerSection.style.display = 'none';
         }
     } else {
         bar.style.display = 'none';
@@ -2260,6 +2267,9 @@ function cancelBulkSelection() {
 
 // ПРИМЕНЕНИЕ: Смена менеджера
 async function applyBulkManager() {
+    const me = sessionStorage.getItem('crm_user');
+    if (me !== 'admin') return alert("Доступ запрещен. Только администратор может менять ответственных.");
+
     const newManager = document.getElementById('bulk-new-manager').value;
     if (!newManager) return alert("Выберите менеджера!");
     
@@ -2286,23 +2296,34 @@ async function applyBulkManager() {
 
 // ПРИМЕНЕНИЕ: Массовое удаление
 async function applyBulkDelete() {
-    if (!confirm(`Удалить ${selectedItemIds.size} выбранных компаний в корзину?`)) return;
+    const me = sessionStorage.getItem('crm_user');
+    let canDeleteAll = (me === 'admin');
+    let countToDeleted = 0;
 
-    showLoader(true);
-    
     selectedItemIds.forEach(id => {
         const idx = companies.findIndex(c => String(c.id) === String(id));
         if (idx !== -1) {
-            companies[idx].isDeleted = true;
+            // Если админ — удаляет всё. Если менеджер — только свои.
+            if (canDeleteAll || companies[idx].manager === me) {
+                companies[idx].isDeleted = true;
+                countToDeleted++;
+            }
         }
     });
 
+    if (countToDeleted === 0) {
+        alert("Вы не можете удалить выбранные записи (они принадлежат другим менеджерам).");
+        return;
+    }
+
+    if (!confirm(`Будет удалено ${countToDeleted} записей из ${selectedItemIds.size} выбранных. Продолжить?`)) return;
+
+    showLoader(true);
     await sync('companies', companies, 'saveAll');
-    
     showLoader(false);
     cancelBulkSelection();
     renderCompanies();
-    alert("Компании перемещены в корзину");
+    alert("Операция завершена.");
 }
     function renderPartners() {
     // 1. Получаем значения из всех полей фильтрации
@@ -3682,13 +3703,15 @@ document.addEventListener('click', (e) => {
     <div id="bulk-action-bar">
     <span id="bulk-count">Выбрано: 0</span>
     
-    <!-- Действие: Смена менеджера -->
-    <select id="bulk-new-manager">
-        <option value="">Сменить менеджера на...</option>
-    </select>
-    <button onclick="applyBulkManager()">Применить</button>
+    <!-- Смена менеджера (будет видна только админу) -->
+    <div id="bulk-manager-section" style="display:none; align-items:center; gap:10px;">
+        <select id="bulk-new-manager">
+            <option value="">Сменить менеджера на...</option>
+        </select>
+        <button onclick="applyBulkManager()">Применить</button>
+    </div>
 
-    <!-- Действие: Удаление -->
+    <!-- Действие: Удаление (видят все для своих записей) -->
     <button class="btn-bulk-delete" onclick="applyBulkDelete()">🗑️ Удалить выбранные</button>
     
     <!-- Кнопка закрытия -->
