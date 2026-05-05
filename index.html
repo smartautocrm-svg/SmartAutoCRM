@@ -129,50 +129,6 @@
     border-bottom: 1px solid #efe6ef; /* Тонкая разделительная линия */
     padding-bottom: 4px; 
 }
-        /* Стиль для чекбокса внутри карточки */
-.item-checkbox {
-    width: 18px !important;
-    height: 18px !important;
-    margin-right: 10px !important;
-    cursor: pointer;
-}
-
-/* Панель массовых действий (появляется внизу) */
-#bulk-action-bar {
-    display: none; /* Скрыта по умолчанию */
-    position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: var(--primary);
-    color: white;
-    padding: 12px 25px;
-    border-radius: 50px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-    z-index: 9999;
-    align-items: center;
-    gap: 15px;
-    animation: slideUp 0.3s ease-out;
-}
-
-#bulk-action-bar select, #bulk-action-bar button {
-    height: 30px;
-    padding: 0 10px;
-    border-radius: 5px;
-    border: none;
-    font-size: 11px;
-    cursor: pointer;
-}
-
-#bulk-action-bar .btn-bulk-delete {
-    background: var(--danger);
-    color: white;
-}
-
-#bulk-action-bar .btn-bulk-close {
-    background: rgba(255,255,255,0.2);
-    color: white;
-}
 
         
         .input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 5px; }
@@ -407,12 +363,7 @@ button.main:active {
         .admin-controls { background: #fffde7; padding: 10px; border: 1px solid #fff59d; margin-bottom: 15px; border-radius: 4px; display: flex; gap: 10px; align-items: center; }
         .period-controls { background: #f0f7ff; padding: 10px; border: 1px solid var(--border); margin-bottom: 15px; border-radius: 4px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
         
-        .charts-container { 
-    display: grid; 
-    grid-template-columns: 1fr 1fr 1fr; /* Теперь три колонки */
-    gap: 15px; 
-    margin-bottom: 20px; 
-}
+        .charts-container { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
         .chart-box { background: white; padding: 15px; border: 1px solid var(--border); border-radius: 6px; height: 260px; }
         .chart-box h4 { margin: 0 0 10px 0; font-size: 11px; color: #666; text-transform: uppercase; text-align: center; }
 
@@ -539,28 +490,6 @@ button.main:active {
 ::-webkit-scrollbar-thumb:hover {
     background: var(--primary);
 }
-/* Тёмная тема — финальные стили */
-body.dark-mode { 
-    --bg: #121212; 
-    --card-bg: #1e1e1e; 
-    --border: #333; 
-    --primary: #bb86fc; 
-}
-body.dark-mode, body.dark-mode .scroll-list { background-color: var(--bg); color: #e0e0e0; }
-body.dark-mode .card, body.dark-mode .list-item, body.dark-mode .tabs, body.dark-mode .controls-bar, body.dark-mode .logo-container { 
-    background-color: var(--card-bg); 
-    border-color: var(--border); 
-    color: #e0e0e0; 
-}
-body.dark-mode input, body.dark-mode select, body.dark-mode textarea { 
-    background-color: #2c2c2c; 
-    border-color: #444; 
-    color: white; 
-}
-body.dark-mode .preview-box { background: #252525; border-color: #333; }
-body.dark-mode .preview-box span { color: #bb86fc; }
-body.dark-mode .chart-box { background: #1e1e1e; border-color: #333; }
-body.dark-mode .list-item:hover { background-color: #252525; }
     </style>
 </head>
 <body>
@@ -657,7 +586,7 @@ body.dark-mode .list-item:hover { background-color: #252525; }
     <button class="tab-btn" id="btn-profile" onclick="openTab('profile')">👤</button>
     <button class="tab-btn" id="btn-trash" style="display:none;" onclick="openTab('trash')">🗑️</button>
     <button class="tab-btn" id="btn-logs" style="display:none;" onclick="openTab('logs')">📜</button>
-    <button onclick="toggleTheme()" id="theme-toggle" class="tab-btn" style="margin-left: 10px; border-bottom: none !important;">🌙</button>
+
     <!-- ГЛОБАЛЬНЫЙ ПОИСК -->
     <div style="position: relative; margin-left: 10px;">
         <input type="text" id="globalSearchInput" placeholder="🔍 Поиск..." 
@@ -961,7 +890,7 @@ body.dark-mode .list-item:hover { background-color: #252525; }
                 <button type="button" onclick="addContactRow('partContactsList')" style="margin-top: 8px; font-size: 10px; cursor: pointer; padding: 4px 8px;">+ Добавить контакт</button>
             </div>
             
-            <button class="main" style="background:var(--primary); margin-top: 10px;" onclick="addPartner()">Добавить партнера</button>
+            <button class="main" style="background:var(--primary);" margin-top: 10px;" onclick="addPartner()">Добавить партнера</button>
         </div>
         <!-- КАРТОЧКА ПРЕВЬЮ (была пропущена) -->
         <div class="card" id="preview-partners">
@@ -1033,29 +962,24 @@ body.dark-mode .list-item:hover { background-color: #252525; }
             </select>
         </div>
 
-<div class="charts-container">
-    <div class="chart-box">
-        <h4>Динамика прибыли (USD)</h4>
-        <canvas id="chartProfitDynamics"></canvas>
-    </div>
-    <div class="chart-box">
-        <h4>Прибыль по типам сделок</h4>
-        <canvas id="chartProfitByType"></canvas>
-    </div>
-    <!-- ВОТ ТВОЙ НОВЫЙ ГРАФИК ТЕПЕРЬ ТУТ -->
-    <div class="chart-box">
-        <h4>Причины потерь запросов</h4>
-        <canvas id="chartLostReasons"></canvas>
-    </div>
-    <!-- График по менеджерам растянем на всю ширину (3 колонки), если графиков стало 3 в ряду -->
-    <div class="chart-box" style="grid-column: span 3;"> 
-        <h4>Прибыль по менеджерам (ТОП)</h4>
-        <canvas id="chartManagerPerformance"></canvas>
+        <div class="charts-container">
+            <div class="chart-box">
+                <h4>Динамика прибыли (USD)</h4>
+                <canvas id="chartProfitDynamics"></canvas>
+            </div>
+            <div class="chart-box">
+                <h4>Прибыль по типам сделок</h4>
+                <canvas id="chartProfitByType"></canvas>
+            </div>
+            <div class="chart-box" style="grid-column: span 2;">
+                <h4>Прибыль по менеджерам (ТОП)</h4>
+                <canvas id="chartManagerPerformance"></canvas>
+            </div>
+        </div>
+
+        <div id="statsContent"></div>
     </div>
 </div>
-
-<!-- statsContent должен быть ПУСТЫМ, сюда JS будет рисовать таблицу -->
-<div id="statsContent"></div>
     
     <!-- ВКЛАДКА ТРЕКИНГ -->
 <div id="tracking" class="content">
@@ -1202,23 +1126,17 @@ body.dark-mode .list-item:hover { background-color: #252525; }
     </div>
 </div>
     
-   <!-- МОДАЛКА ЗАКРЫТИЯ ЗАПРОСА (ИСПРАВЛЕННАЯ) -->
+    <!-- МОДАЛКА ЗАКРЫТИЯ ЗАПРОСА (ОБЯЗАТЕЛЬНЫЙ КОММЕНТАРИЙ) -->
 <div id="requestCloseModal" class="modal-overlay" onclick="if(event.target===this) this.style.display='none'">
     <div class="modal-content" style="width: 400px; border-top: 5px solid var(--danger);">
         <h3>Завершение запроса</h3>
-        <p style="font-size: 11px; color: #666; margin-bottom: 10px;">Почему запрос не стал сделкой?</p>
+        <p style="font-size: 11px; color: #666; margin-bottom: 10px;">
+            Пожалуйста, укажите причину закрытия запроса (почему не дошли до сделки?):
+        </p>
+        <!-- Поле для ввода комментария -->
+        <textarea id="reqCloseComment" style="width: 100%; height: 100px; padding: 8px; border: 1px solid var(--border); border-radius: 4px;" placeholder="Пример: Клиент ушел к конкурентам из-за цены / Груз отменился..."></textarea>
         
-        <select id="reqCloseReason" style="margin-bottom: 10px; border: 1.5px solid var(--danger); background: #fff5f5; width:100%;">
-            <option value="">-- Выберите причину отмены * --</option>
-            <option value="Цена (Дорого)">💸 Цена (Дорого)</option>
-            <option value="Сроки (Долго)">⏳ Сроки (Долго)</option>
-            <option value="Нет транспорта/места">🚛 Нет транспорта/места</option>
-            <option value="Клиент передумал/пропал">👻 Клиент передумал/пропал</option>
-            <option value="Ошибка/Дубль">❌ Ошибка/Дубль</option>
-            <option value="Другое">📝 Другое (указать в комм.)</option>
-        </select>
-
-        <textarea id="reqCloseComment" style="width: 100%; height: 80px; padding: 8px; border: 1px solid var(--border); border-radius: 4px;" placeholder="Детали..."></textarea>
+        <!-- Скрытое поле для хранения ID запроса -->
         <input type="hidden" id="reqCloseId">
         
         <div style="display: flex; gap: 10px; margin-top: 15px;">
@@ -1332,7 +1250,7 @@ function forInput(v) {
         unloaded: { label: '🏁 Выгружен/Оплата', color: '#e67e22' },
         closed: { label: '✅ Закрыта', color: '#2e7d32' }
     };
-    let charts = { dyn: null, type: null, perf: null, lost: null };
+    let charts = { dyn: null, type: null, perf: null };
 
     function showLoader(s) { document.getElementById('loader').style.display = s ? 'block' : 'none'; }
     function logout() { sessionStorage.clear(); location.reload(); }
@@ -2017,7 +1935,7 @@ let f = requests.filter(r => {
                 <p>${r.cargo} | Создан: ${dFmt(r.createdAt)} | ${r.manager}</p>
             </div>
             <div class="item-actions">
-               ${r.status !== 'completed' ? `<button class="action-btn" style="color:var(--success)" onclick="finishRequest(event, '${r.id}')">✅</button>` : ''}
+                ${r.status !== 'completed' ? `<button class="action-btn" style="color:var(--success)" onclick="finishRequest(event, '${r.id}')">✅</button>` : ''}
                 <button class="action-btn" onclick="openEdit('${r.id}','request')">✎</button>
                 <button class="action-btn btn-delete" onclick="deleteItem('requests', '${r.id}')">×</button>
             </div>
@@ -2032,21 +1950,16 @@ let f = requests.filter(r => {
     document.getElementById('requestsList').innerHTML = html;
     updateCounters();
 }
-    // Функция, которая открывает окно закрытия запроса
 function finishRequest(e, id) { 
-    if (e) e.stopPropagation(); // Чтобы не открылось превью при клике на галочку
-    
-    // Записываем ID в скрытое поле модалки
-    const idField = document.getElementById('reqCloseId');
-    if (idField) idField.value = id;
-
-    // Очищаем поля формы
-    document.getElementById('reqCloseReason').value = ""; 
-    document.getElementById('reqCloseComment').value = ""; 
-    
-    // Открываем окно
-    document.getElementById('requestCloseModal').style.display = 'block';
+    e.stopPropagation(); 
+    const i = requests.findIndex(x => String(x.id) === String(id));
+    if (i > -1) {
+        document.getElementById('reqCloseId').value = id;
+        document.getElementById('reqCloseComment').value = ""; 
+        document.getElementById('requestCloseModal').style.display = 'block';
+    }
 }
+    
 function renderDeals() {
     const s = document.getElementById('searchDeals').value.toLowerCase();
     const me = sessionStorage.getItem('crm_user');
@@ -2247,7 +2160,7 @@ function renderCompanies() {
             const dates = [...reminders.filter(r => r.name === c.name).map(r => new Date(r.date)), ...requests.filter(r => r.company === c.name).map(r => new Date(r.createdAt)), ...deals.filter(d => d.company === c.name).map(d => new Date(d.createdAt))].filter(d => !isNaN(d));
             if (dates.length === 0 || (now - new Date(Math.max(...dates))) > limitMs) isForgotten = true;
         }
-        return `<div class="list-item ${isForgotten ? 'forgotten' : ''}" onclick="showCompanyPreview('${c.name}')"><input type="checkbox" class="item-checkbox" data-id="${c.id}" onclick="handleItemCheck(event)"><div class="item-main"><h4>${c.name} ${isForgotten ? '<span class="forgotten-tag">⚠️ В работу</span>' : ''}</h4><p>${checkAccess(c.name) ? statusMap[c.status].label : '🔒 Ограничен'} | ${c.manager}</p></div><div class="item-actions"><button class="action-btn" onclick="openEdit('${c.id}','company')">✎</button><button class="action-btn btn-delete" onclick="deleteItem('companies', '${c.id}')">×</button></div></div>`;
+        return `<div class="list-item ${isForgotten ? 'forgotten' : ''}" onclick="showCompanyPreview('${c.name}')"><div class="item-main"><h4>${c.name} ${isForgotten ? '<span class="forgotten-tag">⚠️ В работу</span>' : ''}</h4><p>${checkAccess(c.name) ? statusMap[c.status].label : '🔒 Ограничен'} | ${c.manager}</p></div><div class="item-actions"><button class="action-btn" onclick="openEdit('${c.id}','company')">✎</button><button class="action-btn btn-delete" onclick="deleteItem('companies', '${c.id}')">×</button></div></div>`;
     }).join('');
 
     // Кнопка
@@ -2257,116 +2170,6 @@ function renderCompanies() {
 
     document.getElementById('companiesList').innerHTML = html;
     updateCounters();
-}
-    let selectedItemIds = new Set();
-
-// Обработка клика по чекбоксу
-function handleItemCheck(e) {
-    e.stopPropagation(); // Чтобы не открывалось превью компании
-    const id = e.target.getAttribute('data-id');
-    
-    if (e.target.checked) {
-        selectedItemIds.add(id);
-    } else {
-        selectedItemIds.delete(id);
-    }
-    
-    updateBulkBar();
-}
-
-// Обновление состояния панели
-function updateBulkBar() {
-    const bar = document.getElementById('bulk-action-bar');
-    const countEl = document.getElementById('bulk-count');
-    const managerSection = document.getElementById('bulk-manager-section');
-    const managerSelect = document.getElementById('bulk-new-manager');
-    const me = sessionStorage.getItem('crm_user');
-
-    if (selectedItemIds.size > 0) {
-        bar.style.display = 'flex';
-        countEl.innerText = `Выбрано: ${selectedItemIds.size}`;
-        
-        // ПРОВЕРКА: Только админ видит функционал смены менеджера
-        if (me === 'admin') {
-            managerSection.style.display = 'flex';
-            if (managerSelect.options.length <= 1) {
-                managerSelect.innerHTML = '<option value="">Сменить менеджера на...</option>' + 
-                    managers.map(m => `<option value="${m}">${m}</option>`).join('');
-            }
-        } else {
-            managerSection.style.display = 'none';
-        }
-    } else {
-        bar.style.display = 'none';
-    }
-}
-
-// Сброс выбора
-function cancelBulkSelection() {
-    selectedItemIds.clear();
-    document.querySelectorAll('.item-checkbox').forEach(cb => cb.checked = false);
-    updateBulkBar();
-}
-
-// ПРИМЕНЕНИЕ: Смена менеджера
-async function applyBulkManager() {
-    const me = sessionStorage.getItem('crm_user');
-    if (me !== 'admin') return alert("Доступ запрещен. Только администратор может менять ответственных.");
-
-    const newManager = document.getElementById('bulk-new-manager').value;
-    if (!newManager) return alert("Выберите менеджера!");
-    
-    if (!confirm(`Передать ${selectedItemIds.size} компаний менеджеру ${newManager}?`)) return;
-
-    showLoader(true);
-    
-    // Обновляем локально
-    selectedItemIds.forEach(id => {
-        const idx = companies.findIndex(c => String(c.id) === String(id));
-        if (idx !== -1) {
-            companies[idx].manager = newManager;
-        }
-    });
-
-    // Сохраняем весь лист (так быстрее для массовых действий)
-    await sync('companies', companies, 'saveAll');
-    
-    showLoader(false);
-    cancelBulkSelection();
-    renderCompanies();
-    alert("Данные обновлены!");
-}
-
-// ПРИМЕНЕНИЕ: Массовое удаление
-async function applyBulkDelete() {
-    const me = sessionStorage.getItem('crm_user');
-    let canDeleteAll = (me === 'admin');
-    let countToDeleted = 0;
-
-    selectedItemIds.forEach(id => {
-        const idx = companies.findIndex(c => String(c.id) === String(id));
-        if (idx !== -1) {
-            // Если админ — удаляет всё. Если менеджер — только свои.
-            if (canDeleteAll || companies[idx].manager === me) {
-                companies[idx].isDeleted = true;
-                countToDeleted++;
-            }
-        }
-    });
-
-    if (countToDeleted === 0) {
-        alert("Вы не можете удалить выбранные записи (они принадлежат другим менеджерам).");
-        return;
-    }
-
-    if (!confirm(`Будет удалено ${countToDeleted} записей из ${selectedItemIds.size} выбранных. Продолжить?`)) return;
-
-    showLoader(true);
-    await sync('companies', companies, 'saveAll');
-    showLoader(false);
-    cancelBulkSelection();
-    renderCompanies();
-    alert("Операция завершена.");
 }
     function renderPartners() {
     // 1. Получаем значения из всех полей фильтрации
@@ -2418,119 +2221,161 @@ async function applyBulkDelete() {
 }
 
   // --- ФУНКЦИИ РЕДАКТИРОВАНИЯ ---
-   function openEdit(id, type) {
-    event.stopPropagation(); 
-    document.getElementById('editId').value = id; 
-    document.getElementById('editType').value = type;
-    const f = document.getElementById('editFields'), title = document.getElementById('editModalTitle');
-    
-    if (type === 'reminder') {
-        const r = reminders.find(x => x.id == id); 
-        title.innerText = "Правка активности";
-        f.innerHTML = `<input type="text" id="eRemName" value="${r.name}" list="allEntitiesData"><input type="datetime-local" id="eRemDate" value="${forInput(r.date)}"><textarea id="eRemTopic" style="grid-column: span 2;">${r.topic}</textarea>`;
-    
-    } else if (type === 'company') {
-        const c = companies.find(x => x.id == id); 
-        title.innerText = "Правка компании";
-        f.innerHTML = `<input type="text" id="eCompName" value="${c.name}"><input type="text" id="eCompProduct" value="${c.product || ''}" placeholder="Груз *"><input type="text" id="eCompCity" value="${c.city}"><input type="text" id="eCompContact" value="${c.contact}"><input type="text" id="eCompPhone" value="${c.phone}"><input type="email" id="eCompEmail" value="${c.email}"><input type="text" id="eCompWeb" value="${c.website}"><input type="text" id="eCompImp" value="${c.import}"><input type="text" id="eCompExp" value="${c.export}"><select id="eCompMan" style="grid-column: span 2;">${managers.map(m => `<option value="${m}" ${c.manager===m?'selected':''}>${m}</option>`).join('')}</select><select id="eCompStatus"><option value="cold" ${c.status==='cold'?'selected':''}>Холодный</option><option value="warm" ${c.status==='warm'?'selected':''}>Теплый</option><option value="active" ${c.status==='active'?'selected':''}>Активный</option></select><div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" id="eCompPriv" ${c.isPrivate?'checked':''}> Приватная</div>`;
-    
-    } else if (type === 'request') {
-        const r = requests.find(x => x.id == id); 
-        title.innerText = "Правка запроса";
-        f.innerHTML = `
-            <input type="text" id="eReqComp" value="${r.company}" list="allEntitiesData" placeholder="Клиент">
-            <input type="text" id="eReqCargo" value="${r.cargo}" placeholder="Груз">
-            <select id="eReqType">
-                <option value="">Тип запроса *</option>
-                <option value="карго из Китая" ${r.type === 'карго из Китая' ? 'selected' : ''}>📦 Карго из Китая</option>
-                <option value="карго из Кореи" ${r.type === 'карго из Кореи' ? 'selected' : ''}>📦 Карго из Кореи</option>
-                <option value="фрахт" ${r.type === 'фрахт' ? 'selected' : ''}>🚢 Фрахт</option>
-                <option value="карго Европа" ${r.type === 'карго Европа' ? 'selected' : ''}>🇪🇺 Карго Европа</option>
-                <option value="контейнера - очистка" ${r.type === 'контейнера - очистка' ? 'selected' : ''}>🧾 Контейнера - очистка</option>
-                <option value="LCL" ${r.type === 'LCL' ? 'selected' : ''}>📦 LCL</option>
-                <option value="экспорт" ${r.type === 'экспорт' ? 'selected' : ''}>📤 Экспорт</option>
-                <option value="trucking" ${r.type === 'trucking' ? 'selected' : ''}>🚛 Trucking</option>
-            </select>
-            <select id="eReqTrans" onchange="checkTransportFields('eReq')">
-                <option value="авто" ${r.transport === 'авто' ? 'selected' : ''}>Авто</option>
-                <option value="авиа" ${r.transport === 'авиа' ? 'selected' : ''}>Авиа</option>
-                <option value="море" ${r.transport === 'море' ? 'selected' : ''}>Море</option>
-                <option value="ж/д" ${r.transport === 'ж/д' ? 'selected' : ''}>Ж/Д</option>
-            </select>
-            <select id="eReqCont" style="display:${r.transport === 'море' ? 'block' : 'none'}">
-                <option value="20GP" ${r.container === '20GP' ? 'selected' : ''}>20GP</option>
-                <option value="40HC" ${r.container === '40HC' ? 'selected' : ''}>40HC</option>
-            </select>
-            <input type="number" id="eReqContQty" value="${r.contQty}" style="display:${r.transport === 'море' ? 'block' : 'none'}" placeholder="Кол-во конт.">
-            <input type="number" id="eReqW" value="${r.weight}" placeholder="Вес">
-            <input type="number" id="eReqV" value="${r.vol}" placeholder="Объем">
-            <input type="number" id="eReqVal" value="${r.value}" placeholder="Инвойс">
-            <select id="eReqCurr">
-                <option value="USD" ${r.currency === 'USD' ? 'selected' : ''}>USD</option>
-                <option value="EUR" ${r.currency === 'EUR' ? 'selected' : ''}>EUR</option>
-            </select>
-            <input type="text" id="eReqLoad" value="${r.load}" placeholder="Погрузка">
-            <input type="text" id="eReqZip" value="${r.zip}" placeholder="Индекс">
-            <input type="text" id="eReqUnload" value="${r.unload}" placeholder="Выгрузка">
-            <textarea id="eReqDesc" style="grid-column: span 2;">${r.desc}</textarea>`;
-
-    } else if (type === 'deal') {
-        const d = deals.find(x => x.id == id); 
-        title.innerText = "Правка сделки";
-        f.innerHTML = `
-            <input type="text" id="eDealNum" value="${d.num}" placeholder="№ Сделки">
-            <input type="text" id="eDealComp" value="${d.company}" list="allEntitiesData" placeholder="Клиент">
-            <input type="text" id="eDealCargo" value="${d.cargo}" placeholder="Груз">
-            <label style="font-size:9px; color:var(--primary); grid-column: span 2;">ТЕКУЩИЙ ЭТАП:</label>
-            <select id="eDealStage" style="grid-column: span 2; font-weight:bold; border: 1px solid var(--primary); background: #f0f7ff;">
-                ${Object.keys(stageMap).map(k => `<option value="${k}" ${d.stage===k?'selected':''}>${stageMap[k].label}</option>`).join('')}
-            </select>
-            <select id="eDealTrans" onchange="checkTransportFields('eDeal')">
-                <option value="авто" ${d.trans==='авто'?'selected':''}>🚛 Авто</option>
-                <option value="море" ${d.trans==='море'?'selected':''}>🚢 Море</option>
-                <option value="авиа" ${d.trans==='авиа'?'selected':''}>✈️ Авиа</option>
-                <option value="ж/д" ${d.trans==='ж/д'?'selected':''}>🚂 Ж/Д</option>
-            </select>
-            <select id="eDealCont" style="display:none;"><option value="20GP" ${d.container==='20GP'?'selected':''}>20GP</option><option value="40HC" ${d.container==='40HC'?'selected':''}>40HC</option></select>
-            <input type="number" id="eDealContQty" value="${d.contQty || ''}" style="display:none;" placeholder="Кол-во конт.">
-            <input type="text" id="eDealBL" value="${d.blNum || ''}" style="display:none;" placeholder="№ Коносамента">
-            <input type="text" id="eDealAWB" value="${d.awbNum || ''}" style="display:none;" placeholder="№ Авианакладной">
-            <input type="number" id="eDealW" value="${d.weight}" placeholder="Вес">
-            <input type="number" id="eDealV" value="${d.vol}" placeholder="Объем">
-            <input type="number" id="eDealVal" value="${d.value}" placeholder="Инвойс">
-            <input type="number" id="eDealExp" value="${d.exp}" oninput="calcEditProf()" placeholder="Расходы">
-            <input type="number" id="eDealInc" value="${d.inc}" oninput="calcEditProf()" placeholder="Доходы">
-            <input type="number" id="eDealProf" value="${d.prof}" readonly style="background:#f0f7ff;" placeholder="Прибыль">
-            <input type="text" id="eDealMargin" value="${d.margin || '0%'}" readonly style="background:#fff3e0; font-weight:bold;">
-            <input type="text" id="eDealL" value="${d.load}" style="grid-column: span 2;" placeholder="Загрузка">
-            <input type="text" id="eDealU" value="${d.unload}" style="grid-column: span 2;" placeholder="Выгрузка">
-            <textarea id="eDealI" style="grid-column: span 2;">${d.info}</textarea>
-            <div style="grid-column: span 2; border-top: 1px solid #eee; padding-top: 10px; margin-top: 5px;">
-                <label style="font-size:10px; color:var(--danger); font-weight:bold;">ДОСТУП К СДЕЛКЕ:</label>
-                <select id="eDealPrivacy" style="font-weight:bold;">
-                    <option value="false" ${!d.isPrivateDeal ? 'selected' : ''}>🔓 ОТКРЫТАЯ (доступна коллегам)</option>
-                    <option value="true" ${d.isPrivateDeal ? 'selected' : ''}>🔒 ЗАКРЫТАЯ (только для меня)</option>
-                </select>
-            </div>`;
+    function openEdit(id, type) {
+        event.stopPropagation(); 
+        document.getElementById('editId').value = id; 
+        document.getElementById('editType').value = type;
+        const f = document.getElementById('editFields'), title = document.getElementById('editModalTitle');
         
-        setTimeout(() => checkTransportFields('eDeal'), 50);
+        if (type === 'reminder') {
+            const r = reminders.find(x => x.id == id); title.innerText = "Правка активности";
+            f.innerHTML = `<input type="text" id="eRemName" value="${r.name}" list="allEntitiesData"><input type="datetime-local" id="eRemDate" value="${forInput(r.date)}"><textarea id="eRemTopic" style="grid-column: span 2;">${r.topic}</textarea>`;
+        } else if (type === 'company') {
+            const c = companies.find(x => x.id == id); title.innerText = "Правка компании";
+            f.innerHTML = `<input type="text" id="eCompName" value="${c.name}"><input type="text" id="eCompProduct" value="${c.product || ''}" placeholder="Груз *"><input type="text" id="eCompCity" value="${c.city}"><input type="text" id="eCompContact" value="${c.contact}"><input type="text" id="eCompPhone" value="${c.phone}"><input type="email" id="eCompEmail" value="${c.email}"><input type="text" id="eCompWeb" value="${c.website}"><input type="text" id="eCompImp" value="${c.import}"><input type="text" id="eCompExp" value="${c.export}"><select id="eCompMan" style="grid-column: span 2;">${managers.map(m => `<option value="${m}" ${c.manager===m?'selected':''}>${m}</option>`).join('')}</select><select id="eCompStatus"><option value="cold" ${c.status==='cold'?'selected':''}>Холодный</option><option value="warm" ${c.status==='warm'?'selected':''}>Теплый</option><option value="active" ${c.status==='active'?'selected':''}>Активный</option></select><div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" id="eCompPriv" ${c.isPrivate?'checked':''}> Приватная</div>`;
+        } else if (type === 'request') {
+    const r = requests.find(x => x.id == id); 
+    title.innerText = "Правка запроса";
 
-    } else if (type === 'partner') {
-        const p = partners.find(x => x.id == id);
-        title.innerText = "Правка партнера";
-        let currentContacts = [];
-        try { if (p.contact && p.contact.startsWith('[')) { currentContacts = JSON.parse(p.contact); } else { currentContacts = [{ name: p.contact || '', phone: p.phone || '', email: p.email || '' }]; } } catch(e) { currentContacts = []; }
-        f.innerHTML = `<input type="text" id="ePartName" value="${p.name}" placeholder="Название компании *"><select id="ePartStatus"><option value="агент" ${p.status==='агент'?'selected':''}>🤝 Агент</option><option value="перевозчик" ${p.status==='перевозчик'?'selected':''}>🚛 Перевозчик</option><option value="брокер" ${p.status==='брокер'?'selected':''}>📑 Брокер</option></select><input type="text" id="ePartCountry" value="${p.country || ''}" placeholder="Страна"><input type="text" id="ePartWeb" value="${p.website || ''}" placeholder="Сайт"><textarea id="ePartDesc" style="grid-column: span 2;" placeholder="Описание...">${p.desc || ''}</textarea><div id="ePartContactsContainer" style="grid-column: span 2; margin-top: 10px; border: 1px solid #ddd; padding: 10px; border-radius: 4px; background: #fff;"><label style="font-weight: bold; font-size: 11px; color: var(--primary);">КОНТАКТНЫЕ ЛИЦА:</label><div id="ePartContactsList"></div><button type="button" onclick="addContactRow('ePartContactsList')" style="margin-top: 8px; font-size: 10px; cursor: pointer; padding: 4px 8px;">+ Добавить контакт</button></div>`;
-        if (currentContacts.length > 0) { currentContacts.forEach(c => addContactRow('ePartContactsList', c)); } else { addContactRow('ePartContactsList'); }
+    // Создаем список типов, проверяя какой тип уже выбран (selected)
+    f.innerHTML = `
+        <input type="text" id="eReqComp" value="${r.company}" list="allEntitiesData" placeholder="Клиент">
+        <input type="text" id="eReqCargo" value="${r.cargo}" placeholder="Груз">
+        
+        <select id="eReqType">
+            <option value="">Тип запроса *</option>
+            <option value="карго из Китая" ${r.type === 'карго из Китая' ? 'selected' : ''}>📦 Карго из Китая</option>
+            <option value="карго из Кореи" ${r.type === 'карго из Кореи' ? 'selected' : ''}>📦 Карго из Кореи</option>
+            <option value="фрахт" ${r.type === 'фрахт' ? 'selected' : ''}>🚢 Фрахт</option>
+            <option value="карго Европа" ${r.type === 'карго Европа' ? 'selected' : ''}>🇪🇺 Карго Европа</option>
+            <option value="контейнера - очистка" ${r.type === 'контейнера - очистка' ? 'selected' : ''}>🧾 Контейнера - очистка</option>
+            <option value="LCL" ${r.type === 'LCL' ? 'selected' : ''}>📦 LCL</option>
+            <option value="экспорт" ${r.type === 'экспорт' ? 'selected' : ''}>📤 Экспорт</option>
+            <option value="trucking" ${r.type === 'trucking' ? 'selected' : ''}>🚛 Trucking</option>
+        </select>
 
-    } else if (type === 'tracking') {
-        const t = tracking.find(x => x.id == id);
-        title.innerText = "Правка трекинга";
-        f.innerHTML = `<input type="text" id="eTrackNum" value="${t.num}"><input type="text" id="eTrackCargo" value="${t.cargo}"><input type="number" id="eTrackW" value="${t.weight}"><input type="number" id="eTrackV" value="${t.vol}"><input type="number" id="eTrackQty" value="${t.qty}"><select id="eTrackPack"><option value="коробки" ${t.pack==='коробки'?'selected':''}>📦 Коробки</option><option value="мешки" ${t.pack==='мешки'?'selected':''}>🥡 Мешки</option><option value="паллеты" ${t.pack==='паллеты'?'selected':''}>🧱 Паллеты</option><option value=" бочки" ${t.pack==='бочки'?'selected':''}>🛢️ Бочки</option></select><select id="eTrackTrans" onchange="updateTrackStatusOptions('edit')"><option value="авто" ${t.trans==='авто'?'selected':''}>🚛 Авто</option><option value="авиа" ${t.trans==='авиа'?'selected':''}>✈️ Авиа</option><option value="море" ${t.trans==='море'?'selected':''}>🚢 Море</option><option value="жд" ${t.trans==='жд'?'selected':''}>🚂 ЖД</option></select><select id="eTrackStatus" style="grid-column: span 2;"></select><input type="text" id="eTrackShare" value="${t.sharedWith || ''}" style="grid-column: span 2;" placeholder="Доступ (имена через запятую)">`;
-        setTimeout(() => updateTrackStatusOptions('edit', t.status), 50);
+        <select id="eReqTrans" onchange="checkTransportFields('eReq')">
+            <option value="авто" ${r.transport === 'авто' ? 'selected' : ''}>Авто</option>
+            <option value="авиа" ${r.transport === 'авиа' ? 'selected' : ''}>Авиа</option>
+            <option value="море" ${r.transport === 'море' ? 'selected' : ''}>Море</option>
+            <option value="ж/д" ${r.transport === 'ж/д' ? 'selected' : ''}>Ж/Д</option>
+        </select>
+
+        <select id="eReqCont" style="display:${r.transport === 'море' ? 'block' : 'none'}">
+            <option value="20GP" ${r.container === '20GP' ? 'selected' : ''}>20GP</option>
+            <option value="40HC" ${r.container === '40HC' ? 'selected' : ''}>40HC</option>
+        </select>
+
+        <input type="number" id="eReqContQty" value="${r.contQty}" style="display:${r.transport === 'море' ? 'block' : 'none'}" placeholder="Кол-во конт.">
+        <input type="number" id="eReqW" value="${r.weight}" placeholder="Вес">
+        <input type="number" id="eReqV" value="${r.vol}" placeholder="Объем">
+        <input type="number" id="eReqVal" value="${r.value}" placeholder="Инвойс">
+
+        <select id="eReqCurr">
+            <option value="USD" ${r.currency === 'USD' ? 'selected' : ''}>USD</option>
+            <option value="EUR" ${r.currency === 'EUR' ? 'selected' : ''}>EUR</option>
+        </select>
+
+        <input type="text" id="eReqLoad" value="${r.load}" placeholder="Погрузка">
+        <input type="text" id="eReqZip" value="${r.zip}" placeholder="Индекс">
+        <input type="text" id="eReqUnload" value="${r.unload}" placeholder="Выгрузка">
+        <textarea id="eReqDesc" style="grid-column: span 2;">${r.desc}</textarea>
+    `;
+        } else if (type === 'deal') {
+            const d = deals.find(x => x.id == id); title.innerText = "Правка сделки";
+            f.innerHTML = `
+                <input type="text" id="eDealNum" value="${d.num}" placeholder="№ Сделки">
+                <input type="text" id="eDealComp" value="${d.company}" list="allEntitiesData" placeholder="Клиент">
+                <input type="text" id="eDealCargo" value="${d.cargo}" placeholder="Груз">
+                
+                <!-- ВЫБОР ЭТАПА (Добавляем эту часть) -->
+                <label style="font-size:9px; color:var(--primary); grid-column: span 2;">ТЕКУЩИЙ ЭТАП:</label>
+                <select id="eDealStage" style="grid-column: span 2; font-weight:bold; border: 1px solid var(--primary); background: #f0f7ff;">
+                    ${Object.keys(stageMap).map(k => `<option value="${k}" ${d.stage===k?'selected':''}>${stageMap[k].label}</option>`).join('')}
+                </select>
+
+                <select id="eDealTrans" onchange="checkTransportFields('eDeal')">
+                    <option value="авто" ${d.trans==='авто'?'selected':''}>🚛 Авто</option>
+                    <option value="море" ${d.trans==='море'?'selected':''}>🚢 Море</option>
+                    <option value="авиа" ${d.trans==='авиа'?'selected':''}>✈️ Авиа</option>
+                    <option value="ж/д" ${d.trans==='ж/д'?'selected':''}>🚂 Ж/Д</option>
+                </select>
+
+                <select id="eDealCont" style="display:none;"><option value="20GP" ${d.container==='20GP'?'selected':''}>20GP</option><option value="40HC" ${d.container==='40HC'?'selected':''}>40HC</option></select>
+                <input type="number" id="eDealContQty" value="${d.contQty || ''}" style="display:none;" placeholder="Кол-во конт.">
+                <input type="text" id="eDealBL" value="${d.blNum || ''}" style="display:none;" placeholder="№ Коносамента">
+                <input type="text" id="eDealAWB" value="${d.awbNum || ''}" style="display:none;" placeholder="№ Авианакладной">
+
+                <input type="number" id="eDealW" value="${d.weight}" placeholder="Вес">
+                <input type="number" id="eDealV" value="${d.vol}" placeholder="Объем">
+                <input type="number" id="eDealVal" value="${d.value}" placeholder="Инвойс">
+                <input type="number" id="eDealExp" value="${d.exp}" oninput="calcEditProf()" placeholder="Расходы">
+                <input type="number" id="eDealInc" value="${d.inc}" oninput="calcEditProf()" placeholder="Доходы">
+                <input type="number" id="eDealProf" value="${d.prof}" readonly style="background:#f0f7ff;" placeholder="Прибыль">
+                <input type="text" id="eDealMargin" value="${d.margin || '0%'}" readonly style="background:#fff3e0; font-weight:bold;">
+                <input type="text" id="eDealL" value="${d.load}" style="grid-column: span 2;" placeholder="Загрузка">
+                <input type="text" id="eDealU" value="${d.unload}" style="grid-column: span 2;" placeholder="Выгрузка">
+                <textarea id="eDealI" style="grid-column: span 2;">${d.info}</textarea>
+                <div style="grid-column: span 2; border-top: 1px solid #eee; padding-top: 10px; margin-top: 5px;">
+                    <label style="font-size:10px; color:var(--danger); font-weight:bold;">ДОСТУП К СДЕЛКЕ:</label>
+                    <select id="eDealPrivacy" style="font-weight:bold;">
+                        <option value="false" ${!d.isPrivateDeal ? 'selected' : ''}>🔓 ОТКРЫТАЯ (доступна коллегам)</option>
+                        <option value="true" ${d.isPrivateDeal ? 'selected' : ''}>🔒 ЗАКРЫТАЯ (только для меня)</option>
+                    </select>
+                </div>`;
+            
+            setTimeout(() => checkTransportFields('eDeal'), 50);
+} else if (type === 'partner') {
+            const p = partners.find(x => x.id == id);
+            title.innerText = "Правка партнера";
+
+            // 1. Извлекаем контакты (из JSON или старого формата)
+            let currentContacts = [];
+            try {
+                if (p.contact && p.contact.startsWith('[')) {
+                    currentContacts = JSON.parse(p.contact);
+                } else {
+                    currentContacts = [{ 
+                        name: p.contact || '', 
+                        phone: p.phone || '', 
+                        email: p.email || '' 
+                    }];
+                }
+            } catch(e) { currentContacts = []; }
+
+            // 2. Формируем HTML (структура как при создании)
+            f.innerHTML = `
+                <input type="text" id="ePartName" value="${p.name}" placeholder="Название компании *">
+                <select id="ePartStatus">
+                    <option value="агент" ${p.status==='агент'?'selected':''}>🤝 Агент</option>
+                    <option value="перевозчик" ${p.status==='перевозчик'?'selected':''}>🚛 Перевозчик</option>
+                    <option value="брокер" ${p.status==='брокер'?'selected':''}>📑 Брокер</option>
+                </select>
+                <input type="text" id="ePartCountry" value="${p.country || ''}" placeholder="Страна">
+                <input type="text" id="ePartWeb" value="${p.website || ''}" placeholder="Сайт">
+                <textarea id="ePartDesc" style="grid-column: span 2;" placeholder="Описание...">${p.desc || ''}</textarea>
+
+                <div id="ePartContactsContainer" style="grid-column: span 2; margin-top: 10px; border: 1px solid #ddd; padding: 10px; border-radius: 4px; background: #fff;">
+                    <label style="font-weight: bold; font-size: 11px; color: var(--primary);">КОНТАКТНЫЕ ЛИЦА:</label>
+                    <div id="ePartContactsList"></div>
+                    <button type="button" onclick="addContactRow('ePartContactsList')" style="margin-top: 8px; font-size: 10px; cursor: pointer; padding: 4px 8px;">+ Добавить контакт</button>
+                </div>
+            `;
+
+            // 3. Заполняем контакты
+            if (currentContacts.length > 0) {
+                currentContacts.forEach(c => addContactRow('ePartContactsList', c));
+            } else {
+                addContactRow('ePartContactsList');
+            }
+        } else if (type === 'tracking') {
+            const t = tracking.find(x => x.id == id);
+            title.innerText = "Правка трекинга";
+            f.innerHTML = `<input type="text" id="eTrackNum" value="${t.num}"><input type="text" id="eTrackCargo" value="${t.cargo}"><input type="number" id="eTrackW" value="${t.weight}"><input type="number" id="eTrackV" value="${t.vol}"><input type="number" id="eTrackQty" value="${t.qty}"><select id="eTrackPack"><option value="коробки" ${t.pack==='коробки'?'selected':''}>📦 Коробки</option><option value="мешки" ${t.pack==='мешки'?'selected':''}>🥡 Мешки</option><option value="паллеты" ${t.pack==='паллеты'?'selected':''}>🧱 Паллеты</option><option value=" бочки" ${t.pack==='бочки'?'selected':''}>🛢️ Бочки</option></select><select id="eTrackTrans" onchange="updateTrackStatusOptions('edit')"><option value="авто" ${t.trans==='авто'?'selected':''}>🚛 Авто</option><option value="авиа" ${t.trans==='авиа'?'selected':''}>✈️ Авиа</option><option value="море" ${t.trans==='море'?'selected':''}>🚢 Море</option><option value="жд" ${t.trans==='жд'?'selected':''}>🚂 ЖД</option></select><select id="eTrackStatus" style="grid-column: span 2;"></select><input type="text" id="eTrackShare" value="${t.sharedWith || ''}" style="grid-column: span 2;" placeholder="Доступ (имена через запятую)">`;
+            setTimeout(() => updateTrackStatusOptions('edit', t.status), 50);
+        }
+        document.getElementById('editModal').style.display = 'block';
     }
-    document.getElementById('editModal').style.display = 'block';
-}
 
 async function saveEdit() {
     const id = document.getElementById('editId').value;
@@ -3251,49 +3096,17 @@ last6Months.forEach(m => {
     }
 
     function updateCharts(monthly, types, managersData) {
-    const ctxDyn = document.getElementById('chartProfitDynamics').getContext('2d');
-    const ctxType = document.getElementById('chartProfitByType').getContext('2d');
-    const ctxPerf = document.getElementById('chartManagerPerformance').getContext('2d');
-    const ctxLost = document.getElementById('chartLostReasons').getContext('2d'); // Новый контекст
-
-    // --- ЛОГИКА СБОРА ПРИЧИН ОТКАЗОВ ---
-    let lostReasons = {};
-    requests.forEach(r => {
-        // Ищем только закрытые запросы, где комментарий начинается с "["
-        if (r.status === 'completed' && r.comment && r.comment.startsWith('[')) {
-            const reason = r.comment.split(']')[0].replace('[', '');
-            lostReasons[reason] = (lostReasons[reason] || 0) + 1;
-        }
-    });
-
-    if (charts.dyn) charts.dyn.destroy();
-    const sortedMonths = Object.keys(monthly).sort();
-    charts.dyn = new Chart(ctxDyn, { type: 'line', data: { labels: sortedMonths, datasets: [{ label: 'Прибыль USD', data: sortedMonths.map(m => monthly[m]), borderColor: '#1a73e8', backgroundColor: 'rgba(26, 115, 232, 0.1)', fill: true, tension: 0.3 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } });
-
-    if (charts.type) charts.type.destroy();
-    charts.type = new Chart(ctxType, { type: 'doughnut', data: { labels: Object.keys(types), datasets: [{ data: Object.values(types), backgroundColor: ['#4285F4', '#34A853', '#FBBC05', '#EA4335', '#673AB7', '#00ACC1', '#FF7043', '#9E9E9E'] }] }, options: { responsive: true, maintainAspectRatio: false } });
-
-    if (charts.perf) charts.perf.destroy();
-    charts.perf = new Chart(ctxPerf, { type: 'bar', data: { labels: Object.keys(managersData), datasets: [{ label: 'Прибыль по менеджерам', data: Object.values(managersData), backgroundColor: '#34A853' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } });
-
-    // --- ОТРИСОВКА ГРАФИКА ОТКАЗОВ ---
-    if (charts.lost) charts.lost.destroy();
-    charts.lost = new Chart(ctxLost, {
-        type: 'pie',
-        data: {
-            labels: Object.keys(lostReasons),
-            datasets: [{
-                data: Object.values(lostReasons),
-                backgroundColor: ['#f43f5e', '#fbbf24', '#8b5cf6', '#3b82f6', '#10b981', '#94a3b8']
-            }]
-        },
-        options: { 
-            responsive: true, 
-            maintainAspectRatio: false,
-            plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, fontSize: 10 } } }
-        }
-    });
-}
+        const ctxDyn = document.getElementById('chartProfitDynamics').getContext('2d');
+        const ctxType = document.getElementById('chartProfitByType').getContext('2d');
+        const ctxPerf = document.getElementById('chartManagerPerformance').getContext('2d');
+        if (charts.dyn) charts.dyn.destroy();
+        const sortedMonths = Object.keys(monthly).sort();
+        charts.dyn = new Chart(ctxDyn, { type: 'line', data: { labels: sortedMonths, datasets: [{ label: 'Прибыль USD', data: sortedMonths.map(m => monthly[m]), borderColor: '#1a73e8', backgroundColor: 'rgba(26, 115, 232, 0.1)', fill: true, tension: 0.3 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } });
+        if (charts.type) charts.type.destroy();
+        charts.type = new Chart(ctxType, { type: 'doughnut', data: { labels: Object.keys(types), datasets: [{ data: Object.values(types), backgroundColor: ['#4285F4', '#34A853', '#FBBC05', '#EA4335', '#673AB7', '#00ACC1', '#FF7043', '#9E9E9E'] }] }, options: { responsive: true, maintainAspectRatio: false } });
+        if (charts.perf) charts.perf.destroy();
+        charts.perf = new Chart(ctxPerf, { type: 'bar', data: { labels: Object.keys(managersData), datasets: [{ label: 'Прибыль по менеджерам', data: Object.values(managersData), backgroundColor: '#34A853' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } });
+    }
 
     function showStatsDetail(key, manager, type) {
         const [y, m] = key.split('-').map(Number);
@@ -3377,6 +3190,36 @@ last6Months.forEach(m => {
         const t = tracking.find(x => x.id == id); if (!t) return;
         document.getElementById('preview-tracking').innerHTML = `<h3>Детали: ${t.num}</h3><div class="preview-grid"><div class="preview-box"><label>Груз</label><span>${t.cargo}</span></div><div class="preview-box"><label>Статус</label><span style="color:var(--primary); font-weight:bold;">${t.status}</span></div><div class="preview-box"><label>Вес/Объем</label><span>${t.weight}кг / ${t.vol}м³</span></div><div class="preview-box"><label>Упаковка</label><span>${t.qty} (${t.pack})</span></div><div class="preview-box"><label>Транспорт</label><span>${t.trans.toUpperCase()}</span></div></div>`;
     }
+
+    async function submitRequestClose() {
+    const id = document.getElementById('reqCloseId').value;
+    const comment = document.getElementById('reqCloseComment').value.trim();
+
+    // ПРОВЕРКА НА ОБЯЗАТЕЛЬНОСТЬ (минимум 5 символов)
+    if (comment.length < 5) {
+        alert("Пожалуйста, укажите причину закрытия (минимум 5 символов). Это поле обязательно.");
+        return;
+    }
+
+    const i = requests.findIndex(x => x.id == id);
+    if (i > -1) {
+        // Меняем статус на завершенный и сохраняем причину
+        requests[i].status = 'completed';
+        requests[i].comment = comment; 
+        
+        // Обновляем список на экране
+        renderRequests();
+        
+        // Закрываем модалку
+        document.getElementById('requestCloseModal').style.display = 'none';
+
+        // Синхронизируем только одну измененную строку в Google Таблицу
+        await sync('requests', requests[i], 'update'); 
+        
+        alert("Запрос успешно закрыт.");
+    }
+}
+    // --- ФУНКЦИИ КОРЗИНЫ (ADMIN ONLY) ---
 
 // 1. Проверяем, админ ли зашел, и показываем кнопку
 function updateAdminUI() {
@@ -3463,6 +3306,16 @@ async function hardDeleteItem(sh, id) {
     alert("Данные стерты окончательно.");
 }
 
+// Вспомогательная функция (чтобы код понимал, с каким массивом работать)
+function getArrayBySheet(sh) {
+    if(sh==='requests') return requests;
+    if(sh==='deals') return deals;
+    if(sh==='companies') return companies;
+    if(sh==='reminders') return reminders;
+    if(sh==='partners') return partners;
+    if(sh==='tracking') return tracking;
+    return [];
+}
 // --- СИСТЕМА ЖИВЫХ УВЕДОМЛЕНИЙ ---
     
     // Хранилище ID напоминаний, которые мы уже показали за текущую сессию
@@ -3528,7 +3381,7 @@ async function hardDeleteItem(sh, id) {
             }
         });
     }
-    
+    window.onload = startApp;
 const debouncedRenderDeals = debounce(() => renderDeals());
 const debouncedRenderCompanies = debounce(() => renderCompanies());
 const debouncedRenderRequests = debounce(() => renderRequests());
@@ -3675,108 +3528,23 @@ document.addEventListener('click', (e) => {
     }
 });
 
-   // --- УПРАВЛЕНИЕ ДОСТУПОМ К НАПОМИНАНИЯМ ---
     async function toggleReminderAccess(rid, man, act) { 
-        if(!man) return;
-        const i = reminders.findIndex(x => String(x.id) === String(rid)); 
-        if(i === -1) return;
+    if(!man) return;
+    const i = reminders.findIndex(x => String(x.id) === String(rid)); 
+    if(i === -1) return;
 
-        let arr = (reminders[i].sharedWith || "").split(',').filter(s => s); 
-        if(act === 'add' && !arr.includes(man)) arr.push(man); 
-        if(act === 'remove') arr = arr.filter(s => s !== man); 
-        
-        reminders[i].sharedWith = arr.join(','); 
-        
-        showCallPreview(rid); 
-        await sync('reminders', reminders[i], 'update'); 
-        alert("Доступ обновлен");
-    }
-
-    // --- ФУНКЦИЯ ЗАКРЫТИЯ ЗАПРОСА ---
-  async function submitRequestClose() {
-    console.log("Кнопка подтверждения нажата");
-
-    const id = document.getElementById('reqCloseId').value;
-    const reason = document.getElementById('reqCloseReason').value;
-    const comment = document.getElementById('reqCloseComment').value.trim();
-
-    if (!reason) {
-        alert("Пожалуйста, выберите причину закрытия запроса.");
-        return;
-    }
-    if (comment.length < 5) {
-        alert("Напишите более подробный комментарий (минимум 5 символов).");
-        return;
-    }
-
-    const index = requests.findIndex(x => String(x.id) === String(id));
-
-    if (index > -1) {
-        showLoader(true);
-        try {
-            requests[index].status = 'completed';
-            requests[index].comment = `[${reason}] ${comment}`; 
-            
-            document.getElementById('requestCloseModal').style.display = 'none';
-
-            await sync('requests', requests[index], 'update'); 
-            
-            renderRequests();
-            updateCounters();
-            
-            alert("Запрос успешно закрыт и перемещен в историю.");
-        } catch (err) {
-            console.error("Ошибка сохранения:", err);
-            alert("Ошибка сохранения.");
-        } finally {
-            showLoader(false);
-        }
-    }
-}
-
-    // --- ЛОГИКА ТЕМНОЙ ТЕМЫ ---
-    function toggleTheme() {
-        const isDark = document.body.classList.toggle('dark-mode');
-        localStorage.setItem('crm_theme', isDark ? 'dark' : 'light');
-        const btn = document.getElementById('theme-toggle');
-        if (btn) btn.innerText = isDark ? '☀️' : '🌙';
-    }
-
-    function applySavedTheme() {
-        const saved = localStorage.getItem('crm_theme');
-        if (saved === 'dark') {
-            document.body.classList.add('dark-mode');
-            const btn = document.getElementById('theme-toggle');
-            if (btn) btn.innerText = '☀️';
-        }
-    }
-
-    // Инициализация при загрузке
-    async function initApp() {
-        await startApp();
-        applySavedTheme();
-    }
-
-    window.onload = initApp;
-
-</script>
-
-<div id="notification-container"></div>
-
-<!-- ПАНЕЛЬ МАССОВЫХ ДЕЙСТВИЙ -->
-<div id="bulk-action-bar">
-    <span id="bulk-count">Выбрано: 0</span>
+    let arr = (reminders[i].sharedWith || "").split(',').filter(s => s); 
+    if(act === 'add' && !arr.includes(man)) arr.push(man); 
+    if(act === 'remove') arr = arr.filter(s => s !== man); 
     
-    <div id="bulk-manager-section" style="display:none; align-items:center; gap:10px;">
-        <select id="bulk-new-manager">
-            <option value="">Сменить менеджера на...</option>
-        </select>
-        <button onclick="applyBulkManager()">Применить</button>
-    </div>
-
-    <button class="btn-bulk-delete" onclick="applyBulkDelete()">🗑️ Удалить выбранные</button>
-    <button class="btn-bulk-close" onclick="cancelBulkSelection()">Отмена</button>
-</div>
-
+    reminders[i].sharedWith = arr.join(','); 
+    
+    showCallPreview(rid); 
+    await sync('reminders', reminders[i], 'update'); 
+    alert("Доступ обновлен");
+}
+    
+</script>
+    <div id="notification-container"></div>
 </body>
-</html>
+</html> 
