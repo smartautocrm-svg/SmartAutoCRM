@@ -139,7 +139,7 @@
 
 /* Панель массовых действий (появляется внизу) */
 #bulk-action-bar {
-    display: none; /* Скрыта по умолчанию */
+    display: none; 
     position: fixed;
     bottom: 20px;
     left: 50%;
@@ -149,10 +149,9 @@
     padding: 12px 25px;
     border-radius: 50px;
     box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-    z-index: 9999;
+    z-index: 9999; /* Должен быть выше всех */
     align-items: center;
     gap: 15px;
-    animation: slideUp 0.3s ease-out;
 }
 
 #bulk-action-bar select, #bulk-action-bar button {
@@ -1284,7 +1283,7 @@ function forInput(v) {
     container.appendChild(div);
 }
     
-    let reminders = [], companies = [], partners = [], requests = [], managers = [], deals = [], tracking = [], crmLogs = [];
+    let reminders = [], companies = [], partners = [], requests = [], managers = [], deals = [], tracking = [], crmLogs = []; let selectedItemIds = new Set();
     let listLimits = { 
         calls: 30, 
         requests: 30, 
@@ -2239,7 +2238,7 @@ function renderCompanies() {
 
 // Обработка клика по чекбоксу
 function handleItemCheck(e) {
-    e.stopPropagation(); // Чтобы не открывалось превью компании
+    e.stopPropagation(); // Важно! Чтобы не открывалось превью компании при клике на чекбокс
     const id = e.target.getAttribute('data-id');
     
     if (e.target.checked) {
@@ -2248,7 +2247,7 @@ function handleItemCheck(e) {
         selectedItemIds.delete(id);
     }
     
-    updateBulkBar();
+    updateBulkBar(); // Вызываем обновление панели после каждого клика
 }
 
 // Обновление состояния панели
@@ -2259,21 +2258,35 @@ function updateBulkBar() {
     const managerSelect = document.getElementById('bulk-new-manager');
     const me = sessionStorage.getItem('crm_user');
 
+    // 1. Проверяем, выбрано ли что-нибудь
     if (selectedItemIds.size > 0) {
+        // Показываем панель (она появится и у менеджера, и у админа)
         bar.style.display = 'flex';
-        countEl.innerText = `Выбрано: ${selectedItemIds.size}`;
+        countEl.innerText = `Выбрано компаний: ${selectedItemIds.size}`;
         
-        // ПРОВЕРКА: Только админ видит функционал смены менеджера
+        // 2. Логика прав доступа (Админ vs Менеджер)
         if (me === 'admin') {
+            // Если админ — показываем блок смены менеджера
             managerSection.style.display = 'flex';
-            if (managerSelect.options.length <= 1) {
-                managerSelect.innerHTML = '<option value="">Сменить менеджера на...</option>' + 
-                    managers.map(m => `<option value="${m}">${m}</option>`).join('');
+            
+            // Заполняем выпадающий список менеджеров (всегда актуальными данными)
+            // Добавляем пустой вариант в начале
+            let optionsHtml = '<option value="">-- Назначить менеджера --</option>';
+            
+            if (managers && managers.length > 0) {
+                managers.forEach(m => {
+                    optionsHtml += `<option value="${m}">${m}</option>`;
+                });
             }
+            
+            managerSelect.innerHTML = optionsHtml;
         } else {
+            // Если обычный пользователь — скрываем блок смены менеджера, 
+            // но сама панель (с кнопкой Удалить) остается видна
             managerSection.style.display = 'none';
         }
     } else {
+        // Если ничего не выбрано — полностью скрываем всю панель
         bar.style.display = 'none';
     }
 }
