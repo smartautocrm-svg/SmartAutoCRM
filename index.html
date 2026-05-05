@@ -129,6 +129,50 @@
     border-bottom: 1px solid #efe6ef; /* Тонкая разделительная линия */
     padding-bottom: 4px; 
 }
+        /* Стиль для чекбокса внутри карточки */
+.item-checkbox {
+    width: 18px !important;
+    height: 18px !important;
+    margin-right: 10px !important;
+    cursor: pointer;
+}
+
+/* Панель массовых действий (появляется внизу) */
+#bulk-action-bar {
+    display: none; /* Скрыта по умолчанию */
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--primary);
+    color: white;
+    padding: 12px 25px;
+    border-radius: 50px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    z-index: 9999;
+    align-items: center;
+    gap: 15px;
+    animation: slideUp 0.3s ease-out;
+}
+
+#bulk-action-bar select, #bulk-action-bar button {
+    height: 30px;
+    padding: 0 10px;
+    border-radius: 5px;
+    border: none;
+    font-size: 11px;
+    cursor: pointer;
+}
+
+#bulk-action-bar .btn-bulk-delete {
+    background: var(--danger);
+    color: white;
+}
+
+#bulk-action-bar .btn-bulk-close {
+    background: rgba(255,255,255,0.2);
+    color: white;
+}
 
         
         .input-row { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 5px; }
@@ -2160,7 +2204,7 @@ function renderCompanies() {
             const dates = [...reminders.filter(r => r.name === c.name).map(r => new Date(r.date)), ...requests.filter(r => r.company === c.name).map(r => new Date(r.createdAt)), ...deals.filter(d => d.company === c.name).map(d => new Date(d.createdAt))].filter(d => !isNaN(d));
             if (dates.length === 0 || (now - new Date(Math.max(...dates))) > limitMs) isForgotten = true;
         }
-        return `<div class="list-item ${isForgotten ? 'forgotten' : ''}" onclick="showCompanyPreview('${c.name}')"><div class="item-main"><h4>${c.name} ${isForgotten ? '<span class="forgotten-tag">⚠️ В работу</span>' : ''}</h4><p>${checkAccess(c.name) ? statusMap[c.status].label : '🔒 Ограничен'} | ${c.manager}</p></div><div class="item-actions"><button class="action-btn" onclick="openEdit('${c.id}','company')">✎</button><button class="action-btn btn-delete" onclick="deleteItem('companies', '${c.id}')">×</button></div></div>`;
+        return `<div class="list-item ${isForgotten ? 'forgotten' : ''}" onclick="showCompanyPreview('${c.name}')"><input type="checkbox" class="item-checkbox" data-id="${c.id}" onclick="handleItemCheck(event)"><div class="item-main"><h4>${c.name} ${isForgotten ? '<span class="forgotten-tag">⚠️ В работу</span>' : ''}</h4><p>${checkAccess(c.name) ? statusMap[c.status].label : '🔒 Ограничен'} | ${c.manager}</p></div><div class="item-actions"><button class="action-btn" onclick="openEdit('${c.id}','company')">✎</button><button class="action-btn btn-delete" onclick="deleteItem('companies', '${c.id}')">×</button></div></div>`;
     }).join('');
 
     // Кнопка
@@ -2170,6 +2214,95 @@ function renderCompanies() {
 
     document.getElementById('companiesList').innerHTML = html;
     updateCounters();
+}
+    let selectedItemIds = new Set();
+
+// Обработка клика по чекбоксу
+function handleItemCheck(e) {
+    e.stopPropagation(); // Чтобы не открывалось превью компании
+    const id = e.target.getAttribute('data-id');
+    
+    if (e.target.checked) {
+        selectedItemIds.add(id);
+    } else {
+        selectedItemIds.delete(id);
+    }
+    
+    updateBulkBar();
+}
+
+// Обновление состояния панели
+function updateBulkBar() {
+    const bar = document.getElementById('bulk-action-bar');
+    const countEl = document.getElementById('bulk-count');
+    const managerSelect = document.getElementById('bulk-new-manager');
+
+    if (selectedItemIds.size > 0) {
+        bar.style.display = 'flex';
+        countEl.innerText = `Выбрано: ${selectedItemIds.size}`;
+        
+        // Заполняем список менеджеров, если он пуст
+        if (managerSelect.options.length <= 1) {
+            managerSelect.innerHTML = '<option value="">Сменить менеджера на...</option>' + 
+                managers.map(m => `<option value="${m}">${m}</option>`).join('');
+        }
+    } else {
+        bar.style.display = 'none';
+    }
+}
+
+// Сброс выбора
+function cancelBulkSelection() {
+    selectedItemIds.clear();
+    document.querySelectorAll('.item-checkbox').forEach(cb => cb.checked = false);
+    updateBulkBar();
+}
+
+// ПРИМЕНЕНИЕ: Смена менеджера
+async function applyBulkManager() {
+    const newManager = document.getElementById('bulk-new-manager').value;
+    if (!newManager) return alert("Выберите менеджера!");
+    
+    if (!confirm(`Передать ${selectedItemIds.size} компаний менеджеру ${newManager}?`)) return;
+
+    showLoader(true);
+    
+    // Обновляем локально
+    selectedItemIds.forEach(id => {
+        const idx = companies.findIndex(c => String(c.id) === String(id));
+        if (idx !== -1) {
+            companies[idx].manager = newManager;
+        }
+    });
+
+    // Сохраняем весь лист (так быстрее для массовых действий)
+    await sync('companies', companies, 'saveAll');
+    
+    showLoader(false);
+    cancelBulkSelection();
+    renderCompanies();
+    alert("Данные обновлены!");
+}
+
+// ПРИМЕНЕНИЕ: Массовое удаление
+async function applyBulkDelete() {
+    if (!confirm(`Удалить ${selectedItemIds.size} выбранных компаний в корзину?`)) return;
+
+    showLoader(true);
+    
+    selectedItemIds.forEach(id => {
+        const idx = companies.findIndex(c => String(c.id) === String(id));
+        if (idx !== -1) {
+            companies[idx].isDeleted = true;
+        }
+    });
+
+    await sync('companies', companies, 'saveAll');
+    
+    showLoader(false);
+    cancelBulkSelection();
+    renderCompanies();
+    alert("Компании перемещены в корзину");
 }
     function renderPartners() {
     // 1. Получаем значения из всех полей фильтрации
@@ -3546,5 +3679,20 @@ document.addEventListener('click', (e) => {
     
 </script>
     <div id="notification-container"></div>
+    <div id="bulk-action-bar">
+    <span id="bulk-count">Выбрано: 0</span>
+    
+    <!-- Действие: Смена менеджера -->
+    <select id="bulk-new-manager">
+        <option value="">Сменить менеджера на...</option>
+    </select>
+    <button onclick="applyBulkManager()">Применить</button>
+
+    <!-- Действие: Удаление -->
+    <button class="btn-bulk-delete" onclick="applyBulkDelete()">🗑️ Удалить выбранные</button>
+    
+    <!-- Кнопка закрытия -->
+    <button class="btn-bulk-close" onclick="cancelBulkSelection()">Отмена</button>
+</div>
 </body>
 </html> 
