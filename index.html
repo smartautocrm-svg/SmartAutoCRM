@@ -2017,7 +2017,7 @@ let f = requests.filter(r => {
                 <p>${r.cargo} | Создан: ${dFmt(r.createdAt)} | ${r.manager}</p>
             </div>
             <div class="item-actions">
-                ${r.status !== 'completed' ? `<button class="action-btn" style="color:var(--success)" onclick="finishRequest(event, '${r.id}')">✅</button>` : ''}
+               ${r.status !== 'completed' ? `<button class="action-btn" style="color:var(--success)" onclick="finishRequest(event, '${r.id}')">✅</button>` : ''}
                 <button class="action-btn" onclick="openEdit('${r.id}','request')">✎</button>
                 <button class="action-btn btn-delete" onclick="deleteItem('requests', '${r.id}')">×</button>
             </div>
@@ -2032,14 +2032,35 @@ let f = requests.filter(r => {
     document.getElementById('requestsList').innerHTML = html;
     updateCounters();
 }
+    // Функция, которая открывает окно закрытия запроса
 function finishRequest(e, id) { 
-    e.stopPropagation(); 
-    document.getElementById('reqCloseId').value = id; // Убедись, что ID передается
-    document.getElementById('reqCloseComment').value = ""; 
-    document.getElementById('reqCloseReason').value = ""; // Сброс причины
-    document.getElementById('requestCloseModal').style.display = 'block';
-}
+    if (e) e.stopPropagation(); // Останавливаем всплытие события, чтобы не открылось превью
     
+    console.log("Открываем окно закрытия для запроса ID:", id);
+
+    // 1. Находим скрытое поле в модалке и записываем туда ID запроса
+    const idField = document.getElementById('reqCloseId');
+    if (idField) {
+        idField.value = id;
+    } else {
+        console.error("Поле reqCloseId не найдено в HTML!");
+    }
+
+    // 2. Очищаем поля в модальном окне
+    const reasonField = document.getElementById('reqCloseReason');
+    const commentField = document.getElementById('reqCloseComment');
+    
+    if (reasonField) reasonField.value = ""; 
+    if (commentField) commentField.value = ""; 
+    
+    // 3. Показываем само модальное окно
+    const modal = document.getElementById('requestCloseModal');
+    if (modal) {
+        modal.style.display = 'block';
+    } else {
+        alert("Ошибка: Модальное окно 'requestCloseModal' не найдено в коде!");
+    }
+}
 function renderDeals() {
     const s = document.getElementById('searchDeals').value.toLowerCase();
     const me = sessionStorage.getItem('crm_user');
@@ -3413,42 +3434,6 @@ last6Months.forEach(m => {
         document.getElementById('preview-tracking').innerHTML = `<h3>Детали: ${t.num}</h3><div class="preview-grid"><div class="preview-box"><label>Груз</label><span>${t.cargo}</span></div><div class="preview-box"><label>Статус</label><span style="color:var(--primary); font-weight:bold;">${t.status}</span></div><div class="preview-box"><label>Вес/Объем</label><span>${t.weight}кг / ${t.vol}м³</span></div><div class="preview-box"><label>Упаковка</label><span>${t.qty} (${t.pack})</span></div><div class="preview-box"><label>Транспорт</label><span>${t.trans.toUpperCase()}</span></div></div>`;
     }
 
-async function submitRequestClose() {
-    const id = document.getElementById('reqCloseId').value;
-    const reasonEl = document.getElementById('reqCloseReason');
-    const commentEl = document.getElementById('reqCloseComment');
-
-    if (!reasonEl || !commentEl) return console.error("Поля модалки не найдены");
-
-    const reason = reasonEl.value;
-    const comment = commentEl.value.trim();
-
-    if (!reason) {
-        alert("Пожалуйста, выберите категорию причины из списка.");
-        return;
-    }
-    if (comment.length < 5) {
-        alert("Пожалуйста, напишите краткое пояснение (минимум 5 символов).");
-        return;
-    }
-
-    const i = requests.findIndex(x => String(x.id) === String(id));
-    if (i > -1) {
-        showLoader(true);
-        requests[i].status = 'completed';
-        requests[i].comment = `[${reason}] ${comment}`; 
-        
-        renderRequests();
-        document.getElementById('requestCloseModal').style.display = 'none';
-
-        await sync('requests', requests[i], 'update'); 
-        showLoader(false);
-        alert("Запрос закрыт. Причина зафиксирована.");
-        
-        if (document.getElementById('stats').classList.contains('active')) renderManagerStats();
-    }
-}
-
 // 1. Проверяем, админ ли зашел, и показываем кнопку
 function updateAdminUI() {
     const user = sessionStorage.getItem('crm_user');
@@ -3774,55 +3759,57 @@ document.addEventListener('click', (e) => {
     }
 
     // --- ФУНКЦИЯ ЗАКРЫТИЯ ЗАПРОСА ---
-    async function submitRequestClose() {
-        console.log("Кнопка закрытия нажата"); // Появится в консоли (F12)
+   async function submitRequestClose() {
+    console.log("Кнопка подтверждения нажата");
 
-        const id = document.getElementById('reqCloseId').value;
-        const reasonEl = document.getElementById('reqCloseReason');
-        const commentEl = document.getElementById('reqCloseComment');
+    // 1. Получаем данные из полей модалки
+    const id = document.getElementById('reqCloseId').value;
+    const reason = document.getElementById('reqCloseReason').value;
+    const comment = document.getElementById('reqCloseComment').value.trim();
 
-        if (!reasonEl || !commentEl) {
-            alert("Критическая ошибка: Элементы модалки не найдены!");
-            return;
-        }
-
-        const reason = reasonEl.value;
-        const comment = commentEl.value.trim();
-
-        if (!reason) {
-            alert("Пожалуйста, выберите причину отмены груза.");
-            return;
-        }
-        if (comment.length < 5) {
-            alert("Пожалуйста, напишите краткий комментарий (минимум 5 символов).");
-            return;
-        }
-
-        const i = requests.findIndex(x => String(x.id) === String(id));
-        if (i > -1) {
-            showLoader(true);
-            try {
-                requests[i].status = 'completed';
-                requests[i].comment = `[${reason}] ${comment}`; 
-                
-                renderRequests(); // Обновляем список на экране
-                document.getElementById('requestCloseModal').style.display = 'none';
-
-                // Отправляем данные в таблицу
-                await sync('requests', requests[i], 'update'); 
-                alert("Запрос закрыт и перемещен в историю.");
-                
-                if (document.getElementById('stats').classList.contains('active')) renderManagerStats();
-            } catch (err) {
-                console.error(err);
-                alert("Ошибка при сохранении в облако");
-            } finally {
-                showLoader(false);
-            }
-        } else {
-            alert("Запрос не найден в базе данных.");
-        }
+    // 2. Проверяем, всё ли заполнено
+    if (!reason) {
+        alert("Пожалуйста, выберите причину закрытия запроса.");
+        return;
     }
+    if (comment.length < 5) {
+        alert("Напишите более подробный комментарий (минимум 5 символов).");
+        return;
+    }
+
+    // 3. Ищем этот запрос в нашем массиве данных
+    const index = requests.findIndex(x => String(x.id) === String(id));
+
+    if (index > -1) {
+        showLoader(true);
+        try {
+            // Обновляем данные локально
+            requests[index].status = 'completed';
+            requests[index].comment = `[${reason}] ${comment}`; 
+            
+            // Скрываем окно
+            document.getElementById('requestCloseModal').style.display = 'none';
+
+            // 4. Отправляем обновление в Google Таблицу
+            // Используем режим 'update', чтобы обновить только одну строку, а не всю базу
+            await sync('requests', requests[index], 'update'); 
+            
+            // Обновляем интерфейс
+            renderRequests();
+            updateCounters();
+            
+            alert("Запрос успешно закрыт и перемещен в историю.");
+        } catch (err) {
+            console.error("Ошибка при сохранении в Google Таблицу:", err);
+            alert("Ошибка сохранения. Проверьте интернет или консоль браузера.");
+        } finally {
+            showLoader(false);
+        }
+    } else {
+        alert("Ошибка: Запрос не найден в списке. Попробуйте обновить страницу.");
+        console.log("Не найден ID:", id);
+    }
+}
 
     // --- ЛОГИКА ТЕМНОЙ ТЕМЫ ---
     function toggleTheme() {
