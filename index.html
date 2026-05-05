@@ -1180,7 +1180,7 @@ button.main:active {
     </div>
 </div>
     
-    <!-- МОДАЛКА ЗАКРЫТИЯ ЗАПРОСА (ОБЯЗАТЕЛЬНЫЙ КОММЕНТАРИЙ) -->
+   <!-- МОДАЛКА ЗАКРЫТИЯ ЗАПРОСА (ИСПРАВЛЕННАЯ) -->
 <div id="requestCloseModal" class="modal-overlay" onclick="if(event.target===this) this.style.display='none'">
     <div class="modal-content" style="width: 400px; border-top: 5px solid var(--danger);">
         <h3>Завершение запроса</h3>
@@ -1188,8 +1188,8 @@ button.main:active {
             Укажите причину, по которой запрос не перерос в сделку:
         </p>
         
-        <!-- Выбор категории причины -->
-        <select id="reqCloseReason" style="margin-bottom: 10px; border: 1.5px solid var(--danger); background: #fff5f5;">
+        <!-- ВОТ ЭТО ПОЛЕ БЫЛО ПРОПУЩЕНО: -->
+        <select id="reqCloseReason" style="margin-bottom: 10px; border: 1.5px solid var(--danger); background: #fff5f5; width: 100%; padding: 8px; border-radius: 4px;">
             <option value="">-- Выберите причину отмены * --</option>
             <option value="Цена (Дорого)">💸 Цена (Дорого)</option>
             <option value="Сроки (Долго)">⏳ Сроки (Долго)</option>
@@ -3399,8 +3399,13 @@ last6Months.forEach(m => {
 
 async function submitRequestClose() {
     const id = document.getElementById('reqCloseId').value;
-    const reason = document.getElementById('reqCloseReason').value;
-    const comment = document.getElementById('reqCloseComment').value.trim();
+    const reasonEl = document.getElementById('reqCloseReason');
+    const commentEl = document.getElementById('reqCloseComment');
+
+    if (!reasonEl || !commentEl) return console.error("Поля модалки не найдены");
+
+    const reason = reasonEl.value;
+    const comment = commentEl.value.trim();
 
     if (!reason) {
         alert("Пожалуйста, выберите категорию причины из списка.");
@@ -3415,7 +3420,6 @@ async function submitRequestClose() {
     if (i > -1) {
         showLoader(true);
         requests[i].status = 'completed';
-        // Сохраняем в формате [Причина] Текст
         requests[i].comment = `[${reason}] ${comment}`; 
         
         renderRequests();
@@ -3425,7 +3429,6 @@ async function submitRequestClose() {
         showLoader(false);
         alert("Запрос закрыт. Причина зафиксирована.");
         
-        // Обновим статистику, если мы на этой вкладке
         if (document.getElementById('stats').classList.contains('active')) renderManagerStats();
     }
 }
