@@ -1880,63 +1880,53 @@ function renderReminders() {
     const limitMs = 3 * 24 * 60 * 60 * 1000, now = new Date();
     
     let f = reminders.filter(r => {
-        if (r.isDeleted) return false; // Не показываем удаленные
-
-        // 1. Поиск по названию компании (поле .name в объекте напоминания)
+        if (r.isDeleted) return false;
         const companyName = String(r.name || "").toLowerCase();
         const matchesSearch = companyName.includes(s);
-
-        // 2. Фильтр по дате (если дата выбрана)
         const matchesDate = !d || dFmt(r.date) === dFmt(d);
-
         return matchesSearch && matchesDate;
     });
     
-    // Фильтр по менеджеру (если не админ)
     if (me !== 'admin') {
-    f = f.filter(r => {
-        const isAuthor = r.manager === me;
-        const isSharedWithMe = (r.sharedWith || "").split(',').includes(me);
-        return isAuthor || isSharedWithMe;
-    });
-}
+        f = f.filter(r => {
+            const isAuthor = r.manager === me;
+            const isSharedWithMe = (r.sharedWith || "").split(',').includes(me);
+            return isAuthor || isSharedWithMe;
+        });
+    }
     
-    // Фильтр "Скрыть завершенные"
     if (hideDone) f = f.filter(r => r.status !== 'completed');
 
-    // Сортировка (новые сверху)
     f.sort((a,b) => new Date(b.date) - new Date(a.date));
     
     const totalFound = f.length;
     const limitedList = f.slice(0, listLimits.calls);
     
-let html = limitedList.map(r => {
-    const isOverdue = r.status !== 'completed' && (now - new Date(r.date)) > limitMs;
-    // ПРОВЕРЯЕМ: выделен ли этот ID сейчас?
-    const isSelected = selectedIds.has(String(r.id)); 
+    let html = limitedList.map(r => {
+        const isOverdue = r.status !== 'completed' && (now - new Date(r.date)) > limitMs;
+        const isSelected = selectedIds.has(String(r.id)); 
 
-    return `<div class="list-item ${r.status==='completed'?'completed':''} ${isOverdue?'overdue':''} ${isSelected?'selected':''}" 
-                 onclick="showCallPreview(${r.id})">
-        
-        <!-- ЧЕКБОКС -->
-        <input type="checkbox" class="bulk-checkbox" 
-               ${isSelected ? 'checked' : ''} 
-               onclick="toggleSelect(event, '${r.id}')">
+        return `<div class="list-item ${r.status==='completed'?'completed':''} ${isOverdue?'overdue':''} ${isSelected?'selected':''}" 
+                     onclick="showCallPreview(${r.id})">
+            
+            <input type="checkbox" class="bulk-checkbox" 
+                   ${isSelected ? 'checked' : ''} 
+                   onclick="toggleSelect(event, '${r.id}')">
 
-        <div class="item-main">
-            <h4>${r.name} ${isOverdue?'<span class="overdue-tag">ПРОСРОЧЕНО</span>':''}</h4>
-            <p>${dtFmt(r.date)} | ${r.manager}</p>
-        </div>
-        <div class="item-actions">
-            ${r.status !== 'completed' ? `<button class="action-btn" style="color:var(--success)" onclick="finishRem(event, '${r.id}')">✅</button>` : ''}
-            <button class="action-btn" onclick="openEdit('${r.id}','reminder')">✎</button>
-            <button class="action-btn btn-delete" onclick="deleteItem('reminders', '${r.id}')">×</button>
-        </div>
-    </div>`;
-}).join('');
+            <div class="item-main">
+                <h4>${r.name} ${isOverdue?'<span class="overdue-tag">ПРОСРОЧЕНО</span>':''}</h4>
+                <p>${dtFmt(r.date)} | ${r.manager}</p>
+            </div>
+            <div class="item-actions">
+                ${r.status !== 'completed' ? `<button class="action-btn" style="color:var(--success)" onclick="finishRem(event, '${r.id}')">✅</button>` : ''}
+                <button class="action-btn" onclick="openEdit('${r.id}','reminder')">✎</button>
+                <button class="action-btn btn-delete" onclick="deleteItem('reminders', '${r.id}')">×</button>
+            </div>
+        </div>`;
+    }).join('');
     
     if (totalFound > listLimits.calls) {
-        html += `<div class="load-more-container"><button class="btn-load-more" onclick="loadMore('calls')">Загрузить еще (осталось ${totalFound - listLimits.calls})</button></div>`;
+        html += `<div class="load-more-container"><button class="btn-load-more" onclick="loadMore('calls')">Загрузить еще (показано ${listLimits.calls} из ${totalFound})</button></div>`;
     }
 
     document.getElementById('remindersList').innerHTML = html || '<div style="text-align:center; padding:20px; color:#999;">Ничего не найдено</div>';
@@ -1967,63 +1957,56 @@ function renderRequests() {
           
     const limitMs = 2 * 24 * 60 * 60 * 1000, now = new Date();
     
-let f = requests.filter(r => {
-    if (r.isDeleted) return false;
-    const me = sessionStorage.getItem('crm_user');
-    
-    // ПРОВЕРКА ДОСТУПА:
-    // 1. Админ
-    // 2. Автор запроса
-    // 3. Запрос пошерен этому юзеру
-    // 4. Юзер имеет доступ к компании (старое условие checkAccess)
-    const hasAccessToRequest = (me === 'admin') || 
-                               (r.manager === me) || 
-                               (r.sharedWith || "").split(',').includes(me) || 
-                               checkAccess(r.company);
+    let f = requests.filter(r => {
+        if (r.isDeleted) return false;
+        const me = sessionStorage.getItem('crm_user');
+        
+        const hasAccessToRequest = (me === 'admin') || 
+                                   (r.manager === me) || 
+                                   (r.sharedWith || "").split(',').includes(me) || 
+                                   checkAccess(r.company);
 
-    if (!hasAccessToRequest) return false;
+        if (!hasAccessToRequest) return false;
 
-    const companyText = String(r.company || "").toLowerCase();
-    const cargoText = String(r.cargo || "").toLowerCase();
-    const matchesSearch = companyText.includes(s) || cargoText.includes(s);
-    const matchesStatus = hideDone ? r.status !== 'completed' : true;
+        const companyText = String(r.company || "").toLowerCase();
+        const cargoText = String(r.cargo || "").toLowerCase();
+        const matchesSearch = companyText.includes(s) || cargoText.includes(s);
+        const matchesStatus = hideDone ? r.status !== 'completed' : true;
+        
+        return matchesSearch && matchesStatus;
+    });
     
-    return matchesSearch && matchesStatus;
-});
-    
-    // --- НОВАЯ ЛОГИКА ОГРАНИЧЕНИЯ ---
     const totalFound = f.length;
     const limitedList = f.slice(0, listLimits.requests);
     
     let html = limitedList.map(r => {
-    const isOverdue = r.status !== 'completed' && (now - new Date(r.createdAt)) > limitMs;
-    const isSelected = selectedIds.has(String(r.id));
+        const isOverdue = r.status !== 'completed' && (now - new Date(r.createdAt)) > limitMs;
+        const isSelected = selectedIds.has(String(r.id));
 
-    return `<div class="list-item ${r.status === 'completed' ? 'completed' : ''} ${isOverdue?'overdue':''} ${isSelected?'selected':''}" 
-                 onclick="showRequestPreview(${r.id})">
-        
-        <input type="checkbox" class="bulk-checkbox" 
-               ${isSelected ? 'checked' : ''} 
-               onclick="toggleSelect(event, '${r.id}')">
+        return `<div class="list-item ${r.status === 'completed' ? 'completed' : ''} ${isOverdue?'overdue':''} ${isSelected?'selected':''}" 
+                     onclick="showRequestPreview(${r.id})">
+            
+            <input type="checkbox" class="bulk-checkbox" 
+                   ${isSelected ? 'checked' : ''} 
+                   onclick="toggleSelect(event, '${r.id}')">
 
-        <div class="item-main">
-            <h4>${r.company} ${isOverdue?'<span class="overdue-tag">ГОРЯЧИЙ / ЗАБЫТ</span>':''}</h4>
-            <p>${r.cargo} | Создан: ${dFmt(r.createdAt)} | ${r.manager}</p>
-        </div>
-        <div class="item-actions">
-            ${r.status !== 'completed' ? `<button class="action-btn" style="color:var(--success)" onclick="finishRequest(event, '${r.id}')">✅</button>` : ''}
-            <button class="action-btn" onclick="openEdit('${r.id}','request')">✎</button>
-            <button class="action-btn btn-delete" onclick="deleteItem('requests', '${r.id}')">×</button>
-        </div>
-    </div>`;
-}).join('');
+            <div class="item-main">
+                <h4>${r.company} ${isOverdue?'<span class="overdue-tag">ГОРЯЧИЙ / ЗАБЫТ</span>':''}</h4>
+                <p>${r.cargo} | Создан: ${dFmt(r.createdAt)} | ${r.manager}</p>
+            </div>
+            <div class="item-actions">
+                ${r.status !== 'completed' ? `<button class="action-btn" style="color:var(--success)" onclick="finishRequest(event, '${r.id}')">✅</button>` : ''}
+                <button class="action-btn" onclick="openEdit('${r.id}','request')">✎</button>
+                <button class="action-btn btn-delete" onclick="deleteItem('requests', '${r.id}')">×</button>
+            </div>
+        </div>`;
+    }).join('');
     
-    // Кнопка
     if (totalFound > listLimits.requests) {
-        html += `<div class="load-more-container"><button class="btn-load-more" onclick="loadMore('requests')">Загрузить еще (осталось ${totalFound - listLimits.requests})</button></div>`;
+        html += `<div class="load-more-container"><button class="btn-load-more" onclick="loadMore('requests')">Загрузить еще (показано ${listLimits.requests} из ${totalFound})</button></div>`;
     }
 
-    document.getElementById('requestsList').innerHTML = html;
+    document.getElementById('requestsList').innerHTML = html || '<div style="text-align:center; padding:20px; color:#999;">Ничего не найдено</div>';
     updateCounters();
 }
 function finishRequest(e, id) { 
@@ -2041,21 +2024,17 @@ function renderDeals() {
     const me = sessionStorage.getItem('crm_user');
     const adminFilter = document.getElementById('adminDealManagerFilter').value || 'all';
     const hideDone = document.getElementById('hideDoneDeals').checked;
-    
-    // Получаем значение нашего нового фильтра
     const paidFilter = document.getElementById('filterPaid').value;
 
     let f = deals.filter(d => {
-    if (d.isDeleted) return false; // ДОБАВЛЕНО
-    const companyText = String(d.company || "").toLowerCase();
-    const numText = String(d.num || "").toLowerCase();
+        if (d.isDeleted) return false;
+        const companyText = String(d.company || "").toLowerCase();
+        const numText = String(d.num || "").toLowerCase();
         const matchesSearch = companyText.includes(s) || numText.includes(s);
         const matchesAccess = checkDealAccess(d);
         const matchesStatus = hideDone ? d.status !== 'completed' : true;
-        
         let matchesManager = (me === 'admin' && adminFilter !== 'all') ? (d.manager === adminFilter) : true;
-
-        // ЛОГИКА ФИЛЬТРА ОПЛАТЫ:
+        
         let matchesPaid = true;
         if (paidFilter === 'paid') matchesPaid = d.isPaid === true;
         if (paidFilter === 'unpaid') matchesPaid = d.isPaid === false;
@@ -2067,41 +2046,41 @@ function renderDeals() {
     const limitedList = f.slice(0, listLimits.deals);
 
     let html = limitedList.map(d => {
-    const stage = (d.stage && stageMap[d.stage]) ? stageMap[d.stage] : stageMap.docs;
-    const isDebt = (d.stage === 'unloaded' && !d.isPaid);
-    const debtStyle = isDebt ? 'border-left: 5px solid var(--danger); background: #fff5f5;' : '';
-    const isSelected = selectedIds.has(String(d.id));
+        const stage = (d.stage && stageMap[d.stage]) ? stageMap[d.stage] : stageMap.docs;
+        const isDebt = (d.stage === 'unloaded' && !d.isPaid);
+        const debtStyle = isDebt ? 'border-left: 5px solid var(--danger); background: #fff5f5;' : '';
+        const isSelected = selectedIds.has(String(d.id));
 
-    return `
-    <div class="list-item ${d.status==='completed'?'completed':''} ${isSelected?'selected':''}" 
-         style="${debtStyle}" onclick="showDealPreview(${d.id})">
-        
-        <input type="checkbox" class="bulk-checkbox" 
-               ${isSelected ? 'checked' : ''} 
-               onclick="toggleSelect(event, '${d.id}')">
+        return `
+        <div class="list-item ${d.status==='completed'?'completed':''} ${isSelected?'selected':''}" 
+             style="${debtStyle}" onclick="showDealPreview(${d.id})">
+            
+            <input type="checkbox" class="bulk-checkbox" 
+                   ${isSelected ? 'checked' : ''} 
+                   onclick="toggleSelect(event, '${d.id}')">
 
-        <div class="item-main">
-            <div style="display:flex; align-items:center; gap:8px; margin-bottom: 3px;">
-                <h4 style="margin:0;">№ ${d.num} | ${d.company}</h4>
-                <span style="font-size:8px; text-transform:uppercase; padding:1px 6px; border-radius:10px; color:white; background:${stage.color}; font-weight:bold;">
-                    ${stage.label}
-                </span>
+            <div class="item-main">
+                <div style="display:flex; align-items:center; gap:8px; margin-bottom: 3px;">
+                    <h4 style="margin:0;">№ ${d.num} | ${d.company}</h4>
+                    <span style="font-size:8px; text-transform:uppercase; padding:1px 6px; border-radius:10px; color:white; background:${stage.color}; font-weight:bold;">
+                        ${stage.label}
+                    </span>
+                </div>
+                <p>${d.type || '-'} | Прибыль: <b>${d.prof}$</b> | ${d.manager}</p>
             </div>
-            <p>${d.type || '-'} | Прибыль: <b>${d.prof}$</b> | ${d.manager}</p>
-        </div>
-        <div class="item-actions">
-            <button class="action-btn" style="color:${d.isPaid ? 'var(--success)' : '#ccc'}; font-size:18px; font-weight:bold;" onclick="togglePaidStatus(event, '${d.id}')">$</button>
-            <button class="action-btn" onclick="openEdit('${d.id}','deal')">✎</button>
-            <button class="action-btn btn-delete" onclick="deleteItem('deals', '${d.id}')">×</button>
-        </div>
-    </div>`;
-}).join('');
+            <div class="item-actions">
+                <button class="action-btn" style="color:${d.isPaid ? 'var(--success)' : '#ccc'}; font-size:18px; font-weight:bold;" onclick="togglePaidStatus(event, '${d.id}')">$</button>
+                <button class="action-btn" onclick="openEdit('${d.id}','deal')">✎</button>
+                <button class="action-btn btn-delete" onclick="deleteItem('deals', '${d.id}')">×</button>
+            </div>
+        </div>`;
+    }).join('');
     
     if (totalFound > listLimits.deals) {
-        html += `<div class="load-more-container"><button class="btn-load-more" onclick="loadMore('deals')">Загрузить еще (осталось ${totalFound - listLimits.deals})</button></div>`;
+        html += `<div class="load-more-container"><button class="btn-load-more" onclick="loadMore('deals')">Загрузить еще (показано ${listLimits.deals} из ${totalFound})</button></div>`;
     }
 
-    document.getElementById('dealsList').innerHTML = html;
+    document.getElementById('dealsList').innerHTML = html || '<div style="text-align:center; padding:20px; color:#999;">Ничего не найдено</div>';
     updateCounters();
 }
     async function togglePaidStatus(e, id) {
@@ -2257,37 +2236,25 @@ function renderCompanies() {
     updateCounters();
 }
     function renderPartners() {
-    // 1. Получаем значения из всех полей фильтрации
     const searchName = document.getElementById('searchPart').value.toLowerCase();
     const filterCountry = document.getElementById('filterPartCountry').value.toLowerCase();
     const filterStatus = document.getElementById('filterPartStatus').value;
     
-    // 2. Фильтруем массив партнеров
     let f = partners.filter(p => {
-        if (p.isDeleted) return false; // Не показываем удаленных
-
-        // Проверка по имени
+        if (p.isDeleted) return false;
         const matchName = p.name.toLowerCase().includes(searchName);
-        
-        // Проверка по стране (приводим к строке, чтобы не было ошибок если поле пустое)
         const matchCountry = String(p.country || "").toLowerCase().includes(filterCountry);
-        
-        // Проверка по статусу (если выбрано "all" — пропускаем всех)
         const matchStatus = (filterStatus === 'all') || (p.status === filterStatus);
-
-        // Объект отображается, только если прошел все 3 проверки
         return matchName && matchCountry && matchStatus;
     });
     
-    // 3. Логика ограничения списка и кнопка "Загрузить еще"
     const totalFound = f.length;
     const limitedList = f.slice(0, listLimits.partners);
 
     let html = limitedList.map(p => {
-        const isSelected = selectedIds.has(String(p.id)); // Проверка выделения
+        const isSelected = selectedIds.has(String(p.id));
         return `
         <div class="list-item ${isSelected ? 'selected' : ''}" onclick="showPartnerPreview(${p.id})">
-            <!-- ДОБАВЛЕН ЧЕКБОКС -->
             <input type="checkbox" class="bulk-checkbox" 
                    ${isSelected ? 'checked' : ''} 
                    onclick="toggleSelect(event, '${p.id}')">
@@ -2303,13 +2270,12 @@ function renderCompanies() {
         </div>
     `}).join('');
 
-    // Добавляем кнопку дозагрузки, если партнеров больше чем лимит
     if (totalFound > listLimits.partners) {
-        html += `<div class="load-more-container"><button class="btn-load-more" onclick="loadMore('partners')">Загрузить еще (осталось ${totalFound - listLimits.partners})</button></div>`;
+        html += `<div class="load-more-container"><button class="btn-load-more" onclick="loadMore('partners')">Загрузить еще (показано ${listLimits.partners} из ${totalFound})</button></div>`;
     }
 
-    document.getElementById('partnersList').innerHTML = html;
-    updateCounters(); // Обновляем счетчик на вкладке
+    document.getElementById('partnersList').innerHTML = html || '<div style="text-align:center; padding:20px; color:#999;">Ничего не найдено</div>';
+    updateCounters();
 }
 
   // --- ФУНКЦИИ РЕДАКТИРОВАНИЯ ---
