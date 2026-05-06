@@ -3070,34 +3070,47 @@ function updateDatalists() {
         }
     }
 function updateCounters() { 
-        const me = sessionStorage.getItem('crm_user');
+    const me = sessionStorage.getItem('crm_user');
 
-        // 1. Активности: считаем только свои и НЕ удаленные
-        const myReminders = reminders.filter(r => (me === 'admin' || r.manager === me) && !r.isDeleted);
-        document.getElementById('count-calls').innerText = myReminders.length; 
+    // 1. Активности: считаем только свои, НЕ удаленные и НЕ завершенные (status !== 'completed')
+    const myReminders = reminders.filter(r => 
+        (me === 'admin' || r.manager === me || (r.sharedWith || "").split(',').includes(me)) && 
+        !r.isDeleted && 
+        r.status !== 'completed'
+    );
+    document.getElementById('count-calls').innerText = myReminders.length; 
 
-        // 2. Запросы: считаем только те, к которым есть доступ и НЕ удаленные
-        const myRequests = requests.filter(r => checkAccess(r.company) && !r.isDeleted);
-        document.getElementById('count-requests').innerText = myRequests.length; 
+    // 2. Запросы: считаем только доступные, НЕ удаленные и НЕ завершенные (status !== 'completed')
+    const myRequests = requests.filter(r => 
+        checkAccess(r.company) && 
+        !r.isDeleted && 
+        r.status !== 'completed'
+    );
+    document.getElementById('count-requests').innerText = myRequests.length; 
 
-        // 3. Сделки: считаем только доступные и НЕ удаленные
-        const myDeals = deals.filter(d => checkDealAccess(d) && !d.isDeleted);
-        document.getElementById('count-deals').innerText = myDeals.length; 
+    // 3. Сделки: считаем только доступные, НЕ удаленные и НЕ закрытые (status !== 'completed' И stage !== 'closed')
+    const myDeals = deals.filter(d => 
+        checkDealAccess(d) && 
+        !d.isDeleted && 
+        d.status !== 'completed' && 
+        d.stage !== 'closed'
+    );
+    document.getElementById('count-deals').innerText = myDeals.length; 
 
-        // 4. Компании: считаем доступные и НЕ удаленные
-        const myCompanies = companies.filter(c => checkAccess(c.name) && !c.isDeleted);
-        document.getElementById('count-companies').innerText = myCompanies.length; 
+    // 4. Компании: считаем доступные и НЕ удаленные (здесь статус обычно не ограничиваем, так как компания всегда "активна" в базе)
+    const myCompanies = companies.filter(c => checkAccess(c.name) && !c.isDeleted);
+    document.getElementById('count-companies').innerText = myCompanies.length; 
 
-        // 5. Партнеры: считаем только НЕ удаленные
-        const myPartners = partners.filter(p => !p.isDeleted);
-        document.getElementById('count-partners').innerText = myPartners.length; 
+    // 5. Партнеры: считаем только НЕ удаленные
+    const myPartners = partners.filter(p => !p.isDeleted);
+    document.getElementById('count-partners').innerText = myPartners.length; 
 
-        // 6. Трекинг: считаем доступные и НЕ удаленные
-        if(document.getElementById('count-tracking')) {
-            const myTracking = tracking.filter(t => checkTrackingAccess(t) && !t.isDeleted);
-            document.getElementById('count-tracking').innerText = myTracking.length;
-        }
+    // 6. Трекинг: считаем доступные и НЕ удаленные
+    if(document.getElementById('count-tracking')) {
+        const myTracking = tracking.filter(t => checkTrackingAccess(t) && !t.isDeleted);
+        document.getElementById('count-tracking').innerText = myTracking.length;
     }
+}
 
 function calcEditProf() {
     const inc = parseFloat(document.getElementById('eDealInc').value || 0);
