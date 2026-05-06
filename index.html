@@ -535,6 +535,98 @@ button.main:active {
 ::-webkit-scrollbar-thumb:hover {
     background: var(--primary);
 }
+        /* 1. Настройка сетки виджетов (верхние 4 карточки) */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 20px;
+    margin-bottom: 25px;
+}
+
+/* 2. Сами карточки-виджеты */
+.dash-card {
+    background: white;
+    padding: 20px;
+    border-radius: var(--radius); /* Используем твой стандарт 12px */
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    transition: all 0.3s ease;
+}
+
+.dash-card:hover {
+    transform: translateY(-5px); /* Эффект приподнимания */
+    box-shadow: var(--shadow);
+    border-color: var(--primary);
+}
+
+/* 3. Иконки внутри виджетов */
+.dash-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+    background: #fdf6ff; /* Нежно-фиолетовый фон под иконку */
+    color: var(--primary);
+}
+
+/* 4. Оформление текста в виджетах */
+.dash-info label {
+    display: block;
+    font-size: 10px;
+    text-transform: uppercase;
+    color: #888;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+}
+
+.dash-value {
+    font-size: 22px;
+    font-weight: 800;
+    color: #2d1a2d;
+}
+
+/* 5. Тренды (проценты вверх/вниз) */
+.dash-trend {
+    font-size: 11px;
+    font-weight: 600;
+    margin-top: 4px;
+}
+.dash-trend.up { color: var(--success); }
+.dash-trend.down { color: var(--danger); }
+
+/* 6. Стили для элементов списка "План на сегодня" */
+.plan-item {
+    background: #fcfaff;
+    border: 1px solid #efe6ef;
+    padding: 10px 12px;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.plan-item:hover {
+    background: white;
+    border-color: var(--primary);
+    box-shadow: 0 3px 10px rgba(81, 31, 84, 0.1);
+}
+
+.plan-item strong {
+    font-size: 11px;
+    color: #333;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
     </style>
 </head>
 <body>
@@ -648,78 +740,73 @@ button.main:active {
     </div>
 </div>
     
-    <div id="dashboard" class="content active">
-    <div class="scroll-list" style="padding: 20px; background: #f3f4f6;">
-        <h2 style="margin-bottom: 20px; color: var(--primary);">Сводка за месяц</h2>
-        
-        <!-- Сетка виджетов -->
-        <div class="dashboard-grid">
-            <!-- Виджет 1: Прибыль -->
-            <div class="dash-card">
-                <div class="dash-icon" style="background: #eef2ff; color: #6366f1;">💵</div>
-                <div class="dash-info">
-                    <label>Прибыль за месяц</label>
-                    <div class="dash-value" id="dash-profit">0 USD</div>
-                    <div class="dash-trend" id="dash-profit-trend">--</div>
-                </div>
-            </div>
+<div class="scroll-list" style="padding: 25px; background: var(--bg);">
+    <h2 style="margin-top: 0; color: var(--primary); font-weight: 800;">Панель управления</h2>
 
-            <!-- Виджет 2: Активные сделки -->
-            <div class="dash-card">
-                <div class="dash-icon" style="background: #ecfdf5; color: #10b981;">💰</div>
-                <div class="dash-info">
-                    <label>Сделок в работе</label>
-                    <div class="dash-value" id="dash-deals-count">0</div>
-                    <div class="dash-sub" id="dash-deals-sum">на сумму 0 USD</div>
-                </div>
-            </div>
-
-            <!-- Виджет 3: Просроченные задачи -->
-            <div class="dash-card" onclick="openTab('calls')" style="cursor:pointer;">
-                <div class="dash-icon" style="background: #fff1f2; color: #f43f5e;">⚠️</div>
-                <div class="dash-info">
-                    <label>Просроченные задачи</label>
-                    <div class="dash-value" id="dash-overdue-count" style="color: #f43f5e;">0</div>
-                    <div class="dash-sub">Требуют внимания</div>
-                </div>
-            </div>
-            
-            <!-- Виджет 4: Новые запросы -->
-            <div class="dash-card">
-                <div class="dash-icon" style="background: #fef3c7; color: #f59e0b;">📦</div>
-                <div class="dash-info">
-                    <label>Новые запросы</label>
-                    <div class="dash-value" id="dash-req-count">0</div>
-                    <div class="dash-sub">за последние 7 дней</div>
-                </div>
+    <!-- ВЕРХНИЕ ВИДЖЕТЫ -->
+    <div class="dashboard-grid">
+        <div class="dash-card">
+            <div class="dash-icon">💵</div>
+            <div class="dash-info">
+                <label>Прибыль месяца</label>
+                <div class="dash-value" id="dash-profit">0 USD</div>
+                <div id="dash-profit-trend"></div>
             </div>
         </div>
-
-        <!-- Секция с графиком и последними событиями -->
-   <div class="dashboard-lower-grid" style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-top: 20px;">
-    <div style="display: flex; flex-direction: column; gap: 20px;">
-        <!-- НОВЫЙ БЛОК: ПЛАН НА СЕГОДНЯ -->
-        <div class="card" style="height: auto; min-height: 200px; border-left: 5px solid var(--warning);">
-            <h3>📅 План на сегодня</h3>
-            <div id="dash-today-plan" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                <!-- Сюда попадут задачи -->
+        <div class="dash-card">
+            <div class="dash-icon" style="background:#e6f4ea; color:#1e8e3e;">🚛</div>
+            <div class="dash-info">
+                <label>В работе</label>
+                <div class="dash-value" id="dash-deals-count">0</div>
+                <div id="dash-deals-sum" style="font-size:10px; color:#666;">сделок</div>
             </div>
         </div>
-
-        <div class="card" style="height: 350px;">
-            <h3>Динамика прибыли</h3>
-            <canvas id="dash-main-chart"></canvas>
+        <div class="dash-card" onclick="openTab('calls')" style="cursor:pointer">
+            <div class="dash-icon" style="background:#fce8e6; color:#d93025;">🔔</div>
+            <div class="dash-info">
+                <label>Напоминания</label>
+                <div class="dash-value" id="dash-overdue-count">0</div>
+                <div style="font-size:10px; color:#d93025;">просрочено</div>
+            </div>
+        </div>
+        <div class="dash-card">
+            <div class="dash-icon" style="background:#e8f0fe; color:#1a73e8;">📦</div>
+            <div class="dash-info">
+                <label>Запросы</label>
+                <div class="dash-value" id="dash-req-count">0</div>
+                <div style="font-size:10px; color:#666;">за 7 дней</div>
+            </div>
         </div>
     </div>
-    
-   <div class="card" style="height: 100%;">
-        <h3>Последние сделки</h3>
-        <div id="dash-recent-list" style="font-size: 11px;"></div>
-    </div>
-</div> <!-- Закрывает dashboard-lower-grid -->
-</div> <!-- Закрывает scroll-list -->
-</div> <!-- Закрывает dashboard -->
 
+    <!-- НИЖНЯЯ ЧАСТЬ: ПЛАН И ГРАФИК -->
+    <div class="dashboard-lower-grid" style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 20px;">
+        <div style="display: flex; flex-direction: column; gap: 20px;">
+            <!-- ПЛАН НА СЕГОДНЯ -->
+            <div class="card" style="height: auto; border-top: 4px solid var(--primary);">
+                <h3 style="display:flex; justify-content:space-between; align-items:center;">
+                    📅 План на сегодня 
+                    <small id="plan-date" style="text-transform:none; color:#999; font-size:10px;"></small>
+                </h3>
+                <div id="dash-today-plan" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <!-- Сюда JS вставит данные -->
+                </div>
+            </div>
+
+            <!-- ГРАФИК -->
+            <div class="card" style="height: 300px;">
+                <h3>📊 Динамика прибыли</h3>
+                <canvas id="dash-main-chart"></canvas>
+            </div>
+        </div>
+
+        <!-- ПОСЛЕДНИЕ СДЕЛКИ -->
+        <div class="card" style="border-top: 4px solid #eee;">
+            <h3>🕓 Последние закрытые</h3>
+            <div id="dash-recent-list"></div>
+        </div>
+    </div>
+</div>
 
 <!-- ВКЛАДКА ЗВОНКИ -->
 <div id="calls" class="content">
@@ -3151,26 +3238,22 @@ function updateDashboard() {
     const now = new Date();
     const currentMonth = now.getMonth();
     const currentYear = now.getFullYear();
+    const todayStr = new Date().toLocaleDateString('ru-RU');
 
-    // 1. Фильтруем данные (только не удаленные и с доступом)
+    // Базовые фильтры (не удаленные и с доступом)
     const myDeals = deals.filter(d => !d.isDeleted && checkDealAccess(d));
     const myReminders = reminders.filter(r => !r.isDeleted && (me === 'admin' || r.manager === me));
     const myRequests = requests.filter(r => !r.isDeleted && checkAccess(r.company));
 
-    // --- ИСПРАВЛЕННЫЙ РАСЧЕТ ПРИБЫЛИ ---
-    // Считаем прибыль, если: 
-    // ЭТАП = "Закрыта" (closed) ИЛИ статус = "completed" ИЛИ стоит галочка "Оплачено" (isPaid)
-    
+    // --- 1. РАСЧЕТ ПРИБЫЛИ И ТРЕНДА ---
     const profitThisMonth = myDeals
         .filter(d => {
-            const date = new Date(d.createdAt); // Можно заменить на d.payDate, если важна дата оплаты
+            const date = new Date(d.createdAt);
             const isFinished = (d.stage === 'closed' || d.status === 'completed' || d.isPaid === true);
-            const isThisMonth = (date.getMonth() === currentMonth && date.getFullYear() === currentYear);
-            return isFinished && isThisMonth;
+            return isFinished && date.getMonth() === currentMonth && date.getFullYear() === currentYear;
         })
         .reduce((sum, d) => sum + parseFloat(d.prof || 0), 0);
 
-    // Расчет для прошлого месяца (для тренда)
     const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
     const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
     
@@ -3178,37 +3261,31 @@ function updateDashboard() {
         .filter(d => {
             const date = new Date(d.createdAt);
             const isFinished = (d.stage === 'closed' || d.status === 'completed' || d.isPaid === true);
-            const isLastMonth = (date.getMonth() === lastMonth && date.getFullYear() === lastMonthYear);
-            return isFinished && isLastMonth;
+            return isFinished && date.getMonth() === lastMonth && date.getFullYear() === lastMonthYear;
         })
         .reduce((sum, d) => sum + parseFloat(d.prof || 0), 0);
 
-    // Отрисовка прибыли на экране
     document.getElementById('dash-profit').innerText = Math.round(profitThisMonth).toLocaleString() + ' USD';
     
     const trendEl = document.getElementById('dash-profit-trend');
     if (profitLastMonth > 0) {
         const diff = ((profitThisMonth - profitLastMonth) / profitLastMonth * 100).toFixed(1);
-        if (diff > 0) {
-            trendEl.className = 'dash-trend up';
-            trendEl.innerText = `↑ +${diff}% к прошлому месяцу`;
-        } else if (diff < 0) {
-            trendEl.className = 'dash-trend down';
-            trendEl.innerText = `↓ ${diff}% к прошлому месяцу`;
-        } else {
-            trendEl.innerText = `0% к прошлому месяцу`;
-        }
+        const isUp = diff >= 0;
+        trendEl.className = 'dash-trend ' + (isUp ? 'up' : 'down');
+        trendEl.innerText = (isUp ? '↑ +' : '↓ ') + Math.abs(diff) + '% к прошлому месяцу';
     } else {
+        trendEl.className = 'dash-trend';
         trendEl.innerText = `Первый месяц работы`;
     }
 
-    // --- СДЕЛКИ В РАБОТЕ (Те, что НЕ закрыты и НЕ оплачены) ---
+    // --- 2. СДЕЛКИ В РАБОТЕ (ПОТЕНЦИАЛ) ---
     const activeDeals = myDeals.filter(d => d.stage !== 'closed' && d.status !== 'completed' && !d.isPaid);
     const activeSum = activeDeals.reduce((sum, d) => sum + parseFloat(d.inc || 0), 0);
+    
     document.getElementById('dash-deals-count').innerText = activeDeals.length;
-    document.getElementById('dash-deals-sum').innerText = `потенциал: ${Math.round(activeSum).toLocaleString()} USD`;
+    document.getElementById('dash-deals-sum').innerText = `Потенциал: ${Math.round(activeSum).toLocaleString()} USD`;
 
-    // --- ОСТАЛЬНЫЕ ВИДЖЕТЫ ---
+    // --- 3. СЧЕТЧИКИ (ПРОСРОЧКА И ЗАПРОСЫ) ---
     const overdueCount = myReminders.filter(r => r.status !== 'completed' && new Date(r.date) < now).length;
     document.getElementById('dash-overdue-count').innerText = overdueCount;
 
@@ -3216,45 +3293,54 @@ function updateDashboard() {
     const newReqCount = myRequests.filter(r => new Date(r.createdAt) > sevenDaysAgo).length;
     document.getElementById('dash-req-count').innerText = newReqCount;
 
-    const recentHtml = myDeals
-        .filter(d => (d.stage === 'closed' || d.isPaid))
-        .slice(-5).reverse().map(d => `
-        <div style="border-bottom:1px solid #eee; padding:8px 0; display:flex; justify-content:space-between; align-items:center;">
-            <span style="max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><b>${d.num}</b> ${d.company}</span>
-            <span style="color:var(--success); font-weight:bold;">+${Math.round(d.prof)}$</span>
+    // --- 4. ПЛАН НА СЕГОДНЯ (ИНТЕРАКТИВНЫЙ) ---
+    const todayCalls = myReminders.filter(r => r.status !== 'completed' && r.date && dFmt(r.date) === todayStr);
+    const pendingPayments = myDeals.filter(d => d.stage === 'unloaded' && !d.isPaid);
+
+    let callsHtml = todayCalls.map(c => `
+        <div class="plan-item" onclick="openTab('calls'); showCallPreview(${c.id})">
+            <strong title="${c.topic || ''}">${c.name}</strong>
+            <span style="font-size:9px; color:var(--primary); font-weight:bold;">ЗВОНОК</span>
         </div>
-    `).join('');
-    document.getElementById('dash-recent-list').innerHTML = recentHtml || 'Завершенных сделок нет';
+    `).join('') || '<div style="text-align:center; padding:20px; color:#ccc; font-size:10px;">Нет звонков на сегодня</div>';
 
-    // --- ЛОГИКА "ПЛАН НА СЕГОДНЯ" ---
-    const todayStr = new Date().toLocaleDateString('ru-RU');
-    
-    // 1. Звонки на сегодня (с проверкой на наличие даты)
-    const todayCalls = reminders.filter(r => {
-        if (r.isDeleted || r.status === 'completed' || !r.date) return false;
-        const isMyTask = (me === 'admin' || r.manager === me);
-        return isMyTask && dFmt(r.date) === todayStr;
-    });
-
-    // 2. Сделки, ждущие оплаты (Этап "unloaded" и не оплачено)
-    const pendingPayments = deals.filter(d => !d.isDeleted && (me === 'admin' || d.manager === me) && d.stage === 'unloaded' && !d.isPaid);
-
-    let planHtml = `
-        <div style="background: #fffef0; padding: 10px; border-radius: 8px; border: 1px solid #ffeeba;">
-            <strong style="color: #856404; font-size: 11px;">📞 СДЕЛАТЬ ЗВОНКОВ: ${todayCalls.length}</strong>
-            <div style="margin-top: 5px; max-height: 80px; overflow-y: auto;">
-                ${todayCalls.map(c => `<div style="font-size: 10px; margin-bottom: 4px; border-bottom: 1px solid #eee; cursor:pointer;" onclick="openTab('calls'); showCallPreview(${c.id})">• ${c.name}</div>`).join('') || '<span style="color:#999; font-size:10px;">На сегодня пусто</span>'}
-            </div>
+    let paysHtml = pendingPayments.map(p => `
+        <div class="plan-item" onclick="openTab('deals'); showDealPreview(${p.id})" style="border-left:3px solid var(--danger);">
+            <strong>№${p.num} - ${p.company}</strong>
+            <span style="font-size:9px; color:var(--danger); font-weight:bold;">ОПЛАТА</span>
         </div>
-        <div style="background: #f0fff4; padding: 10px; border-radius: 8px; border: 1px solid #c3e6cb;">
-            <strong style="color: #155724; font-size: 11px;">💰 ЖДЕМ ОПЛАТУ: ${pendingPayments.length}</strong>
-            <div style="margin-top: 5px; max-height: 80px; overflow-y: auto;">
-                ${pendingPayments.map(p => `<div style="font-size: 10px; margin-bottom: 4px; border-bottom: 1px solid #eee; cursor:pointer;" onclick="openTab('deals'); showDealPreview(${p.id})">• №${p.num} (${p.company})</div>`).join('') || '<span style="color:#999; font-size:10px;">Долгов нет</span>'}
-            </div>
+    `).join('') || '<div style="text-align:center; padding:20px; color:#ccc; font-size:10px;">Все счета оплачены</div>';
+
+    document.getElementById('dash-today-plan').innerHTML = `
+        <div style="background:#fff; border-radius:10px; padding:5px;">
+            <p style="font-size:10px; font-weight:bold; color:#888; margin-bottom:10px; display:flex; justify-content:space-between;">
+                <span>📞 ТЕЛЕФОН</span> <span>${todayCalls.length}</span>
+            </p>
+            ${callsHtml}
+        </div>
+        <div style="background:#fff; border-radius:10px; padding:5px;">
+            <p style="font-size:10px; font-weight:bold; color:#888; margin-bottom:10px; display:flex; justify-content:space-between;">
+                <span>💰 ДЕБИТОРКА</span> <span>${pendingPayments.length}</span>
+            </p>
+            ${paysHtml}
         </div>
     `;
-    const planContainer = document.getElementById('dash-today-plan');
-    if (planContainer) planContainer.innerHTML = planHtml;
+
+    // --- 5. ПОСЛЕДНИЕ ЗАКРЫТЫЕ СДЕЛКИ (СПИСОК) ---
+    const recentHtml = myDeals
+        .filter(d => (d.stage === 'closed' || d.isPaid))
+        .slice(-8).reverse().map(d => `
+        <div style="padding: 12px; border-bottom: 1px solid #f8f9fa; display: flex; justify-content: space-between; align-items: center; transition:0.2s;" class="clickable-row" onclick="showDealPreview(${d.id})">
+            <div style="overflow:hidden; margin-right:10px;">
+                <div style="font-weight:700; font-size:11px; color:#333; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${d.company}</div>
+                <div style="font-size:9px; color:#999;">Сделка №${d.num} • ${d.manager}</div>
+            </div>
+            <div style="font-weight:800; color:var(--success); font-size:12px;">+${Math.round(d.prof)}$</div>
+        </div>
+    `).join('');
+    document.getElementById('dash-recent-list').innerHTML = recentHtml || '<p style="text-align:center; color:#ccc; margin-top:20px;">Сделок еще нет</p>';
+
+    // Обновляем график
     updateDashChart(myDeals);
 }
 
@@ -3292,7 +3378,7 @@ last6Months.forEach(m => {
             datasets: [{
                 label: 'Прибыль',
                 data: last6Months.map(m => m.profit),
-                backgroundColor: '#6366f1',
+                backgroundColor: 'var(--primary)',
                 borderRadius: 4
             }]
         },
