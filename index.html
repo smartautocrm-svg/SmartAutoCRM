@@ -711,11 +711,13 @@ button.main:active {
         </div>
     </div>
     
-    <div class="card" style="height: 100%;">
+   <div class="card" style="height: 100%;">
         <h3>Последние сделки</h3>
         <div id="dash-recent-list" style="font-size: 11px;"></div>
     </div>
-</div>
+</div> <!-- Закрывает dashboard-lower-grid -->
+</div> <!-- Закрывает scroll-list -->
+</div> <!-- Закрывает dashboard -->
 
 
 <!-- ВКЛАДКА ЗВОНКИ -->
@@ -3226,8 +3228,12 @@ function updateDashboard() {
     // --- ЛОГИКА "ПЛАН НА СЕГОДНЯ" ---
     const todayStr = new Date().toLocaleDateString('ru-RU');
     
-    // 1. Звонки на сегодня
-    const todayCalls = reminders.filter(r => !r.isDeleted && r.status !== 'completed' && (me === 'admin' || r.manager === me) && dFmt(r.date) === todayStr);
+    // 1. Звонки на сегодня (с проверкой на наличие даты)
+    const todayCalls = reminders.filter(r => {
+        if (r.isDeleted || r.status === 'completed' || !r.date) return false;
+        const isMyTask = (me === 'admin' || r.manager === me);
+        return isMyTask && dFmt(r.date) === todayStr;
+    });
 
     // 2. Сделки, ждущие оплаты (Этап "unloaded" и не оплачено)
     const pendingPayments = deals.filter(d => !d.isDeleted && (me === 'admin' || d.manager === me) && d.stage === 'unloaded' && !d.isPaid);
