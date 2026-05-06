@@ -695,16 +695,25 @@ button.main:active {
         </div>
 
         <!-- Секция с графиком и последними событиями -->
-        <div class="dashboard-lower-grid" style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-top: 20px;">
-            <div class="card" style="height: 350px;">
-                <h3>Динамика прибыли</h3>
-                <canvas id="dash-main-chart"></canvas>
-            </div>
-            <div class="card" style="height: 350px;">
-                <h3>Последние сделки</h3>
-                <div id="dash-recent-list" style="font-size: 11px;"></div>
+   <div class="dashboard-lower-grid" style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-top: 20px;">
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+        <!-- НОВЫЙ БЛОК: ПЛАН НА СЕГОДНЯ -->
+        <div class="card" style="height: auto; min-height: 200px; border-left: 5px solid var(--warning);">
+            <h3>📅 План на сегодня</h3>
+            <div id="dash-today-plan" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <!-- Сюда попадут задачи -->
             </div>
         </div>
+
+        <div class="card" style="height: 350px;">
+            <h3>Динамика прибыли</h3>
+            <canvas id="dash-main-chart"></canvas>
+        </div>
+    </div>
+    
+    <div class="card" style="height: 100%;">
+        <h3>Последние сделки</h3>
+        <div id="dash-recent-list" style="font-size: 11px;"></div>
     </div>
 </div>
 
@@ -3214,6 +3223,31 @@ function updateDashboard() {
     `).join('');
     document.getElementById('dash-recent-list').innerHTML = recentHtml || 'Завершенных сделок нет';
 
+    // --- ЛОГИКА "ПЛАН НА СЕГОДНЯ" ---
+    const todayStr = new Date().toLocaleDateString('ru-RU');
+    
+    // 1. Звонки на сегодня
+    const todayCalls = reminders.filter(r => !r.isDeleted && r.status !== 'completed' && (me === 'admin' || r.manager === me) && dFmt(r.date) === todayStr);
+
+    // 2. Сделки, ждущие оплаты (Этап "unloaded" и не оплачено)
+    const pendingPayments = deals.filter(d => !d.isDeleted && (me === 'admin' || d.manager === me) && d.stage === 'unloaded' && !d.isPaid);
+
+    let planHtml = `
+        <div style="background: #fffef0; padding: 10px; border-radius: 8px; border: 1px solid #ffeeba;">
+            <strong style="color: #856404; font-size: 11px;">📞 СДЕЛАТЬ ЗВОНКОВ: ${todayCalls.length}</strong>
+            <div style="margin-top: 5px; max-height: 80px; overflow-y: auto;">
+                ${todayCalls.map(c => `<div style="font-size: 10px; margin-bottom: 4px; border-bottom: 1px solid #eee; cursor:pointer;" onclick="openTab('calls'); showCallPreview(${c.id})">• ${c.name}</div>`).join('') || '<span style="color:#999; font-size:10px;">На сегодня пусто</span>'}
+            </div>
+        </div>
+        <div style="background: #f0fff4; padding: 10px; border-radius: 8px; border: 1px solid #c3e6cb;">
+            <strong style="color: #155724; font-size: 11px;">💰 ЖДЕМ ОПЛАТУ: ${pendingPayments.length}</strong>
+            <div style="margin-top: 5px; max-height: 80px; overflow-y: auto;">
+                ${pendingPayments.map(p => `<div style="font-size: 10px; margin-bottom: 4px; border-bottom: 1px solid #eee; cursor:pointer;" onclick="openTab('deals'); showDealPreview(${p.id})">• №${p.num} (${p.company})</div>`).join('') || '<span style="color:#999; font-size:10px;">Долгов нет</span>'}
+            </div>
+        </div>
+    `;
+    const planContainer = document.getElementById('dash-today-plan');
+    if (planContainer) planContainer.innerHTML = planHtml;
     updateDashChart(myDeals);
 }
 
