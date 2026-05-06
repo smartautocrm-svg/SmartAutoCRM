@@ -1877,7 +1877,7 @@ function renderReminders() {
           me = sessionStorage.getItem('crm_user'),
           hideDone = document.getElementById('hideDoneCalls').checked;
 
-    const limitMs = 3 * 24 * 60 * 60 * 1000, now = new Date();
+    const now = new Date();
     
     let f = reminders.filter(r => {
         if (r.isDeleted) return false;
@@ -1903,7 +1903,7 @@ function renderReminders() {
     const limitedList = f.slice(0, listLimits.calls);
     
     let html = limitedList.map(r => {
-        const isOverdue = r.status !== 'completed' && (now - new Date(r.date)) > limitMs;
+        const isOverdue = r.status !== 'completed' && new Date(r.date) < now;
         const isSelected = selectedIds.has(String(r.id)); 
 
         return `<div class="list-item ${r.status==='completed'?'completed':''} ${isOverdue?'overdue':''} ${isSelected?'selected':''}" 
@@ -3120,7 +3120,12 @@ function updateDashboard() {
 
     // 1. Фильтруем данные (только не удаленные и с доступом)
     const myDeals = deals.filter(d => !d.isDeleted && checkDealAccess(d));
-    const myReminders = reminders.filter(r => !r.isDeleted && (me === 'admin' || r.manager === me));
+    const myReminders = reminders.filter(r => {
+        if (r.isDeleted) return false;
+        // Если админ - видит всё, если менеджер - свои + те, где он в sharedWith
+        return (me === 'admin' || r.manager === me || (r.sharedWith || "").split(',').includes(me));
+    });
+
     const myRequests = requests.filter(r => !r.isDeleted && checkAccess(r.company));
 
     // --- ИСПРАВЛЕННЫЙ РАСЧЕТ ПРИБЫЛИ ---
