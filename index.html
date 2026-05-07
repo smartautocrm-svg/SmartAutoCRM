@@ -2229,47 +2229,55 @@ function renderCompanies() {
           cat = document.getElementById('sortComp').value, 
           valSel = document.getElementById('secondarySelect').value;
           
-    const limitMs = 10 * 24 * 60 * 60 * 1000, now = new Date();
-    
+    // 1. Собираем названия компаний, у которых есть хоть какая-то активность
+    // Мы фильтруем только не удаленные (!isDeleted) записи
+    const companiesWithWork = new Set([
+        ...reminders.filter(r => !r.isDeleted).map(r => r.name),
+        ...requests.filter(r => !r.isDeleted).map(r => r.company),
+        ...deals.filter(d => !d.isDeleted).map(d => d.company)
+    ]);
+
     let f = companies.filter(c => {
-    if (c.isDeleted) return false; // ДОБАВЛЕНО
-    const matchN = String(c.name).toLowerCase().includes(s);
+        if (c.isDeleted) return false; 
+        const matchN = String(c.name).toLowerCase().includes(s);
         const matchProd = String(c.product || "").toLowerCase().includes(fProd);
         const matchCity = String(c.city || "").toLowerCase().includes(fCity);
         const matchImp = String(c.import || "").toLowerCase().includes(fImp);
         const matchExp = String(c.export || "").toLowerCase().includes(fExp);
-        let matchT = true; if (cat === 'manager' && valSel) matchT = (c.manager === valSel); if (cat === 'status' && valSel) matchT = (c.status === valSel);
+        let matchT = true; 
+        if (cat === 'manager' && valSel) matchT = (c.manager === valSel); 
+        if (cat === 'status' && valSel) matchT = (c.status === valSel);
         return matchN && matchProd && matchCity && matchImp && matchExp && matchT;
     });
 
-    // --- НОВАЯ ЛОГИКА ОГРАНИЧЕНИЯ ---
     const totalFound = f.length;
     const limitedList = f.slice(0, listLimits.companies);
 
     let html = limitedList.map(c => {
-    let isForgotten = false;
-    // ... (ваш код расчета isForgotten остается прежним)
-    const isSelected = selectedIds.has(String(c.id));
-
-    return `<div class="list-item ${isForgotten ? 'forgotten' : ''} ${isSelected?'selected':''}" 
-                 onclick="showCompanyPreview('${c.name}')">
+        // 2. Проверяем, есть ли компания в нашем списке "активных"
+        // Если названия нет ни в сделках, ни в запросах, ни в звонках — значит ЗАБЫТА
+        const isForgotten = !companiesWithWork.has(c.name);
         
-        <input type="checkbox" class="bulk-checkbox" 
-               ${isSelected ? 'checked' : ''} 
-               onclick="toggleSelect(event, '${c.id}')">
+        const isSelected = selectedIds.has(String(c.id));
 
-        <div class="item-main">
-            <h4>${c.name} ${isForgotten ? '<span class="forgotten-tag">⚠️ В работу</span>' : ''}</h4>
-            <p>${checkAccess(c.name) ? statusMap[c.status].label : '🔒 Ограничен'} | ${c.manager}</p>
-        </div>
-        <div class="item-actions">
-            <button class="action-btn" onclick="openEdit('${c.id}','company')">✎</button>
-            <button class="action-btn btn-delete" onclick="deleteItem('companies', '${c.id}')">×</button>
-        </div>
-    </div>`;
-}).join('');
+        return `<div class="list-item ${isForgotten ? 'forgotten' : ''} ${isSelected ? 'selected' : ''}" 
+                     onclick="showCompanyPreview('${c.name.replace(/'/g, "\\'")}')">
+            
+            <input type="checkbox" class="bulk-checkbox" 
+                   ${isSelected ? 'checked' : ''} 
+                   onclick="toggleSelect(event, '${c.id}')">
 
-    // Кнопка
+            <div class="item-main">
+                <h4>${c.name} ${isForgotten ? '<span class="forgotten-tag">⚠️ ЗАБЫТА</span>' : ''}</h4>
+                <p>${checkAccess(c.name) ? statusMap[c.status].label : '🔒 Ограничен'} | ${c.manager}</p>
+            </div>
+            <div class="item-actions">
+                <button class="action-btn" onclick="openEdit('${c.id}','company')">✎</button>
+                <button class="action-btn btn-delete" onclick="deleteItem('companies', '${c.id}')">×</button>
+            </div>
+        </div>`;
+    }).join('');
+
     if (totalFound > listLimits.companies) {
         html += `<div class="load-more-container"><button class="btn-load-more" onclick="loadMore('companies')">Загрузить еще (осталось ${totalFound - listLimits.companies})</button></div>`;
     }
