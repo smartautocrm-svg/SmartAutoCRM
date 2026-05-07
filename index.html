@@ -942,6 +942,10 @@ button.main:active {
             <input type="text" id="filterExport" placeholder="Экспорт..." oninput="debouncedRenderCompanies()">
             <select id="sortComp" onchange="updateSecondaryFilter()"><option value="">Фильтр</option><option value="manager">Менеджер</option><option value="status">Статус</option></select>
             <select id="secondarySelect" style="display:none;" onchange="renderCompanies()"></select>
+            <label style="font-size: 10px; display: flex; align-items: center; gap: 4px; white-space: nowrap; background: #fff0f0; padding: 4px 8px; border-radius: 4px; border: 1px solid #ffcccc; cursor: pointer;">
+    <input type="checkbox" id="hideActiveComp" onchange="renderCompanies()" style="width: auto;"> 
+    <span style="color: var(--danger); font-weight: bold;">⚠️ ТОЛЬКО ЗАБЫТЫЕ</span>
+</label>
         </div>
         <div class="scroll-list" id="companiesList"></div>
     </div>
@@ -2227,26 +2231,36 @@ function renderCompanies() {
           fImp = document.getElementById('filterImport').value.toLowerCase(), 
           fExp = document.getElementById('filterExport').value.toLowerCase(), 
           cat = document.getElementById('sortComp').value, 
-          valSel = document.getElementById('secondarySelect').value;
+          valSel = document.getElementById('secondarySelect').value,
+          onlyForgotten = document.getElementById('hideActiveComp').checked; // Получаем состояние галочки
           
-    // 1. Собираем названия компаний, у которых есть хоть какая-то активность
-    // Мы фильтруем только не удаленные (!isDeleted) записи
+    // 1. Собираем названия компаний с активностью
     const companiesWithWork = new Set([
         ...reminders.filter(r => !r.isDeleted).map(r => r.name),
         ...requests.filter(r => !r.isDeleted).map(r => r.company),
         ...deals.filter(d => !d.isDeleted).map(d => d.company)
     ]);
 
+    // 2. Фильтруем основной массив
     let f = companies.filter(c => {
-        if (c.isDeleted) return false; 
+        if (c.isDeleted) return false;
+
+        // Считаем, забыта ли компания ТУТ, чтобы использовать это в фильтре
+        const isForgotten = !companiesWithWork.has(c.name);
+
+        // Если включена галочка "Только забытые", а компания НЕ забыта — скрываем её
+        if (onlyForgotten && !isForgotten) return false;
+
         const matchN = String(c.name).toLowerCase().includes(s);
         const matchProd = String(c.product || "").toLowerCase().includes(fProd);
         const matchCity = String(c.city || "").toLowerCase().includes(fCity);
         const matchImp = String(c.import || "").toLowerCase().includes(fImp);
         const matchExp = String(c.export || "").toLowerCase().includes(fExp);
+        
         let matchT = true; 
         if (cat === 'manager' && valSel) matchT = (c.manager === valSel); 
         if (cat === 'status' && valSel) matchT = (c.status === valSel);
+        
         return matchN && matchProd && matchCity && matchImp && matchExp && matchT;
     });
 
@@ -2254,10 +2268,7 @@ function renderCompanies() {
     const limitedList = f.slice(0, listLimits.companies);
 
     let html = limitedList.map(c => {
-        // 2. Проверяем, есть ли компания в нашем списке "активных"
-        // Если названия нет ни в сделках, ни в запросах, ни в звонках — значит ЗАБЫТА
-        const isForgotten = !companiesWithWork.has(c.name);
-        
+        const isForgotten = !companiesWithWork.has(c.name); // Повторно для отрисовки меток
         const isSelected = selectedIds.has(String(c.id));
 
         return `<div class="list-item ${isForgotten ? 'forgotten' : ''} ${isSelected ? 'selected' : ''}" 
@@ -2279,10 +2290,10 @@ function renderCompanies() {
     }).join('');
 
     if (totalFound > listLimits.companies) {
-        html += `<div class="load-more-container"><button class="btn-load-more" onclick="loadMore('companies')">Загрузить еще (осталось ${totalFound - listLimits.companies})</button></div>`;
+        html += `<div class="load-more-container"><button class="btn-load-more" onclick="loadMore('companies')">Загрузить еще (показано ${limitedList.length} из ${totalFound})</button></div>`;
     }
 
-    document.getElementById('companiesList').innerHTML = html;
+    document.getElementById('companiesList').innerHTML = html || '<div style="text-align:center; padding:20px; color:#999;">Компаний не найдено</div>';
     updateCounters();
 }
     function renderPartners() {
