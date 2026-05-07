@@ -2748,48 +2748,79 @@ function convertToDeal(reqId) {
     document.getElementById('dealNum').focus();
     alert("Данные запроса перенесены в форму сделки. Запрос помечен как выполненный.");
 }
-    async function addDeal() { 
-        const n = document.getElementById('dealNum').value, t = document.getElementById('dealType').value; 
-        if(!n||!t)return alert("Заполните Номер и Тип сделки!"); 
+async function addDeal() { 
+    // 1. Получаем основные обязательные значения
+    const n = document.getElementById('dealNum').value;
+    const t = document.getElementById('dealType').value; 
+    
+    if(!n || !t) return alert("Заполните Номер и Тип сделки!"); 
 
-        const newItem = { 
-            id: Date.now(), 
-            num: n, 
-            company: document.getElementById('dealComp').value, 
-            cargo: document.getElementById('dealCargo').value, 
-            trans: document.getElementById('dealTransport').value, 
-            weight: document.getElementById('dealWeight').value, 
-            vol: document.getElementById('dealVol').value, 
-            value: document.getElementById('dealVal').value, 
-            curr: "USD", 
-            load: document.getElementById('dealLoad').value, 
-            zip: "", 
-            unload: document.getElementById('dealUnload').value, 
-            info: document.getElementById('dealInfo').value, 
-            manager: sessionStorage.getItem('crm_user'), 
-            createdAt: new Date().toISOString(), 
-            exp: document.getElementById('dealExp').value, 
-            inc: document.getElementById('dealInc').value, 
-            prof: document.getElementById('dealProf').value, 
-            status: "active", 
-            type: t, 
-            container: document.getElementById('dealContainer').value, 
-            contQty: document.getElementById('dealContQty').value, 
-            blNum: document.getElementById('dealBL').value, 
-            awbNum: document.getElementById('dealAWB').value, 
-            files: [],
-            margin: document.getElementById('dealMargin').value,
-            stage: document.getElementById('dealStage').value, 
-isPrivateDeal: document.getElementById('dealPrivacy').value === 'true'
-        }; 
+    // 2. Создаем объект новой сделки
+    const newItem = { 
+        id: Date.now(), 
+        num: n, 
+        company: document.getElementById('dealComp').value, 
+        cargo: document.getElementById('dealCargo').value, 
+        trans: document.getElementById('dealTransport').value, 
+        weight: document.getElementById('dealWeight').value, 
+        vol: document.getElementById('dealVol').value, 
+        value: document.getElementById('dealVal').value, 
+        curr: "USD", 
+        load: document.getElementById('dealLoad').value, 
+        zip: "", 
+        unload: document.getElementById('dealUnload').value, 
+        info: document.getElementById('dealInfo').value, 
+        manager: sessionStorage.getItem('crm_user'), 
+        createdAt: new Date().toISOString(), 
+        exp: document.getElementById('dealExp').value, 
+        inc: document.getElementById('dealInc').value, 
+        prof: document.getElementById('dealProf').value, 
+        status: "active", 
+        type: t, 
+        container: document.getElementById('dealContainer').value, 
+        contQty: document.getElementById('dealContQty').value, 
+        blNum: document.getElementById('dealBL').value, 
+        awbNum: document.getElementById('dealAWB').value, 
+        files: [],
+        margin: document.getElementById('dealMargin').value,
+        stage: document.getElementById('dealStage').value, 
+        isPrivateDeal: document.getElementById('dealPrivacy').value === 'true'
+    }; 
 
-        deals.push(newItem); 
-        renderDeals(); 
-        updateDashboard(); // Чтобы на главной сразу выросла прибыль
-        updateCounters();  // Чтобы обновилась цифра на вкладке "Сделки"
-        await sync('deals', deals, 'append'); 
-        // ... (очистка полей остается как была)
-    }
+    // 3. Обновляем локальные данные и интерфейс
+    deals.push(newItem); 
+    renderDeals(); 
+    updateDashboard(); 
+    updateCounters();  
+
+    // 4. Отправляем данные в Google Таблицу
+    await sync('deals', deals, 'append'); 
+
+    // --- 5. АВТОМАТИЧЕСКАЯ ОЧИСТКА ВСЕХ ПОЛЕЙ ФОРМЫ ---
+    const fieldsToClear = [
+        'dealNum', 'dealComp', 'dealCargo', 'dealWeight', 'dealVol', 
+        'dealVal', 'dealExp', 'dealInc', 'dealProf', 'dealMargin', 
+        'dealLoad', 'dealUnload', 'dealInfo', 'dealContQty', 
+        'dealBL', 'dealAWB'
+    ];
+    
+    fieldsToClear.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = '';
+    });
+
+    // Сброс выпадающих списков (select) к начальным значениям
+    document.getElementById('dealType').value = "";
+    document.getElementById('dealStage').value = "docs";
+    document.getElementById('dealTransport').value = "авто";
+    document.getElementById('dealPrivacy').value = "false";
+    document.getElementById('dealContainer').value = "";
+
+    // Вызываем проверку транспорта, чтобы скрыть поля для моря/авиа (так как мы сбросили на "авто")
+    checkTransportFields('deal');
+
+    console.log("Форма сделки очищена");
+}
    async function addCompany() {
     const n = document.getElementById('compName').value.trim();
     const p = document.getElementById('compProduct').value.trim();
