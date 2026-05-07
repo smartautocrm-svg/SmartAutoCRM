@@ -1720,6 +1720,16 @@ function showCallPreview(id) {
 
     const me = sessionStorage.getItem('crm_user');
     
+    // Подготовка названия компании как кликабельной ссылки
+    // Используем replace, чтобы корректно обрабатывать названия с кавычками
+    const safeCompanyName = r.name.replace(/'/g, "\\'");
+    const companyHeader = `
+        <h3 onclick="goToResult('companies', '${safeCompanyName}')" 
+            style="cursor:pointer; color:var(--primary); text-decoration:underline; display:inline-block;" 
+            title="Перейти к карточке компании">
+            🏢 ${r.name}
+        </h3>`;
+
     // Блок шеринга
     let shareHtml = (r.manager === me || me === 'admin') ? `
         <div style="grid-column:span 2; border-top:1px solid #eee; margin-top:10px; padding-top:10px;">
@@ -1739,7 +1749,7 @@ function showCallPreview(id) {
         </div>` : "";
 
     document.getElementById('preview-calls').innerHTML = `
-        <h3>${r.name}</h3>
+        ${companyHeader}
         <div class="preview-grid">
             <div class="preview-box"><label>Дата</label><span>${dtFmt(r.date)}</span></div>
             <div class="preview-box"><label>Менеджер</label><span>${r.manager}</span></div>
