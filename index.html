@@ -921,6 +921,7 @@ button.main:active {
         <input type="text" id="compWebsite" placeholder="Сайт">
         <input type="text" id="compImp" placeholder="Импорт">
         <input type="text" id="compExp" placeholder="Экспорт">
+        <textarea id="compDesc" style="grid-column: span 3; height: 50px;" placeholder="Дополнительное описание компании (примечания, особенности)..."></textarea>
         <select id="compManager" style="grid-column: span 2;"></select>
         <select id="compStatus">
             <option value="cold">❄️ Холодный</option>
@@ -928,7 +929,6 @@ button.main:active {
             <option value="active">🏆 Активный</option>
         </select>
         <div style="display:flex; align-items:center; gap:8px;"><input type="checkbox" id="compPrivate"> Приватная</div>
-        <textarea id="compDesc" style="grid-column: span 3; height: 50px;" placeholder="Дополнительное описание компании (примечания, особенности)..."></textarea>
     </div>
     <button class="main" style="background:var(--primary);" onclick="addCompany()">Создать компанию</button>
 </div>
