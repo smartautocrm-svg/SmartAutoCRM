@@ -1767,10 +1767,22 @@ function showCallPreview(id) {
 
 function showRequestPreview(id) {
     const r = requests.find(x => x.id == id); 
-    if (!r || !checkAccess(r.company)) return;
+    if (!r) return;
 
     const me = sessionStorage.getItem('crm_user');
 
+    // НОВАЯ ЛОГИКА ДОСТУПА:
+    // Разрешаем просмотр, если:
+    const isAdmin = (me === 'admin');
+    const isRequestManager = (r.manager === me);
+    const isRequestShared = (r.sharedWith || "").split(',').map(s => s.trim()).includes(me);
+    const hasCompanyAccess = checkAccess(r.company); // Доступ к самой компании (автор или шеринг компании)
+
+    // Если ни одно условие не выполнено — блокируем
+    if (!isAdmin && !isRequestManager && !isRequestShared && !hasCompanyAccess) {
+        document.getElementById('preview-requests').innerHTML = `<div style="padding:15px; text-align:center; background:#fff3cd; border-radius:4px;">🔒 У вас нет прав на просмотр этого конкретного запроса</div>`;
+        return;
+    }
     // 1. Сначала готовим блок "Поделиться" (только для автора или админа)
     let shareHtml = (r.manager === me || me === 'admin') ? `
         <div style="grid-column:span 2; border-top:1px solid #eee; margin-top:10px; padding-top:10px;">
@@ -2013,9 +2025,12 @@ function renderRequests() {
         if (r.isDeleted) return false;
         const me = sessionStorage.getItem('crm_user');
         
+        // Проверяем доступ конкретно к запросу
+        const isRequestShared = (r.sharedWith || "").split(',').map(s => s.trim()).includes(me);
+        
         const hasAccessToRequest = (me === 'admin') || 
                                    (r.manager === me) || 
-                                   (r.sharedWith || "").split(',').includes(me) || 
+                                   isRequestShared || 
                                    checkAccess(r.company);
 
         if (!hasAccessToRequest) return false;
