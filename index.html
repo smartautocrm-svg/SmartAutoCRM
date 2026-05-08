@@ -3287,7 +3287,7 @@ function updateDashboard() {
 
     // --- СДЕЛКИ В РАБОТЕ ---
     const activeDeals = myDeals.filter(d => d.stage !== 'closed' && d.status !== 'completed' && !d.isPaid);
-    const activeSum = activeDeals.reduce((sum, d) => sum + parseFloat(d.inc || 0), 0);
+    const activeSum = activeDeals.reduce((sum, d) => sum + parseFloat(d.prof || 0), 0);
     document.getElementById('dash-deals-count').innerText = activeDeals.length;
     document.getElementById('dash-deals-sum').innerText = `потенциал: ${Math.round(activeSum).toLocaleString()} USD`;
 
