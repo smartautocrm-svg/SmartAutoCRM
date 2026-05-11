@@ -3423,6 +3423,7 @@ function updateDashboard() {
 
 function updateDashChart(myDeals) {
     const ctx = document.getElementById('dash-main-chart').getContext('2d');
+    const me = sessionStorage.getItem('crm_user'); // <--- ДОБАВЬТЕ ЭТУ СТРОКУ
     const last6Months = [];
     for(let i=5; i>=0; i--) {
         const d = new Date();
