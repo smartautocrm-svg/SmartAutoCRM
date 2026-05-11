@@ -1055,11 +1055,13 @@ button.main:active {
             <h3>Новый партнер</h3>
             <div class="input-row">
                 <input type="text" id="partName" placeholder="Название компании *">
-                <select id="partStatus">
-                    <option value="агент">🤝 Агент</option>
-                    <option value="перевозчик">🚛 Перевозчик</option>
-                    <option value="брокер">📑 Брокер</option>
-                </select>
+<select id="partStatus">
+    <option value="карго">📦 Карго</option>
+    <option value="партнер">🤝 Партнер</option>
+    <option value="агент">🤝 Агент</option>
+    <option value="перевозчик">🚛 Перевозчик</option>
+    <option value="брокер">📑 Брокер</option>
+</select>
                 <input type="text" id="partCountry" placeholder="Страна">
                 <input type="text" id="partWeb" placeholder="Сайт">
                 <textarea id="partDesc" style="grid-column: span 2;" placeholder="Описание..."></textarea>
@@ -1097,12 +1099,14 @@ button.main:active {
             <input type="text" id="filterPartCountry" placeholder="Поиск по стране..." oninput="renderPartners()">
             
             <!-- Фильтр по статусу -->
-            <select id="filterPartStatus" onchange="renderPartners()" style="min-width: 130px;">
-                <option value="all">🌐 Все статусы</option>
-                <option value="агент">🤝 Агент</option>
-                <option value="перевозчик">🚛 Перевозчик</option>
-                <option value="брокер">📑 Брокер</option>
-            </select>
+<select id="filterPartStatus" onchange="renderPartners()" style="min-width: 130px;">
+    <option value="all">🌐 Все статусы</option>
+    <option value="карго">📦 Карго</option>
+    <option value="партнер">🤝 Партнер</option>
+    <option value="агент">🤝 Агент</option>
+    <option value="перевозчик">🚛 Перевозчик</option>
+    <option value="брокер">📑 Брокер</option>
+</select>
         </div>
         <div class="scroll-list" id="partnersList"></div>
     </div>
@@ -2611,11 +2615,13 @@ function renderCompanies() {
             // 2. Формируем HTML (структура как при создании)
             f.innerHTML = `
                 <input type="text" id="ePartName" value="${p.name}" placeholder="Название компании *">
-                <select id="ePartStatus">
-                    <option value="агент" ${p.status==='агент'?'selected':''}>🤝 Агент</option>
-                    <option value="перевозчик" ${p.status==='перевозчик'?'selected':''}>🚛 Перевозчик</option>
-                    <option value="брокер" ${p.status==='брокер'?'selected':''}>📑 Брокер</option>
-                </select>
+<select id="ePartStatus">
+    <option value="карго" ${p.status==='карго'?'selected':''}>📦 Карго</option>
+    <option value="партнер" ${p.status==='партнер'?'selected':''}>🤝 Партнер</option>
+    <option value="агент" ${p.status==='агент'?'selected':''}>🤝 Агент</option>
+    <option value="перевозчик" ${p.status==='перевозчик'?'selected':''}>🚛 Перевозчик</option>
+    <option value="брокер" ${p.status==='брокер'?'selected':''}>📑 Брокер</option>
+</select>
                 <input type="text" id="ePartCountry" value="${p.country || ''}" placeholder="Страна">
                 <input type="text" id="ePartWeb" value="${p.website || ''}" placeholder="Сайт">
                 <textarea id="ePartDesc" style="grid-column: span 2;" placeholder="Описание...">${p.desc || ''}</textarea>
