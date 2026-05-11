@@ -1878,6 +1878,16 @@ document.getElementById('preview-deals').innerHTML = `
 function showCompanyPreview(n) {
     const c = companies.find(x => x.name === n); if (!c) return;
     const me = sessionStorage.getItem('crm_user');
+
+    // --- НОВАЯ БЛОКИРОВКА УДАЛЕННЫХ КОМПАНИЙ ---
+    if (c.isDeleted) {
+        document.getElementById('preview-companies').innerHTML = `
+            <div style="padding:20px; text-align:center; background:#fff5f5; border-radius:12px; border: 1px dashed var(--danger); color: var(--danger);">
+                <h3 style="margin:0 0 5px 0; font-size:14px; color: var(--danger);">🗑️ Компания удалена</h3>
+                <p style="font-size:11px; margin:0; color:#666;">Эта карточка была перемещена в корзину и недоступна для работы.</p>
+            </div>`;
+        return;
+    }
     
     if (!checkAccess(c.name)) { 
         document.getElementById('preview-companies').innerHTML = `<div style="padding:15px; text-align:center; background:#fff3cd; border-radius:4px;">🔒 ОГРАНИЧЕН</div>`; 
@@ -3207,11 +3217,12 @@ function openTab(id) {
     updateDatalists(); 
 }
 function updateDatalists() { 
-        const dl = document.getElementById('allEntitiesData');
-        if (dl) {
-            dl.innerHTML = companies.map(c => `<option value="${c.name}">`).join(''); 
-        }
+    const dl = document.getElementById('allEntitiesData');
+    if (dl) {
+        // Добавили фильтр .filter(c => !c.isDeleted) перед выводом
+        dl.innerHTML = companies.filter(c => !c.isDeleted).map(c => `<option value="${c.name}">`).join(''); 
     }
+}
 function updateCounters() { 
     const me = sessionStorage.getItem('crm_user');
 
