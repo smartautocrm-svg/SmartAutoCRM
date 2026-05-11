@@ -766,7 +766,14 @@ button.main:active {
     <div class="bottom-section">
         <div class="controls-bar"><input type="text" id="searchCallComp" placeholder="Поиск компании..." oninput="renderReminders()"><input type="date" id="searchCallDate" onchange="renderReminders()"><label style="font-size: 10px; display: flex; align-items: center; gap: 4px; white-space: nowrap;">
         <input type="checkbox" id="hideDoneCalls" onchange="renderReminders()" style="width: auto;"> Скрыть завершенные
-    </label><button onclick="clearCallFilters()">Сброс</button></div>
+</label>
+
+<label style="font-size: 10px; display: flex; align-items: center; gap: 4px; white-space: nowrap; background: #fff5f5; padding: 4px 8px; border-radius: 4px; border: 1px solid #ffcccc; cursor: pointer;">
+    <input type="checkbox" id="showOverdueOnly" onchange="renderReminders()" style="width: auto;"> 
+    <span style="color: var(--danger); font-weight: bold;">⚠️ ТОЛЬКО ПРОСРОЧЕННЫЕ</span>
+</label>
+
+<button onclick="clearCallFilters()">Сброс</button>
         <div class="scroll-list" id="remindersList"></div>
     </div>
 </div>
@@ -1939,7 +1946,8 @@ function renderReminders() {
     const s = document.getElementById('searchCallComp').value.toLowerCase(), 
           d = document.getElementById('searchCallDate').value, 
           me = sessionStorage.getItem('crm_user'),
-          hideDone = document.getElementById('hideDoneCalls').checked;
+          hideDone = document.getElementById('hideDoneCalls').checked,
+          onlyOverdue = document.getElementById('showOverdueOnly').checked; // Новая переменная
 
     const now = new Date();
     
@@ -1948,6 +1956,13 @@ function renderReminders() {
         const companyName = String(r.name || "").toLowerCase();
         const matchesSearch = companyName.includes(s);
         const matchesDate = !d || dFmt(r.date) === dFmt(d);
+        
+        // Логика просрочки: статус не завершен и дата меньше текущей
+        const isOverdue = r.status !== 'completed' && r.date && new Date(r.date) < now;
+
+        // Если включена галочка "Только просроченные", а задача НЕ просрочена — скрываем её
+        if (onlyOverdue && !isOverdue) return false;
+
         return matchesSearch && matchesDate;
     });
     
@@ -1967,7 +1982,7 @@ function renderReminders() {
     const limitedList = f.slice(0, listLimits.calls);
     
     let html = limitedList.map(r => {
-        const isOverdue = r.status !== 'completed' && new Date(r.date) < now;
+        const isOverdue = r.status !== 'completed' && r.date && new Date(r.date) < now;
         const isSelected = selectedIds.has(String(r.id)); 
 
         return `<div class="list-item ${r.status==='completed'?'completed':''} ${isOverdue?'overdue':''} ${isSelected?'selected':''}" 
@@ -3239,7 +3254,13 @@ function calcEditProf() {
     document.getElementById('eDealMargin').value = margin.toFixed(1) + '%';
 }
     function updateSecondaryFilter() { const p = document.getElementById('sortComp').value, s = document.getElementById('secondarySelect'); if (!p) { s.style.display = 'none'; renderCompanies(); return; } s.style.display = 'inline-block'; s.innerHTML = p === 'manager' ? '<option value="">Все</option>' + managers.map(m => `<option value="${m}">${m}</option>`).join('') : '<option value="">Все</option><option value="cold">Холодный</option><option value="warm">Теплый</option><option value="active">Активный</option>'; renderCompanies(); }
-    function clearCallFilters() { document.getElementById('searchCallComp').value = ''; document.getElementById('searchCallDate').value = ''; renderReminders(); }
+    function clearCallFilters() { 
+    document.getElementById('searchCallComp').value = ''; 
+    document.getElementById('searchCallDate').value = ''; 
+    document.getElementById('showOverdueOnly').checked = false; // Добавлено: снимаем галочку просрочки
+    document.getElementById('hideDoneCalls').checked = false;   // Заодно и эту
+    renderReminders(); 
+}
 
 function updateDashboard() {
     const me = sessionStorage.getItem('crm_user');
