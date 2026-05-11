@@ -714,16 +714,30 @@ button.main:active {
 }
         /* 1. Основной фон (затемнение) */
 #imageViewerModal {
-    display: none; /* Скрыто по умолчанию */
+    display: none;
     position: fixed;
     top: 0; left: 0;
     width: 100%; height: 100%;
-    background: rgba(0, 0, 0, 0.85); /* Глубокий черный полупрозрачный фон */
-    z-index: 20000; /* Поверх всех окон и модалок */
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 20000;
     justify-content: center;
     align-items: center;
-    flex-direction: column; /* Элементы (кнопки и фото) друг под другом */
-    backdrop-filter: blur(8px); /* Размытие интерфейса CRM на заднем плане */
+    flex-direction: column;
+    backdrop-filter: blur(8px);
+}
+
+/* ВОТ СЮДА ВСТАВЛЯЙТЕ: */
+#fileViewerContent {
+    width: 90%;
+    height: 80vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 60px;
+    background: #000;
+    border-radius: 8px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.7);
+    overflow: hidden;
 }
 
 /* 2. Контейнер для кнопок сверху */
@@ -771,13 +785,24 @@ button.main:active {
 }
 
 /* 4. Настройки самого изображения */
-#imageViewerModal img {
-    max-width: 95%; /* Не шире экрана */
-    max-height: 80vh; /* Занимает 80% высоты экрана (остальное под кнопки) */
-    object-fit: contain; /* Сохраняет пропорции без искажений */
+#fileViewerContent {
+    width: 90%;
+    height: 80vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 60px;
+    background: #000;
     border-radius: 8px;
-    box-shadow: 0 20px 50px rgba(0,0,0,0.5); /* Тень для объема */
-    margin-top: 60px; /* Чтобы не упиралось в кнопки */
+    box-shadow: 0 20px 50px rgba(0,0,0,0.7);
+    overflow: hidden;
+}
+
+/* И добавьте стиль для самого документа внутри: */
+#fileViewerContent iframe {
+    width: 100%;
+    height: 100%;
+    border: none;
 }
     </style>
 </head>
@@ -4313,34 +4338,34 @@ document.addEventListener('click', (e) => {
     // Открыть изображение на весь экран
 function openImageViewer(url) {
     const modal = document.getElementById('imageViewerModal');
-    const img = modal.querySelector('img');
+    const container = document.getElementById('fileViewerContent');
     const downloadBtn = document.getElementById('ai-download-btn');
     const openBtn = document.getElementById('ai-open-btn');
 
-    // Извлекаем ID файла из URL для создания прямой ссылки на скачивание
-    const fileId = url.match(/[-\w]{25,}/); 
+    // 1. Извлекаем ID файла из ссылки
+    const fileIdMatch = url.match(/id=([-\w]{25,})/) || url.match(/\/d\/([-\w]{25,})/);
+    const fileId = fileIdMatch ? fileIdMatch[1] : null;
 
-    img.src = url;
-    openBtn.href = url;
-    
-    if (fileId) {
-        // Универсальная ссылка на скачивание для Google Drive
-        downloadBtn.href = `https://drive.google.com/uc?export=download&id=${fileId[0]}`;
-    } else {
-        downloadBtn.href = url;
+    if (!fileId) {
+        alert("Не удалось открыть файл: неверная ссылка");
+        return;
     }
-    
+
+    // 2. Настраиваем кнопки
+    openBtn.href = `https://drive.google.com/file/d/${fileId}/view`;
+    downloadBtn.href = `https://drive.google.com/uc?export=download&id=${fileId}`;
+
+    // 3. Очищаем старый контент и вставляем новый через iframe
+    container.innerHTML = `<iframe src="https://drive.google.com/file/d/${fileId}/preview"></iframe>`;
+
     modal.style.display = 'flex';
 }
 
 function closeImageViewer() {
     document.getElementById('imageViewerModal').style.display = 'none';
+    // Очищаем контент при закрытии, чтобы остановить загрузку/видео
+    document.getElementById('fileViewerContent').innerHTML = '';
 }
-
-// Добавим закрытие по клику на фон, но не по клику на само фото
-document.getElementById('imageViewerModal').addEventListener('click', function(e) {
-    if (e.target === this) closeImageViewer();
-});
 
     
 </script>
@@ -4369,14 +4394,20 @@ document.getElementById('imageViewerModal').addEventListener('click', function(e
         <button class="main" style="margin-top: 20px; background: var(--cold);" onclick="document.getElementById('newsViewModal').style.display='none'">Закрыть</button>
     </div>
 </div>
-    <!-- Модальное окно для просмотра фото -->
-<div id="imageViewerModal">
+   <!-- Модальное окно для просмотра ЛЮБЫХ файлов (Фото, PDF, Документы) -->
+<div id="imageViewerModal" onclick="closeImageViewer()">
+    
+    <!-- Панель управления -->
     <div class="viewer-controls">
         <a href="#" id="ai-download-btn" class="viewer-btn" download>📥 СКАЧАТЬ</a>
         <a href="#" id="ai-open-btn" class="viewer-btn" target="_blank">↗️ В НОВОМ ОКНЕ</a>
-        <a href="javascript:void(0)" class="viewer-btn" onclick="closeImageViewer()" style="background:var(--danger)">✖ ЗАКРЫТЬ</a>
+        <a href="javascript:void(0)" class="viewer-btn close-btn" onclick="closeImageViewer()">✖ ЗАКРЫТЬ</a>
     </div>
-    <img src="" alt="Preview" onclick="event.stopPropagation()">
+
+    <!-- Контейнер ДЛЯ КОНТЕНТА (вместо старого <img>) -->
+    <div id="fileViewerContent" onclick="event.stopPropagation()">
+        <!-- Сюда JavaScript вставит iframe с файлом -->
+    </div>
 </div>
 </body>
 </html> 
