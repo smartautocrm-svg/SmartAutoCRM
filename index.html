@@ -98,6 +98,91 @@
     box-sizing: border-box; 
 }
         .bottom-section { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+        /* Стили для галереи документов */
+.file-gallery {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 10px;
+    padding: 10px;
+    background: #fdfbff;
+    border-radius: 8px;
+    border: 1px dashed #e2e8f0;
+}
+
+.file-card {
+    width: 90px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+.file-thumb {
+    width: 90px;
+    height: 90px;
+    object-fit: cover;
+    border-radius: 6px;
+    border: 2px solid #fff;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    cursor: pointer;
+    transition: transform 0.2s;
+}
+
+.file-thumb:hover {
+    transform: scale(1.05);
+    border-color: var(--primary);
+}
+
+.file-name-label {
+    font-size: 9px;
+    color: #666;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    width: 100%;
+}
+
+.file-delete-badge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    background: var(--danger);
+    color: white;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    z-index: 5;
+}
+
+/* Модалка для фулл-скрин просмотра */
+#imageViewerModal {
+    display: none;
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.9);
+    z-index: 15000;
+    justify-content: center;
+    align-items: center;
+    cursor: zoom-out;
+}
+
+#imageViewerModal img {
+    max-width: 90%;
+    max-height: 90%;
+    border-radius: 4px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.5);
+}
         
       .controls-bar { 
     padding: 8px 10px; 
@@ -1969,39 +2054,56 @@ function showRequestPreview(id) {
 }
 
     function showDealPreview(id) {
-        const d = deals.find(x => x.id == id); if (!d) return;
-        let tDetails = '';
-        if (d.trans === 'море') tDetails = `<div class="preview-box"><label>Конт. (${d.container})</label><span>${d.contQty || 0} шт.</span></div><div class="preview-box"><label>Коносамент</label><span>${d.blNum || '-'}</span></div>`;
-        else if (d.trans === 'авиа') tDetails = `<div class="preview-box" style="grid-column:span 2;"><label>Авианакладная</label><span>${d.awbNum || '-'}</span></div>`;
-        
-        let fHtml = (d.files || []).map(f => `<div class="file-item"><a href="${f.url}" target="_blank">📄 ${f.name}</a><span class="file-delete" onclick="deleteFile(${d.id}, '${f.id}')">×</span></div>`).join('');
-        
-document.getElementById('preview-deals').innerHTML = `
-    <h3>💰 Сделка № ${d.num}</h3>
-    <div class="preview-grid">
-        <div class="preview-box highlight"><label>💵 Прибыль</label><span style="color:var(--success); font-size: 15px;">${d.prof} USD</span></div>
-        <div class="preview-box highlight"><label>📈 Маржа %</label><span style="color:var(--warning); font-size: 15px;">${d.margin || '0%'}</span></div>
-        
-        <div class="preview-box"><label>🏢 Клиент</label><span>${d.company}</span></div>
-        <div class="preview-box"><label>👤 Менеджер</label><span>${d.manager}</span></div>
-        
-        <div class="preview-box"><label>🚛 Транспорт</label><span>${d.trans.toUpperCase()}</span></div>
-        <div class="preview-box"><label>📦 Груз</label><span>${d.cargo}</span></div>
-        
-        <div class="preview-box" style="grid-column: span 2;"><label>📍 Маршрут</label><span>${d.load} ➔ ${d.unload}</span></div>
-    </div>
-    
-    <button class="btn-pdf" onclick="generateInvoicePDF(${d.id})">📄 Згенерувати пропозицію</button>
-    
-    <div class="file-list-container">
-        <strong>Файли сделки:</strong>
-        <div style="margin-top:5px;">${fHtml || '<small style="color:#999">Нет файлов</small>'}</div>
-        <div class="upload-area">
-            <input type="file" id="dealFileInput" style="font-size:10px; width:150px;">
-            <button class="main" onclick="uploadDealFile(${d.id})" style="width: auto; padding: 4px 10px; font-size:10px;">Загрузить</button>
-        </div>
-    </div>`;
+    const d = deals.find(x => x.id == id); 
+    if (!d) return;
+
+    // Генерируем HTML для галереи файлов
+    let filesHtml = "";
+    if (d.files && d.files.length > 0) {
+        filesHtml = d.files.map(f => {
+            // Ссылка на миниатюру (sz=w200 - размер 200px)
+            const thumbUrl = `https://drive.google.com/thumbnail?id=${f.id}&sz=w200`;
+            // Прямая ссылка для скачивания/просмотра
+            const fullUrl = f.url;
+
+            return `
+                <div class="file-card">
+                    <span class="file-delete-badge" onclick="deleteFile(${d.id}, '${f.id}')">×</span>
+                    <img src="${thumbUrl}" class="file-thumb" 
+                         onclick="openImageViewer('${fullUrl}')" 
+                         onerror="this.src='https://cdn-icons-png.flaticon.com/512/2991/2991112.png'"
+                         title="Нажмите, чтобы увеличить">
+                    <div class="file-name-label">${f.name}</div>
+                </div>
+            `;
+        }).join('');
     }
+
+    document.getElementById('preview-deals').innerHTML = `
+        <h3>💰 Сделка № ${d.num}</h3>
+        <div class="preview-grid">
+            <div class="preview-box highlight"><label>💵 Прибыль</label><span style="color:var(--success); font-size: 15px;">${d.prof} USD</span></div>
+            <div class="preview-box highlight"><label>📈 Маржа %</label><span style="color:var(--warning); font-size: 15px;">${d.margin || '0%'}</span></div>
+            <div class="preview-box"><label>🏢 Клиент</label><span>${d.company}</span></div>
+            <div class="preview-box"><label>👤 Менеджер</label><span>${d.manager}</span></div>
+            <div class="preview-box"><label>🚛 Транспорт</label><span>${d.trans.toUpperCase()}</span></div>
+            <div class="preview-box"><label>📦 Груз</label><span>${d.cargo}</span></div>
+            <div class="preview-box" style="grid-column: span 2;"><label>📍 Маршрут</label><span>${d.load} ➔ ${d.unload}</span></div>
+        </div>
+        
+        <button class="btn-pdf" onclick="generateInvoicePDF(${d.id})">📄 Згенерувати пропозицію</button>
+        
+        <div class="file-list-container">
+            <strong>📁 Документы и Фото:</strong>
+            <div class="file-gallery">
+                ${filesHtml || '<div style="color:#ccc; font-size:11px; padding:10px;">Нет загруженных файлов</div>'}
+            </div>
+            <div class="upload-area">
+                <input type="file" id="dealFileInput" style="font-size:10px; width:150px;">
+                <button class="main" onclick="uploadDealFile(${d.id})" style="width: auto; padding: 4px 10px; font-size:10px;">+ Загрузить</button>
+            </div>
+        </div>`;
+}
 
 function showCompanyPreview(n) {
     const c = companies.find(x => x.name === n); if (!c) return;
@@ -4140,7 +4242,20 @@ document.addEventListener('click', (e) => {
     showCallPreview(rid); 
     await sync('reminders', reminders[i], 'update'); 
     alert("Доступ обновлен");
+   }  
+    // Открыть изображение на весь экран
+function openImageViewer(url) {
+    const modal = document.getElementById('imageViewerModal');
+    const img = modal.querySelector('img');
+    img.src = url;
+    modal.style.display = 'flex';
 }
+
+// Закрыть просмотр (добавим обработчик в HTML ниже)
+function closeImageViewer() {
+    document.getElementById('imageViewerModal').style.display = 'none';
+}
+
     
 </script>
     <div id="notification-container"></div>
@@ -4167,6 +4282,10 @@ document.addEventListener('click', (e) => {
         <div id="newsFullText" style="font-size: 13px; line-height: 1.6; white-space: pre-wrap; color: #333; max-height: 400px; overflow-y: auto; padding-right: 10px;"></div>
         <button class="main" style="margin-top: 20px; background: var(--cold);" onclick="document.getElementById('newsViewModal').style.display='none'">Закрыть</button>
     </div>
+</div>
+    <!-- Модальное окно для просмотра фото -->
+<div id="imageViewerModal" onclick="closeImageViewer()">
+    <img src="" alt="Preview">
 </div>
 </body>
 </html> 
