@@ -758,22 +758,34 @@ button.main:active {
     <div class="top-section">
         <div class="card">
             <h3>Запись звонка / Напоминание</h3>
-            <div class="input-row"><input type="text" id="callName" list="allEntitiesData" placeholder="Компания"><input type="datetime-local" id="callTime"><textarea id="callTopic" style="grid-column: span 2;" placeholder="Результат..."></textarea></div>
+            <div class="input-row">
+                <input type="text" id="callName" list="allEntitiesData" placeholder="Компания">
+                <input type="datetime-local" id="callTime">
+                <textarea id="callTopic" style="grid-column: span 2;" placeholder="Результат..."></textarea>
+            </div>
             <button class="main" onclick="addReminder()">Добавить запись</button>
         </div>
-        <div class="card" id="preview-calls"><div style="color:#ccc; text-align:center; margin-top:50px;">Выберите активность</div></div>
+        <div class="card" id="preview-calls">
+            <div style="color:#ccc; text-align:center; margin-top:50px;">Выберите активность</div>
+        </div>
     </div>
     <div class="bottom-section">
-        <div class="controls-bar"><input type="text" id="searchCallComp" placeholder="Поиск компании..." oninput="renderReminders()"><input type="date" id="searchCallDate" onchange="renderReminders()"><label style="font-size: 10px; display: flex; align-items: center; gap: 4px; white-space: nowrap;">
-        <input type="checkbox" id="hideDoneCalls" onchange="renderReminders()" style="width: auto;"> Скрыть завершенные
-</label>
+        <div class="controls-bar">
+            <input type="text" id="searchCallComp" placeholder="Поиск компании..." oninput="renderReminders()" style="max-width: 180px;">
+            <input type="date" id="searchCallDate" onchange="renderReminders()" style="max-width: 130px;">
+            
+            <label style="font-size: 11px; display: flex; align-items: center; gap: 4px; cursor: pointer;">
+                <input type="checkbox" id="hideDoneCalls" onchange="renderReminders()" style="width: auto; margin: 0;"> 
+                Скрыть завершенные
+            </label>
 
-<label style="font-size: 10px; display: flex; align-items: center; gap: 4px; white-space: nowrap; background: #fff5f5; padding: 4px 8px; border-radius: 4px; border: 1px solid #ffcccc; cursor: pointer;">
-    <input type="checkbox" id="showOverdueOnly" onchange="renderReminders()" style="width: auto;"> 
-    <span style="color: var(--danger); font-weight: bold;">⚠️ ТОЛЬКО ПРОСРОЧЕННЫЕ</span>
-</label>
+            <label style="font-size: 11px; display: flex; align-items: center; gap: 4px; cursor: pointer; color: var(--danger); font-weight: bold;">
+                <input type="checkbox" id="showOverdueOnly" onchange="renderReminders()" style="width: auto; margin: 0;"> 
+                ⚠️ Просроченные
+            </label>
 
-<button onclick="clearCallFilters()">Сброс</button>
+            <button onclick="clearCallFilters()" style="height: 26px; padding: 0 12px; margin-left: auto;">Сброс</button>
+        </div>
         <div class="scroll-list" id="remindersList"></div>
     </div>
 </div>
