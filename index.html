@@ -684,6 +684,24 @@ button.main:active {
 <div id="dashboard" class="content active">
     <div class="scroll-list" style="padding: 20px; background: var(--bg);">
         <h2 style="margin: 0 0 20px 0; color: var(--primary); font-size: 20px;">Сводка за месяц</h2>
+
+        <!-- БЛОК НОВОСТЕЙ -->
+        <div id="news-section" style="margin-bottom: 25px;">
+            <!-- Форма создания (только для админа) -->
+            <div id="news-admin-form" style="display:none; background: #fff; padding: 15px; border-radius: var(--radius); border: 1px solid var(--border); margin-bottom: 15px; box-shadow: var(--shadow);">
+                <h3 style="margin-top:0;">📢 Опубликовать новость</h3>
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <input type="text" id="newsTitle" placeholder="Заголовок новости...">
+                    <textarea id="newsText" style="height: 60px;" placeholder="Текст сообщения..."></textarea>
+                    <button class="main" style="width: 150px; align-self: flex-end;" onclick="addNews()">Опубликовать</button>
+                </div>
+            </div>
+            
+            <!-- Список новостей -->
+            <div id="newsList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px;">
+                <!-- Сюда будут подгружаться новости -->
+            </div>
+        </div>
         
         <!-- Виджеты -->
         <div class="dashboard-grid">
@@ -1332,7 +1350,7 @@ function forInput(v) {
     container.appendChild(div);
 }
     
-    let reminders = [], companies = [], partners = [], requests = [], managers = [], deals = [], tracking = [], crmLogs = []; let selectedIds = new Set();
+    let reminders = [], companies = [], partners = [], requests = [], managers = [], deals = [], tracking = [], crmLogs = [], news = []; let selectedIds = new Set();
     let listLimits = { 
         calls: 30, 
         requests: 30, 
@@ -1562,6 +1580,15 @@ async function loadCloudData() {
             isDeleted: x[9] === true || x[9] === 'true'
         }));
         crmLogs = d.logs || [];
+
+        news = (d.news || []).map(x => ({
+    id: x[0],
+    date: x[1],
+    author: x[2],
+    title: x[3],
+    text: x[4],
+    isDeleted: x[5] === true || x[5] === 'true'
+}));
         
         // Общие системные обновления (легкие)
         updateCounters(); 
@@ -1593,6 +1620,7 @@ if (sh === 'deals') return [
         if (sh === 'reminders') return [o.id, o.name, o.date, o.topic, o.manager, o.status, o.isDeleted || false, o.sharedWith || ""];
         if (sh === 'partners') return [o.id, o.name, o.status, o.country, o.contact, o.phone, o.email, o.website, o.desc, o.isDeleted || false];
         if (sh === 'tracking') return [o.id, o.num, o.cargo, o.weight, o.vol, o.qty, o.pack, o.trans, o.status, o.manager, o.sharedWith || "", o.isDeleted || false];
+        if (sh === 'news') return [o.id, o.date, o.author, o.title, o.text, o.isDeleted || false];
         return [];
     }
 
@@ -3390,6 +3418,7 @@ function updateDashboard() {
     document.getElementById('dash-today-plan').innerHTML = planHtml;
 
     updateDashChart(myDeals);
+    renderNews();
 }
 
 function updateDashChart(myDeals) {
@@ -3401,7 +3430,7 @@ function updateDashChart(myDeals) {
         last6Months.push({ month: d.getMonth(), year: d.getFullYear(), label: d.toLocaleDateString('ru-RU', {month:'short'}), profit: 0 });
     }
 
-lastMonths.forEach(m => {
+last6Months.forEach(m => {
         m.profit = myDeals
             .filter(d => {
                 const dd = new Date(d.createdAt);
@@ -3563,6 +3592,65 @@ lastMonths.forEach(m => {
         }
         updateCounters();
     }
+
+    function renderNews() {
+    const me = sessionStorage.getItem('crm_user');
+    const newsContainer = document.getElementById('newsList');
+    const adminForm = document.getElementById('news-admin-form');
+    if (!newsContainer) return;
+
+    if (me === 'admin' && adminForm) adminForm.style.display = 'block';
+
+    const activeNews = news.filter(n => !n.isDeleted).sort((a, b) => b.id - a.id);
+
+    if (activeNews.length === 0) {
+        newsContainer.innerHTML = '<div style="color:#999; font-size:11px; padding: 10px;">Свежих новостей пока нет.</div>';
+        return;
+    }
+
+    newsContainer.innerHTML = activeNews.map(n => `
+        <div class="card" style="height: auto; border-top: 3px solid var(--primary); position: relative; padding: 12px; box-shadow: 0 2px 5px rgba(0,0,0,0.05);">
+            ${me === 'admin' ? `<span onclick="deleteNews(${n.id})" style="position:absolute; top:5px; right:10px; cursor:pointer; color:#ccc; font-weight:bold; font-size:16px;">×</span>` : ''}
+            <div style="font-size: 9px; color: #999; margin-bottom: 5px; display: flex; justify-content: space-between;">
+                <span>📅 ${dtFmt(n.date)}</span>
+                <span>👤 ${n.author}</span>
+            </div>
+            <h4 style="margin: 0 0 8px 0; color: var(--primary); font-size: 13px; font-weight: bold;">${n.title}</h4>
+            <p style="margin: 0; font-size: 11px; line-height: 1.5; white-space: pre-wrap; color: #444;">${n.text}</p>
+        </div>
+    `).join('');
+}
+
+async function addNews() {
+    const title = document.getElementById('newsTitle').value;
+    const text = document.getElementById('newsText').value;
+    if (!title || !text) return alert("Заполните заголовок и текст!");
+
+    const newItem = {
+        id: Date.now(),
+        date: new Date().toISOString(),
+        author: sessionStorage.getItem('crm_user'),
+        title: title,
+        text: text,
+        isDeleted: false
+    };
+
+    news.push(newItem);
+    renderNews();
+    document.getElementById('newsTitle').value = '';
+    document.getElementById('newsText').value = '';
+    await sync('news', news, 'append');
+}
+
+async function deleteNews(id) {
+    if (!confirm("Удалить новость?")) return;
+    const idx = news.findIndex(n => n.id == id);
+    if (idx > -1) {
+        news[idx].isDeleted = true;
+        renderNews();
+        await sync('news', news[idx], 'update');
+    }
+}
 
     function searchPublicTracking() {
         const num = document.getElementById('publicTrackSearch').value.trim().toLowerCase();
