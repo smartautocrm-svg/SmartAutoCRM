@@ -3257,18 +3257,21 @@ function updateDashboard() {
         .filter(d => {
             const date = new Date(d.createdAt);
             const isFinished = (d.stage === 'closed' || d.status === 'completed' || d.isPaid === true);
-            return isFinished && date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+            // ДОБАВЛЯЕМ ПРОВЕРКУ: если не админ, то считаем только свои сделки
+            const isMine = (me === 'admin') ? true : (d.manager === me);
+            return isFinished && date.getMonth() === currentMonth && date.getFullYear() === currentYear && isMine;
         })
         .reduce((sum, d) => sum + parseFloat(d.prof || 0), 0);
-
     // --- РАСЧЕТ ПРОШЛОГО МЕСЯЦА (ДЛЯ ТРЕНДА) ---
     const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
     const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
-    const profitLastMonth = myDeals
+   const profitLastMonth = myDeals
         .filter(d => {
             const date = new Date(d.createdAt);
             const isFinished = (d.stage === 'closed' || d.status === 'completed' || d.isPaid === true);
-            return isFinished && date.getMonth() === lastMonth && date.getFullYear() === lastMonthYear;
+            // ТА ЖЕ ПРОВЕРКА
+            const isMine = (me === 'admin') ? true : (d.manager === me);
+            return isFinished && date.getMonth() === lastMonth && date.getFullYear() === lastMonthYear && isMine;
         })
         .reduce((sum, d) => sum + parseFloat(d.prof || 0), 0);
 
@@ -3286,7 +3289,10 @@ function updateDashboard() {
     }
 
     // --- СДЕЛКИ В РАБОТЕ ---
-    const activeDeals = myDeals.filter(d => d.stage !== 'closed' && d.status !== 'completed' && !d.isPaid);
+    const activeDeals = myDeals.filter(d => {
+        const isMine = (me === 'admin') ? true : (d.manager === me);
+        return d.stage !== 'closed' && d.status !== 'completed' && !d.isPaid && isMine;
+    });
     const activeSum = activeDeals.reduce((sum, d) => sum + parseFloat(d.prof || 0), 0);
     document.getElementById('dash-deals-count').innerText = activeDeals.length;
     document.getElementById('dash-deals-sum').innerText = `потенциал: ${Math.round(activeSum).toLocaleString()} USD`;
@@ -3351,12 +3357,14 @@ function updateDashChart(myDeals) {
         last6Months.push({ month: d.getMonth(), year: d.getFullYear(), label: d.toLocaleDateString('ru-RU', {month:'short'}), profit: 0 });
     }
 
-    last6Months.forEach(m => {
+lastMonths.forEach(m => {
         m.profit = myDeals
             .filter(d => {
                 const dd = new Date(d.createdAt);
                 const isFinished = (d.stage === 'closed' || d.status === 'completed' || d.isPaid === true);
-                return isFinished && dd.getMonth() === m.month && dd.getFullYear() === m.year;
+                // ПРОВЕРКА АВТОРСТВА
+                const isMine = (me === 'admin') ? true : (d.manager === me);
+                return isFinished && dd.getMonth() === m.month && dd.getFullYear() === m.year && isMine;
             })
             .reduce((sum, d) => sum + parseFloat(d.prof || 0), 0);
     });
