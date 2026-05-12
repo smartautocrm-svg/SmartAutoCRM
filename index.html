@@ -2312,13 +2312,13 @@ function showCompanyPreview(n) {
     let shareHtml = (c.manager === me || me === 'admin') ? `<div style="grid-column:span 2; border-top:1px solid #eee; margin-top:10px; padding-top:5px;"><label style="font-size:8px;">ДОСТУП</label><div style="display:flex; gap:5px; margin-top:5px;"><select id="shMan" style="flex-grow:1; font-size:10px;"><option value="">Поделиться...</option>${managers.filter(m=>m!==me).map(m=>`<option value="${m}">${m}</option>`).join('')}</select><button onclick="toggleAccess('${c.id}', document.getElementById('shMan').value, 'add')" style="padding:2px 8px; font-size:10px;">+</button></div><div style="margin-top:5px;">${(c.sharedWith || "").split(',').filter(s=>s).map(s=>`<span class="share-tag">${s} <span onclick="toggleAccess('${c.id}','${s}','remove')" style="cursor:pointer">×</span></span>`).join('') || '<small>Никому</small>'}</div></div>` : "";
 
     // Генерация кнопок для писем
-       let emailButtonsHtml = `
+    let emailButtonsHtml = `
         <div style="margin-top: 15px; padding-top: 10px; border-top: 1px dashed #ddd;">
             <label style="font-size: 9px; font-weight: bold; color: var(--primary); display: block; margin-bottom: 8px; text-transform: uppercase;">
                 ✉️ Швидкі листи (The Bat!)
             </label>
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-               ${getMyTemplates().map(t => `
+               ${getMyTemplates().map(t => `   <--- ВОТ ЭТА КАВЫЧКА НУЖНА
                     <button class="main" 
                             style="width: auto; padding: 5px 12px; font-size: 10px; background: #fff; color: var(--primary); border: 1px solid var(--primary);" 
                             onclick="sendQuickEmail('${t.id}', '${c.name.replace(/'/g, "\\'")}')">
@@ -3664,6 +3664,7 @@ function openTab(id) {
     else if (id === 'tracking') renderTracking();
     else if (id === 'logs') renderLogs();
     else if (id === 'trash') renderTrash();
+    else if (id === 'profile') loadProfile();
 }
 
     function renderAll() { 
