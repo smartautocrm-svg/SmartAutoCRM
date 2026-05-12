@@ -2156,51 +2156,59 @@ function showRequestPreview(id) {
     `;
 }
 
-    function showDealPreview(id) {
+function showDealPreview(id) {
     const d = deals.find(x => x.id == id); 
     if (!d) return;
 
-    // Генерируем HTML для галереи файлов
+    // --- БЛОК 1: Логика номеров Букинга/Авианакладной (НОВОЕ) ---
+    let transportDetails = "";
+    if (d.trans === 'море') {
+        transportDetails = `<div class="preview-box highlight"><label>🚢 Букинг / BL</label><span>${d.blNum || '—'}</span></div>`;
+    } else if (d.trans === 'авиа') {
+        transportDetails = `<div class="preview-box highlight"><label>✈️ Авианакладная (AWB)</label><span>${d.awbNum || '—'}</span></div>`;
+    }
+
+    // --- БЛОК 2: Галерея файлов и миниатюры (ПОЛНОСТЬЮ СОХРАНЕНО) ---
     let filesHtml = "";
     if (d.files && d.files.length > 0) {
         filesHtml = d.files.map(f => {
-            // Ссылка на миниатюру (sz=w200 - размер 200px)
             const thumbUrl = `https://drive.google.com/thumbnail?id=${f.id}&sz=w200`;
-            // Прямая ссылка для скачивания/просмотра
-            const fullUrl = f.url;
-
-            return `
-                <div class="file-card">
-                    <span class="file-delete-badge" onclick="deleteFile(${d.id}, '${f.id}')">×</span>
-                    <img src="${thumbUrl}" class="file-thumb" 
-                         onclick="openImageViewer('${fullUrl}')" 
-                         onerror="this.src='https://cdn-icons-png.flaticon.com/512/2991/2991112.png'"
-                         title="Нажмите, чтобы увеличить">
-                    <div class="file-name-label">${f.name}</div>
-                </div>
-            `;
+            return `<div class="file-card">
+                <span class="file-delete-badge" onclick="deleteFile(${d.id}, '${f.id}')">×</span>
+                <img src="${thumbUrl}" class="file-thumb" onclick="openImageViewer('${f.url}')" onerror="this.src='https://cdn-icons-png.flaticon.com/512/2991/2991112.png'">
+                <div class="file-name-label">${f.name}</div>
+            </div>`;
         }).join('');
     }
 
+    // --- БЛОК 3: Основной интерфейс (СОХРАНЕНО + ДОБАВЛЕНЫ ДОХОДЫ/РАСХОДЫ) ---
     document.getElementById('preview-deals').innerHTML = `
         <h3>💰 Сделка № ${d.num}</h3>
         <div class="preview-grid">
-            <div class="preview-box highlight"><label>💵 Прибыль</label><span style="color:var(--success); font-size: 15px;">${d.prof} USD</span></div>
-            <div class="preview-box highlight"><label>📈 Маржа %</label><span style="color:var(--warning); font-size: 15px;">${d.margin || '0%'}</span></div>
+            <div class="preview-box"><label>💵 Доходы</label><span style="color:var(--primary); font-weight:bold;">${d.inc} USD</span></div>
+            <div class="preview-box"><label>💸 Расходы</label><span style="color:var(--danger); font-weight:bold;">${d.exp} USD</span></div>
+            <div class="preview-box highlight"><label>📈 Прибыль</label><span style="color:var(--success); font-size: 16px;">${d.prof} USD</span></div>
+            <div class="preview-box"><label>📊 Маржа %</label><span>${d.margin || '0%'}</span></div>
+            
+            ${transportDetails}
+            
+            <div class="preview-box"><label>🚛 Транспорт</label><span>${d.trans.toUpperCase()}</span></div>
+        </div>
+
+        <div class="preview-grid" style="margin-top:12px;">
             <div class="preview-box"><label>🏢 Клиент</label><span>${d.company}</span></div>
             <div class="preview-box"><label>👤 Менеджер</label><span>${d.manager}</span></div>
-            <div class="preview-box"><label>🚛 Транспорт</label><span>${d.trans.toUpperCase()}</span></div>
-            <div class="preview-box"><label>📦 Груз</label><span>${d.cargo}</span></div>
             <div class="preview-box" style="grid-column: span 2;"><label>📍 Маршрут</label><span>${d.load} ➔ ${d.unload}</span></div>
+            <div class="preview-box" style="grid-column: span 2;"><label>📦 Груз</label><span>${d.cargo}</span></div>
         </div>
-        
+
+        <!-- КНОПКА PDF (СОХРАНЕНО) -->
         <button class="btn-pdf" onclick="generateInvoicePDF(${d.id})">📄 Згенерувати пропозицію</button>
-        
+
+        <!-- РАБОТА С ФАЙЛАМИ (СОХРАНЕНО) -->
         <div class="file-list-container">
             <strong>📁 Документы и Фото:</strong>
-            <div class="file-gallery">
-                ${filesHtml || '<div style="color:#ccc; font-size:11px; padding:10px;">Нет загруженных файлов</div>'}
-            </div>
+            <div class="file-gallery">${filesHtml || '<div style="color:#ccc; font-size:11px; padding:10px;">Нет файлов</div>'}</div>
             <div class="upload-area">
                 <input type="file" id="dealFileInput" style="font-size:10px; width:150px;">
                 <button class="main" onclick="uploadDealFile(${d.id})" style="width: auto; padding: 4px 10px; font-size:10px;">+ Загрузить</button>
