@@ -1026,6 +1026,7 @@ button.main:active {
     <div class="bottom-section">
         <div class="controls-bar">
             <input type="text" id="searchCallComp" placeholder="Поиск компании..." oninput="renderReminders()" style="max-width: 180px;">
+            <select id="adminCallManagerFilter" style="display:none; max-width: 150px;" onchange="renderReminders()"></select>
             <input type="date" id="searchCallDate" onchange="renderReminders()" style="max-width: 130px;">
             
             <label style="font-size: 11px; display: flex; align-items: center; gap: 4px; cursor: pointer;">
@@ -1079,7 +1080,9 @@ button.main:active {
         <div class="card" id="preview-requests"><div style="color:#ccc; text-align:center; margin-top:50px;">Выберите запрос</div></div>
     </div>
     <div class="bottom-section">
-        <div class="controls-bar"><input type="text" id="searchReq" placeholder="Поиск..." oninput="debouncedRenderRequests()"><label style="font-size: 10px; display: flex; align-items: center; gap: 4px; white-space: nowrap;">
+        <div class="controls-bar"><input type="text" id="searchReq" placeholder="Поиск..." oninput="debouncedRenderRequests()">
+            <select id="adminRequestManagerFilter" style="display:none; max-width: 150px;" onchange="renderRequests()"></select>
+            <label style="font-size: 10px; display: flex; align-items: center; gap: 4px; white-space: nowrap;">
         <input type="checkbox" id="hideDoneRequests" onchange="renderRequests()" style="width: auto;"> Скрыть завершенные
     </label></div>
         <div class="scroll-list" id="requestsList"></div>
@@ -2435,6 +2438,8 @@ function renderReminders() {
     
     let f = reminders.filter(r => {
         if (r.isDeleted) return false;
+        const selMan = document.getElementById('adminCallManagerFilter').value || 'all';
+        const matchesAdminMan = (me === 'admin' && selMan !== 'all') ? (r.manager === selMan) : true;
         const companyName = String(r.name || "").toLowerCase();
         const matchesSearch = companyName.includes(s);
         const matchesDate = !d || dFmt(r.date) === dFmt(d);
@@ -2445,7 +2450,7 @@ function renderReminders() {
         // Если включена галочка "Только просроченные", а задача НЕ просрочена — скрываем её
         if (onlyOverdue && !isOverdue) return false;
 
-        return matchesSearch && matchesDate;
+       return matchesSearch && matchesDate && matchesAdminMan; // Добавили matchesAdminMan
     });
     
     if (me !== 'admin') {
@@ -2520,6 +2525,8 @@ function renderRequests() {
     
     let f = requests.filter(r => {
         if (r.isDeleted) return false;
+        const selMan = document.getElementById('adminRequestManagerFilter').value || 'all';
+        const matchesAdminMan = (me === 'admin' && selMan !== 'all') ? (r.manager === selMan) : true;
         const me = sessionStorage.getItem('crm_user');
         
         // Проверяем доступ конкретно к запросу
@@ -2537,7 +2544,7 @@ function renderRequests() {
         const matchesSearch = companyText.includes(s) || cargoText.includes(s);
         const matchesStatus = hideDone ? r.status !== 'completed' : true;
         
-        return matchesSearch && matchesStatus;
+        return matchesSearch && matchesStatus && matchesAdminMan;
     });
     
     const totalFound = f.length;
@@ -4156,10 +4163,23 @@ async function deleteNews(id) {
 function updateAdminUI() {
     const user = sessionStorage.getItem('crm_user');
     if (user === 'admin') {
-        const trashBtn = document.getElementById('btn-trash');
-        const logsBtn = document.getElementById('btn-logs'); // Добавили эту строку
-        if (trashBtn) trashBtn.style.display = 'flex';
-        if (logsBtn) logsBtn.style.display = 'flex'; // И эту
+        document.getElementById('btn-trash').style.display = 'flex';
+        document.getElementById('btn-logs').style.display = 'flex';
+
+        // Список менеджеров для фильтрации
+        const managerOptions = '<option value="all">👤 Все менеджеры</option>' + 
+                               managers.map(m => `<option value="${m}">${m}</option>`).join('');
+
+        // Список ID фильтров, которые нужно включить
+        const filters = ['adminCallManagerFilter', 'adminRequestManagerFilter', 'adminDealManagerFilter'];
+        
+        filters.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.innerHTML = managerOptions;
+                el.style.display = 'inline-block';
+            }
+        });
     }
 }
 
