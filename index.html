@@ -1198,9 +1198,7 @@ button.main:active {
         <input type="text" id="compImp" placeholder="Импорт">
         <input type="text" id="compExp" placeholder="Экспорт">
         <textarea id="compDesc" style="grid-column: span 3; height: 50px;" placeholder="Дополнительное описание компании (примечания, особенности)..."></textarea>
-        <select id="compManager" style="grid-column: span 2;">
-    <option value="">Выберите менеджера *</option>
-</select>
+        <input type="text" id="compManager" list="managersDataList" placeholder="Ответственный менеджер *" style="grid-column: span 2;">
         <select id="compStatus">
             <option value="cold">❄️ Холодный</option>
             <option value="warm">🔥 Теплый</option>
@@ -1547,6 +1545,7 @@ button.main:active {
 </div>
     
 <datalist id="allEntitiesData"></datalist>
+    <datalist id="managersDataList"></datalist>
 
 <script>
     // СЮДА НУЖНО ВСТАВИТЬ ВАШ URL
@@ -3717,8 +3716,19 @@ function openTab(id) {
 function updateDatalists() { 
     const dl = document.getElementById('allEntitiesData');
     if (dl) {
-        // Добавили фильтр .filter(c => !c.isDeleted) перед выводом
-        dl.innerHTML = companies.filter(c => !c.isDeleted).map(c => `<option value="${c.name}">`).join(''); 
+        // Теперь в списке подсказок будет: "Название | Город | Телефон"
+        dl.innerHTML = companies
+            .filter(c => !c.isDeleted)
+            .map(c => {
+                const info = [c.city, c.phone].filter(x => x).join(' | ');
+                return `<option value="${c.name}">${info}</option>`;
+            }).join(''); 
+    }
+
+    // --- ДОБАВИМ ТАКЖЕ ПОИСК МЕНЕДЖЕРОВ ---
+    const mdl = document.getElementById('managersDataList');
+    if (mdl) {
+        mdl.innerHTML = managers.map(m => `<option value="${m}">`).join('');
     }
 }
 function updateCounters() { 
