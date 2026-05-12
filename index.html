@@ -2238,21 +2238,6 @@ function showDealPreview(id) {
         </div>`;
 }
 
-// 1. Сначала добавим сами шаблоны писем
-const emailTemplates = [
-    {
-        id: "offer",
-        name: "💰 Коммерческое",
-        subject: "Пропозиція щодо перевезення {{product}} для {{company}}",
-        body: "Добрий день, {{contact}}!\n\nМи готові запропонувати послуги з перевезення вашого вантажу ({{product}}).\n\nБудемо раді співпраці!\n\nЗ повагою, {{manager}}\nSmartAuto Ltd"
-    },
-    {
-        id: "bank",
-        name: "📑 Реквізити",
-        subject: "Реквізити SmartAuto для {{company}}",
-        body: "Вітаємо!\n\nНадсилаємо реквізити нашої компанії для оформлення договору та оплати.\n\nЗ повагою, {{manager}}\nSmartAuto Ltd"
-    }
-];
 
 // 2. Обновленная функция просмотра компании
 function showCompanyPreview(n) {
