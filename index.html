@@ -2321,7 +2321,7 @@ function showCompanyPreview(n) {
                 ✉️ Швидкі листи (The Bat!)
             </label>
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-               ${getMyTemplates().map(t => `   <--- ВОТ ЭТА КАВЫЧКА НУЖНА
+               ${getMyTemplates().map(t => `   
                     <button class="main" 
                             style="width: auto; padding: 5px 12px; font-size: 10px; background: #fff; color: var(--primary); border: 1px solid var(--primary);" 
                             onclick="sendQuickEmail('${t.id}', '${c.name.replace(/'/g, "\\'")}')">
@@ -2518,35 +2518,43 @@ async function finishRem(e, id) {
 }
     
 function renderRequests() {
-    const s = document.getElementById('searchReq').value.toLowerCase(),
-          hideDone = document.getElementById('hideDoneRequests').checked;
+    // 1. Получаем элементы управления
+    const s = document.getElementById('searchReq').value.toLowerCase();
+    const hideDone = document.getElementById('hideDoneRequests').checked;
+    const me = sessionStorage.getItem('crm_user');
+    
+    // 2. Безопасно получаем значение фильтра админа
+    const adminFilterEl = document.getElementById('adminRequestManagerFilter');
+    const selectedManager = adminFilterEl ? adminFilterEl.value : 'all';
           
     const limitMs = 2 * 24 * 60 * 60 * 1000, now = new Date();
     
+    // 3. Фильтруем массив запросов
     let f = requests.filter(r => {
         if (r.isDeleted) return false;
-        const selMan = document.getElementById('adminRequestManagerFilter').value || 'all';
-        const matchesAdminMan = (me === 'admin' && selMan !== 'all') ? (r.manager === selMan) : true;
-        const me = sessionStorage.getItem('crm_user');
-        
-        // Проверяем доступ конкретно к запросу
+
+        // ЛОГИКА АДМИНА: фильтр по выбранному менеджеру
+        const matchesAdminFilter = (me === 'admin' && selectedManager !== 'all') ? (r.manager === selectedManager) : true;
+
+        // ЛОГИКА ДОСТУПА: кто что может видеть
         const isRequestShared = (r.sharedWith || "").split(',').map(s => s.trim()).includes(me);
-        
-        const hasAccessToRequest = (me === 'admin') || 
-                                   (r.manager === me) || 
-                                   isRequestShared || 
-                                   checkAccess(r.company);
+        const hasAccess = (me === 'admin') || (r.manager === me) || isRequestShared || checkAccess(r.company);
 
-        if (!hasAccessToRequest) return false;
+        // Если нет доступа ИЛИ не совпадает менеджер в фильтре админа — скрываем
+        if (!hasAccess || !matchesAdminFilter) return false;
 
+        // Поиск по названию и грузу
         const companyText = String(r.company || "").toLowerCase();
         const cargoText = String(r.cargo || "").toLowerCase();
         const matchesSearch = companyText.includes(s) || cargoText.includes(s);
+        
+        // Фильтр завершенных
         const matchesStatus = hideDone ? r.status !== 'completed' : true;
         
-        return matchesSearch && matchesStatus && matchesAdminMan;
+        return matchesSearch && matchesStatus;
     });
     
+    // Дальше идет стандартный код отрисовки (totalFound, limitedList и т.д.)
     const totalFound = f.length;
     const limitedList = f.slice(0, listLimits.requests);
     
@@ -3768,13 +3776,13 @@ function updateDashboard() {
 
     // --- РАСЧЕТ ПРИБЫЛИ ТЕКУЩЕГО МЕСЯЦА ---
     const profitThisMonth = myDeals
-        .filter(d => {
-            const date = new Date(d.createdAt);
-            const isFinished = (d.stage === 'closed' || d.status === 'completed' || d.isPaid === true);
-            // ДОБАВЛЯЕМ ПРОВЕРКУ: если не админ, то считаем только свои сделки
-            const isMine = (me === 'admin') ? true : (d.manager === me);
-            return isFinished && date.getMonth() === currentMonth && date.getFullYear() === currentYear && isMine;
-        })
+       .filter(d => {
+    const date = new Date(d.createdAt);
+    const isFinished = (d.stage === 'closed' || d.status === 'completed' || d.isPaid === true);
+    // Админ видит всех, менеджер — только себя:
+    const isVisible = (me === 'admin') ? true : (d.manager === me);
+    return isFinished && date.getMonth() === currentMonth && date.getFullYear() === currentYear && isVisible;
+})
         .reduce((sum, d) => sum + parseFloat(d.prof || 0), 0);
     // --- РАСЧЕТ ПРОШЛОГО МЕСЯЦА (ДЛЯ ТРЕНДА) ---
     const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
@@ -3803,16 +3811,19 @@ function updateDashboard() {
     }
 
     // --- СДЕЛКИ В РАБОТЕ ---
-    const activeDeals = myDeals.filter(d => {
-        const isMine = (me === 'admin') ? true : (d.manager === me);
-        return d.stage !== 'closed' && d.status !== 'completed' && !d.isPaid && isMine;
-    });
+const activeDeals = myDeals.filter(d => {
+    const isVisible = (me === 'admin') ? true : (d.manager === me);
+    return d.stage !== 'closed' && d.status !== 'completed' && !d.isPaid && isVisible;
+});
     const activeSum = activeDeals.reduce((sum, d) => sum + parseFloat(d.prof || 0), 0);
     document.getElementById('dash-deals-count').innerText = activeDeals.length;
     document.getElementById('dash-deals-sum').innerText = `потенциал: ${Math.round(activeSum).toLocaleString()} USD`;
 
     // --- ПРОСРОЧКА (Синхронно со списком) ---
-    const overdueCount = myReminders.filter(r => r.status !== 'completed' && new Date(r.date) < now).length;
+   const overdueCount = reminders.filter(r => {
+    const isVisible = (me === 'admin') ? !r.isDeleted : (!r.isDeleted && r.manager === me);
+    return r.status !== 'completed' && new Date(r.date) < now && isVisible;
+}).length;
     document.getElementById('dash-overdue-count').innerText = overdueCount;
 
     // --- ЗАПРОСЫ ЗА 7 ДНЕЙ ---
