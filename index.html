@@ -2627,7 +2627,7 @@ function renderDeals() {
     let html = limitedList.map(d => {
         const stage = (d.stage && stageMap[d.stage]) ? stageMap[d.stage] : stageMap.docs;
         const isDebt = (d.stage === 'unloaded' && !d.isPaid);
-        const debtStyle = isDebt ? 'border-left: 5px solid var(--danger); background: #fff5f5;' : '';
+        cconst debtStyle = isDebt ? 'border-left: 6px solid #ff0000; background: #fff0f0; box-shadow: 0 0 5px rgba(255,0,0,0.2);' : '';
         const isSelected = selectedIds.has(String(d.id));
 
         return `
@@ -2812,7 +2812,7 @@ function renderCompanies() {
                    onclick="toggleSelect(event, '${c.id}')">
 
             <div class="item-main">
-                <h4>${c.name} ${isForgotten ? '<span class="forgotten-tag">⚠️ ЗАБЫТА</span>' : ''}</h4>
+                <h4>${c.isPrivate ? '🔒 ' : ''}${c.name} ${isForgotten ? '<span class="forgotten-tag">⚠️ ЗАБЫТА</span>' : ''}</h4>
                 <p>${checkAccess(c.name) ? statusMap[c.status].label : '🔒 Ограничен'} | ${c.manager}</p>
             </div>
             <div class="item-actions">
@@ -4577,7 +4577,12 @@ function closeImageViewer() {
     // Очищаем контент при закрытии, чтобы остановить загрузку/видео
     document.getElementById('fileViewerContent').innerHTML = '';
 }
-
+document.addEventListener('keydown', (e) => {
+    if (e.key === "Escape") {
+        document.querySelectorAll('.modal-overlay').forEach(m => m.style.display = 'none');
+        if (typeof closeImageViewer === "function") closeImageViewer();
+    }
+});
     
 </script>
     <div id="notification-container"></div>
