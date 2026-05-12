@@ -1195,7 +1195,9 @@ button.main:active {
         <input type="text" id="compImp" placeholder="Импорт">
         <input type="text" id="compExp" placeholder="Экспорт">
         <textarea id="compDesc" style="grid-column: span 3; height: 50px;" placeholder="Дополнительное описание компании (примечания, особенности)..."></textarea>
-        <select id="compManager" style="grid-column: span 2;"></select>
+        <select id="compManager" style="grid-column: span 2;">
+    <option value="">Выберите менеджера *</option>
+</select>
         <select id="compStatus">
             <option value="cold">❄️ Холодный</option>
             <option value="warm">🔥 Теплый</option>
@@ -1805,6 +1807,16 @@ function processLoadedData(d) {
     if (d.tracking) tracking = d.tracking.map(parsers.tracking);
     if (d.news) news = d.news.map(parsers.news);
     if (d.logs) crmLogs = d.logs;
+        const compManSel = document.getElementById('compManager');
+    if (compManSel) {
+        // Очищаем и заполняем список менеджеров
+        compManSel.innerHTML = '<option value="">Выберите менеджера *</option>' + 
+            managers.map(m => `<option value="${m}">${m}</option>`).join('');
+            
+        // Устанавливаем текущего пользователя по умолчанию
+        compManSel.value = sessionStorage.getItem('crm_user');
+    }
+}
 }
 
 function mergeDelta(delta) {
