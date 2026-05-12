@@ -1549,21 +1549,27 @@ button.main:active {
     // СЮДА НУЖНО ВСТАВИТЬ ВАШ URL
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx7FOBG0711CMW05oPvuq2wXP4WuiVyBY-nSAKgPOaHLKMZugEbiRMyzsF8BFq2DXrgeg/exec";
 
-    // Настройки шаблонов писем
-const emailTemplates = [
+// Шаблоны по умолчанию
+const defaultTemplates = [
     {
         id: "offer",
         name: "💰 Коммерческое",
         subject: "Пропозиція щодо перевезення {{product}} для {{company}}",
-        body: "Добрий день, {{contact}}!\n\nМи готові запропонувати послуги з перевезення вашого вантажу ({{product}}).\n\nБудемо раді співпраці!\n\nЗ повагою, {{manager}}\nSmartAuto CRM"
+        body: "Добрий день, {{contact}}!\n\nМи готові запропонувати послуги з перевезення вашого вантажу ({{product}}).\n\nБудемо раді співпраці!\n\nЗ повагою, {{manager}}\nSmartAuto Ltd"
     },
     {
         id: "bank",
         name: "📑 Реквізити",
         subject: "Реквізити SmartAuto для {{company}}",
-        body: "Вітаємо!\n\nНадсилаємо реквізити нашої компанії для оформлення договору та оплати.\n\nЗ повагою, {{manager}}\nSmartAuto CRM"
+        body: "Вітаємо!\n\nНадсилаємо реквізити нашої компанії для оформлення договору та оплати.\n\nЗ повагою, {{manager}}\nSmartAuto Ltd"
     }
 ];
+
+// Функция получения текущих шаблонов (личных или стандартных)
+function getMyTemplates() {
+    const saved = localStorage.getItem('my_email_templates');
+    return saved ? JSON.parse(saved) : defaultTemplates;
+}
 
     // Функция-задержка, чтобы поиск не тормозил
 function debounce(func, timeout = 300) {
@@ -1745,10 +1751,51 @@ async function loadProfile() {
         document.getElementById('profAvatar').innerText = d.name ? d.name[0].toUpperCase() : "U";
         document.getElementById('profDisplayTitle').innerText = d.name || "Пользователь";
     } catch(e) { console.error(e); } finally { showLoader(false); }
+    // --- НАЧАЛО БЛОКА РЕДАКТОРА ШАБЛОНОВ ---
+    const currentTemplates = getMyTemplates();
+    let templatesHtml = '<h3 style="margin-top:25px; color:var(--primary); border-top: 1px solid #eee; padding-top:20px;">✉️ МОЇ ШАБЛОНИ ЛИСТІВ</h3>';
+    templatesHtml += '<p style="font-size:10px; color:#666; margin-bottom:15px;">Використовуйте <b>{{company}}</b>, <b>{{product}}</b>, <b>{{contact}}</b> для автозаповнення.</p>';
+    
+    currentTemplates.forEach(t => {
+        templatesHtml += `
+            <div style="margin-bottom: 20px; padding: 15px; border: 1px solid var(--border); border-radius: 12px; background: #fdfbff;">
+                <label style="font-weight:bold; color:var(--primary); display:block; margin-bottom:10px;">Шаблон: ${t.name}</label>
+                <div style="display:flex; flex-direction:column; gap:8px;">
+                    <input type="text" id="tpl_subject_${t.id}" value="${t.subject}" placeholder="Тема листа">
+                    <textarea id="tpl_body_${t.id}" style="height: 120px; line-height:1.4;" placeholder="Текст листа">${t.body}</textarea>
+                </div>
+            </div>
+        `;
+    });
+    
+    const profContainer = document.querySelector('#profile .profile-container');
+    const saveBtn = profContainer.querySelector('button.main');
+    
+    const oldEditor = document.getElementById('templates-editor-block');
+    if(oldEditor) oldEditor.remove();
+    
+    const editorDiv = document.createElement('div');
+    editorDiv.id = 'templates-editor-block';
+    editorDiv.innerHTML = templatesHtml;
+    profContainer.insertBefore(editorDiv, saveBtn);
+    // --- КОНЕЦ БЛОКА РЕДАКТОРА ШАБЛОНОВ ---
 }
 
 async function saveProfile() {
     const oldName = sessionStorage.getItem('crm_user');
+    // --- СОХРАНЕНИЕ ШАБЛОНОВ ---
+    const templatesToSave = getMyTemplates().map(t => {
+        const subEl = document.getElementById(`tpl_subject_${t.id}`);
+        const bodyEl = document.getElementById(`tpl_body_${t.id}`);
+        return {
+            id: t.id,
+            name: t.name,
+            subject: subEl ? subEl.value : t.subject,
+            body: bodyEl ? bodyEl.value : t.body
+        };
+    });
+    localStorage.setItem('my_email_templates', JSON.stringify(templatesToSave));
+    // --- КОНЕЦ СОХРАНЕНИЯ ---
     const payload = {
         action: 'updateProfile',
         oldName: oldName,
@@ -2265,13 +2312,13 @@ function showCompanyPreview(n) {
     let shareHtml = (c.manager === me || me === 'admin') ? `<div style="grid-column:span 2; border-top:1px solid #eee; margin-top:10px; padding-top:5px;"><label style="font-size:8px;">ДОСТУП</label><div style="display:flex; gap:5px; margin-top:5px;"><select id="shMan" style="flex-grow:1; font-size:10px;"><option value="">Поделиться...</option>${managers.filter(m=>m!==me).map(m=>`<option value="${m}">${m}</option>`).join('')}</select><button onclick="toggleAccess('${c.id}', document.getElementById('shMan').value, 'add')" style="padding:2px 8px; font-size:10px;">+</button></div><div style="margin-top:5px;">${(c.sharedWith || "").split(',').filter(s=>s).map(s=>`<span class="share-tag">${s} <span onclick="toggleAccess('${c.id}','${s}','remove')" style="cursor:pointer">×</span></span>`).join('') || '<small>Никому</small>'}</div></div>` : "";
 
     // Генерация кнопок для писем
-    let emailButtonsHtml = `
+       let emailButtonsHtml = `
         <div style="margin-top: 15px; padding-top: 10px; border-top: 1px dashed #ddd;">
             <label style="font-size: 9px; font-weight: bold; color: var(--primary); display: block; margin-bottom: 8px; text-transform: uppercase;">
                 ✉️ Швидкі листи (The Bat!)
             </label>
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                ${emailTemplates.map(t => `
+               ${getMyTemplates().map(t => `
                     <button class="main" 
                             style="width: auto; padding: 5px 12px; font-size: 10px; background: #fff; color: var(--primary); border: 1px solid var(--primary);" 
                             onclick="sendQuickEmail('${t.id}', '${c.name.replace(/'/g, "\\'")}')">
@@ -2310,7 +2357,7 @@ function showCompanyPreview(n) {
 // 3. Сама функция отправки (The Bat!)
 function sendQuickEmail(templateId, companyName) {
     const c = companies.find(x => x.name === companyName);
-    const t = emailTemplates.find(x => x.id === templateId);
+    const t = getMyTemplates().find(x => x.id === templateId);
     
     if (!c || !t) return;
     if (!c.email) {
