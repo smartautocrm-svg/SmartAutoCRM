@@ -1644,23 +1644,29 @@ function forInput(v) {
     function logout() { sessionStorage.clear(); location.reload(); }
     function toggleAuthMode(isReg) { document.getElementById('auth-login-fields').style.display = isReg ? 'none' : 'block'; document.getElementById('auth-reg-fields').style.display = isReg ? 'block' : 'none'; }
 
-   async function handleLogin() {
-        const e = document.getElementById('loginEmail').value, p = document.getElementById('loginPass').value, rem = document.getElementById('rememberMe').checked;
-        if (!e || !p) return alert("Введите данные"); showLoader(true);
+  async function handleLogin() {
+        const e = document.getElementById('loginEmail').value;
+        const p = document.getElementById('loginPass').value;
+        const rem = document.getElementById('rememberMe').checked;
+        if (!e || !p) return alert("Введите данные"); 
+        showLoader(true);
         try {
             const r = await fetch(`${SCRIPT_URL}?action=login&email=${encodeURIComponent(e)}&password=${encodeURIComponent(p)}`);
             const res = await r.json();
             if (res.success) { 
                 sessionStorage.setItem('crm_user', res.name); 
-                if(rem) { localStorage.setItem('crm_rem_email', e); localStorage.setItem('crm_rem_pass', p); } 
+                if(rem) { 
+                    localStorage.setItem('crm_rem_email', e); 
+                    localStorage.setItem('crm_rem_pass', p); 
+                } 
                 startApp(); 
             } else {
                 alert("Ошибка входа: " + (res.error || "Неверные данные"));
-                showLoader(false);
             }
         } catch (err) { 
-            alert("Ошибка сети или скрипта Google"); 
-            showLoader(false);
+            alert("Ошибка сети"); 
+        } finally { 
+            showLoader(false); 
         }
     }
 
