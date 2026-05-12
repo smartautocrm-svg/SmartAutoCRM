@@ -3,8 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <title>SmartAuto CRM PRO+ v.10</title>
-
-
     <!-- ВОТ ЭТА СТРОКА ДОЛЖНА БЫТЬ ЗДЕСЬ: -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
@@ -1550,6 +1548,10 @@ button.main:active {
 <script>
     // СЮДА НУЖНО ВСТАВИТЬ ВАШ URL
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx7FOBG0711CMW05oPvuq2wXP4WuiVyBY-nSAKgPOaHLKMZugEbiRMyzsF8BFq2DXrgeg/exec";
+
+    function fCurr(v) {
+    return parseFloat(v || 0).toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
 
 // Шаблоны по умолчанию
 const defaultTemplates = [
@@ -3957,7 +3959,61 @@ last6Months.forEach(m => {
 }
     // --- СТАТИСТИКА И ОТЧЕТЫ ---
     function renderManagerStats() {
-        const me = sessionStorage.getItem('crm_user');
+    // 1. Подготовка данных для расчета
+    const me = sessionStorage.getItem('crm_user');
+    const isAdmin = (me === 'admin');
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    // 2. Фильтруем сделки только за ТЕКУЩИЙ месяц и только ЗАВЕРШЕННЫЕ
+    const currentMonthDeals = deals.filter(d => {
+        if (d.isDeleted) return false;
+        
+        const dDate = new Date(d.createdAt);
+        // Считаем сделку "доходом", если она закрыта, завершена или оплачена
+        const isFinished = (d.status === 'completed' || d.stage === 'closed' || d.isPaid === true);
+        
+        // Логика доступа: Админ видит всех, менеджер только себя
+        const matchesUser = isAdmin ? true : (d.manager === me);
+
+        return isFinished && matchesUser && 
+               dDate.getMonth() === currentMonth && 
+               dDate.getFullYear() === currentYear;
+    });
+
+    // 3. Считаем итоговые суммы
+    const monthlyProfit = currentMonthDeals.reduce((sum, d) => sum + parseFloat(d.prof || 0), 0);
+    const dealsCount = currentMonthDeals.length;
+
+    // 4. Формируем визуальный блок (Motivation Card)
+    // Текст заголовка меняется в зависимости от роли (Мій / Загальний)
+    const titleLabel = isAdmin ? "💰 ЗАГАЛЬНИЙ ПРИБУТОК" : "💰 МІЙ ЗАРОБІТОК";
+    const monthName = now.toLocaleDateString('uk-UA', { month: 'long' });
+
+    const motivationHtml = `
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px;">
+            <!-- Карточка с деньгами -->
+            <div style="background: linear-gradient(135deg, #511f54, #8e44ad); color: white; padding: 25px; border-radius: 12px; box-shadow: 0 10px 20px rgba(81, 31, 84, 0.2);">
+                <label style="font-size: 10px; text-transform: uppercase; opacity: 0.8; font-weight: bold; letter-spacing: 1px;">
+                    ${titleLabel} (${monthName})
+                </label>
+                <div style="font-size: 32px; font-weight: 900; margin-top: 8px; font-family: 'Segoe UI', sans-serif;">
+                    ${fCurr(monthlyProfit)} <span style="font-size: 16px; font-weight: 400;">USD</span>
+                </div>
+            </div>
+            
+            <!-- Карточка с количеством сделок -->
+            <div style="background: white; border: 1px solid var(--border); padding: 25px; border-radius: 12px; display: flex; flex-direction: column; justify-content: center;">
+                <label style="font-size: 10px; text-transform: uppercase; color: #8e7a8e; font-weight: bold; letter-spacing: 1px;">
+                    📈 ВИКОНАНО УГОД
+                </label>
+                <div style="font-size: 28px; font-weight: 700; color: var(--primary); margin-top: 5px;">
+                    ${dealsCount} <span style="font-size: 14px; font-weight: 400; color: #999;">шт.</span>
+                </div>
+            </div>
+        </div>
+    `;
         let selMan = (me === 'admin') ? (document.getElementById('statsManagerFilter').value || 'all') : me;
         const selYear = document.getElementById('statsYearFilter').value, selMonth = document.getElementById('statsMonthFilter').value, selType = document.getElementById('statsTypeFilter').value;
         const ms = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"], statsMap = new Map();
@@ -3977,7 +4033,7 @@ last6Months.forEach(m => {
         });
         let h = `<table class="report-table"><thead><tr><th>Период</th><th>Сделок</th><th>Прибыль (USD)</th></tr></thead><tbody>`;
         Array.from(statsMap.keys()).sort().reverse().forEach(k => { const s = statsMap.get(k); h += `<tr class="clickable-row" onclick="showStatsDetail('${s.key}', '${selMan}', '${selType}')"><td>${ms[s.month]} ${s.year}</td><td>${s.count}</td><td style="color:var(--success);font-weight:bold;">${s.profit.toFixed(2)}</td></tr>`; });
-        document.getElementById('statsContent').innerHTML = h + '</tbody></table>';
+        document.getElementById('statsContent').innerHTML = motivationHtml + h + '</tbody></table>';
         updateCharts(monthlyData, typeLabels, managerLabels);
     }
 
