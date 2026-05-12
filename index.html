@@ -2561,6 +2561,26 @@ function renderRequests() {
     let html = limitedList.map(r => {
         const isOverdue = r.status !== 'completed' && (now - new Date(r.createdAt)) > limitMs;
         const isSelected = selectedIds.has(String(r.id));
+        // --- РАСЧЕТ ВРЕМЕНИ ЗАПРОСА ---
+        const createdDate = new Date(r.createdAt);
+        const diffMs = now - createdDate;
+        const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+        
+        let ageLabel = "";
+        let ageColor = "#666"; // Обычный серый цвет
+
+        if (diffDays === 0) {
+            ageLabel = "✨ Сегодня";
+            ageColor = "var(--success)"; // Зеленый для свежих
+        } else if (diffDays === 1) {
+            ageLabel = "🕘 Вчера";
+        } else {
+            ageLabel = `${diffDays} дн. в работе`;
+            // Если запрос висит больше 3 дней — подсветим его оранжевым, больше 7 — красным
+            if (diffDays >= 3) ageColor = "var(--warning)";
+            if (diffDays >= 7) ageColor = "var(--danger)";
+        }
+        // ------------------------------
 
         return `<div class="list-item ${r.status === 'completed' ? 'completed' : ''} ${isOverdue?'overdue':''} ${isSelected?'selected':''}" 
                      onclick="showRequestPreview(${r.id})">
@@ -2571,7 +2591,7 @@ function renderRequests() {
 
             <div class="item-main">
                 <h4>${r.company} ${isOverdue?'<span class="overdue-tag">ГОРЯЧИЙ / ЗАБЫТ</span>':''}</h4>
-                <p>${r.cargo} | Создан: ${dFmt(r.createdAt)} | ${r.manager}</p>
+               <p>${r.cargo} | <span style="color:${ageColor}; font-weight:bold;">${ageLabel}</span> | ${r.manager}</p>
             </div>
             <div class="item-actions">
                 ${r.status !== 'completed' ? `<button class="action-btn" style="color:var(--success)" onclick="finishRequest(event, '${r.id}')">✅</button>` : ''}
@@ -2627,7 +2647,7 @@ function renderDeals() {
     let html = limitedList.map(d => {
         const stage = (d.stage && stageMap[d.stage]) ? stageMap[d.stage] : stageMap.docs;
         const isDebt = (d.stage === 'unloaded' && !d.isPaid);
-        cconst debtStyle = isDebt ? 'border-left: 6px solid #ff0000; background: #fff0f0; box-shadow: 0 0 5px rgba(255,0,0,0.2);' : '';
+        const debtStyle = isDebt ? 'border-left: 6px solid #ff0000; background: #fff0f0; box-shadow: 0 0 5px rgba(255,0,0,0.2);' : '';
         const isSelected = selectedIds.has(String(d.id));
 
         return `
