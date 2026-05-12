@@ -4437,16 +4437,41 @@ const debouncedGlobalSearch = debounce(() => {
     }
 
     // 2. Поиск по Сделкам (по номеру или клиенту)
-    const fDeals = deals.filter(d => !d.isDeleted && (
-        String(d.num || "").toLowerCase().includes(query) || 
-        String(d.company || "").toLowerCase().includes(query)
-    ));
+   const cleanDocQuery = query.replace(/[^a-zа-я0-9]/gi, ''); // Очищаем запрос от пробелов и тире
+
+    const fDeals = deals.filter(d => {
+        if (d.isDeleted) return false;
+
+        // Поиск по стандартным полям
+        const dealNumMatch = String(d.num || "").toLowerCase().includes(query);
+        const companyMatch = String(d.company || "").toLowerCase().includes(query);
+
+        // Умный поиск по документам (BL / AWB)
+        const blVal = String(d.blNum || "").toLowerCase();
+        const awbVal = String(d.awbNum || "").toLowerCase();
+        
+        // Очищаем номера из базы для сравнения
+        const cleanBL = blVal.replace(/[^a-zа-я0-9]/gi, '');
+        const cleanAWB = awbVal.replace(/[^a-zа-я0-9]/gi, '');
+
+        const docMatch = blVal.includes(query) || 
+                         awbVal.includes(query) || 
+                         (cleanDocQuery !== "" && (cleanBL.includes(cleanDocQuery) || cleanAWB.includes(cleanDocQuery)));
+
+        return dealNumMatch || companyMatch || docMatch;
+    });
+
     if (fDeals.length > 0) {
         html += `<div class="search-res-group">💰 Сделки</div>`;
         fDeals.slice(0, 5).forEach(d => {
+            // Формируем красивую подпись, если найден номер документа
+            let docLabel = "";
+            if (d.blNum) docLabel = ` | 🚢 BL: ${d.blNum}`;
+            if (d.awbNum) docLabel = ` | ✈️ AWB: ${d.awbNum}`;
+
             html += `<div class="search-res-item" onclick="goToResult('deals', '${d.id}')">
                 <span class="title">№ ${d.num} - ${d.company}</span>
-                <span class="sub">${d.cargo} | ${d.manager}</span>
+                <span class="sub">${d.cargo}${docLabel} | ${d.manager}</span>
             </div>`;
         });
     }
