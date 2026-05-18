@@ -2024,43 +2024,71 @@ async function sync(sh, dt, mode = 'saveAll') {
 }
 
   async function uploadDealFile(dealId) {
-        const fileInput = document.getElementById('dealFileInput');
-        if (!fileInput || !fileInput.files.length) return alert("Выберите файл!");
-        const file = fileInput.files[0];
-        const reader = new FileReader();
-        showLoader(true);
-        reader.onload = async function(e) {
-            try {
-                const base64 = e.target.result.split(',')[1];
-                const payload = { 
-                    action: 'uploadFile', 
-                    filename: file.name, 
-                    mimeType: file.type, 
-                    base64: base64 
+    const fileInput = document.getElementById('dealFileInput');
+    if (!fileInput || !fileInput.files.length) return alert("Виберіть файли!");
+    
+    const files = Array.from(fileInput.files);
+    const totalFiles = files.length;
+    showLoader(true);
+
+    try {
+        // Создаем массив промисов для одновременной (параллельной) загрузки
+        const uploadPromises = files.map(file => {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = async function(e) {
+                    try {
+                        const base64 = e.target.result.split(',')[1];
+                        const payload = { 
+                            action: 'uploadFile', 
+                            filename: file.name, 
+                            mimeType: file.type, 
+                            base64: base64 
+                        };
+                        const response = await fetch(SCRIPT_URL, { 
+                            method: 'POST', 
+                            body: JSON.stringify(payload) 
+                        });
+                        const res = await response.json();
+                        resolve(res);
+                    } catch (err) {
+                        reject(err);
+                    }
                 };
-                const response = await fetch(SCRIPT_URL, { 
-                    method: 'POST', 
-                    body: JSON.stringify(payload) 
-                });
-                const res = await response.json();
-                if (res.success) {
-                    const idx = deals.findIndex(d => d.id == dealId);
-                    if (!deals[idx].files) deals[idx].files = [];
-                    deals[idx].files.push({ name: res.fileName, url: res.fileUrl, id: res.fileId });
-                    await sync('deals', deals[idx], 'update');
-                    showDealPreview(dealId);
-                    alert("Файл успешно загружен!");
-                } else { 
-                    alert("Ошибка Google Drive: " + res.error); 
-                }
-            } catch (err) { 
-                alert("Ошибка при отправке файла"); 
-            } finally { 
-                showLoader(false); 
-            }
-        };
-        reader.readAsDataURL(file);
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        });
+
+        // Ждем завершения всех загрузок
+        const results = await Promise.all(uploadPromises);
+        
+        // Фильтруем только успешные загрузки
+        const successfulResults = results.filter(r => r && r.success);
+        
+        if (successfulResults.length > 0) {
+            const idx = deals.findIndex(d => d.id == dealId);
+            if (!deals[idx].files) deals[idx].files = [];
+
+            successfulResults.forEach(res => {
+                deals[idx].files.push({ name: res.fileName, url: res.fileUrl, id: res.fileId });
+            });
+
+            // Один раз сохраняем обновленный список файлов в таблицу
+            await sync('deals', deals[idx], 'update');
+            showDealPreview(dealId);
+            alert(`Успішно завантажено файлів: ${successfulResults.length} з ${totalFiles}`);
+        } else {
+            alert("Помилка при завантаженні файлів на Google Drive");
+        }
+    } catch (err) {
+        console.error(err);
+        alert("Сталася помилка під час масового завантаження");
+    } finally {
+        showLoader(false);
+        fileInput.value = ""; // Очищаем поле выбора
     }
+}
 
 function deleteFile(dealId, fileId) {
     if (!confirm("Удалить файл?")) return;
@@ -2288,7 +2316,7 @@ function showDealPreview(id) {
             <strong>📁 Документы и Фото:</strong>
             <div class="file-gallery">${filesHtml || '<div style="color:#ccc; font-size:11px; padding:10px;">Нет файлов</div>'}</div>
             <div class="upload-area">
-                <input type="file" id="dealFileInput" style="font-size:10px; width:150px;">
+                <input type="file" id="dealFileInput" style="font-size:10px; width:150px;" multiple>
                 <button class="main" onclick="uploadDealFile(${d.id})" style="width: auto; padding: 4px 10px; font-size:10px;">+ Загрузить</button>
             </div>
         </div>`;
