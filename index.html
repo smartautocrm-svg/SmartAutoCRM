@@ -870,14 +870,6 @@ button.main:active {
             <input type="password" id="loginPass" placeholder="Пароль">
             <div class="remember-container"><input type="checkbox" id="rememberMe"><label for="rememberMe" style="font-size:11px;">Запомнить меня</label></div>
             <button class="main" onclick="handleLogin()">Войти</button>
-            <div class="login-toggle" onclick="toggleAuthMode(true)">Создать аккаунт</div>
-        </div>
-        <div id="auth-reg-fields" style="display:none;">
-            <input type="text" id="regName" placeholder="Ваше Имя">
-            <input type="email" id="regEmail" placeholder="Email">
-            <input type="password" id="regPass" placeholder="Пароль">
-            <button class="main" style="background:var(--primary);" onclick="handleRegister()">Регистрация</button>
-            <div class="login-toggle" onclick="toggleAuthMode(false)">Уже есть аккаунт</div>
         </div>
     </div>
 </div>
@@ -1652,53 +1644,32 @@ function forInput(v) {
 
     function showLoader(s) { document.getElementById('loader').style.display = s ? 'block' : 'none'; }
     function logout() { sessionStorage.clear(); location.reload(); }
-    function toggleAuthMode(isReg) { document.getElementById('auth-login-fields').style.display = isReg ? 'none' : 'block'; document.getElementById('auth-reg-fields').style.display = isReg ? 'block' : 'none'; }
-
-  async function handleLogin() {
-        const e = document.getElementById('loginEmail').value;
-        const p = document.getElementById('loginPass').value;
-        const rem = document.getElementById('rememberMe').checked;
-        if (!e || !p) return alert("Введите данные"); 
-        showLoader(true);
-        try {
-            const r = await fetch(`${SCRIPT_URL}?action=login&email=${encodeURIComponent(e)}&password=${encodeURIComponent(p)}`);
-            const res = await r.json();
-            if (res.success) { 
-                sessionStorage.setItem('crm_user', res.name); 
-                if(rem) { 
-                    localStorage.setItem('crm_rem_email', e); 
-                    localStorage.setItem('crm_rem_pass', p); 
-                } 
-                startApp(); 
-            } else {
-                alert("Ошибка входа: " + (res.error || "Неверные данные"));
-            }
-        } catch (err) { 
-            alert("Ошибка сети"); 
-        } finally { 
-            showLoader(false); 
+   
+async function handleLogin() {
+    const e = document.getElementById('loginEmail').value;
+    const p = document.getElementById('loginPass').value;
+    const rem = document.getElementById('rememberMe').checked;
+    if (!e || !p) return alert("Введите данные"); 
+    showLoader(true);
+    try {
+        const r = await fetch(`${SCRIPT_URL}?action=login&email=${encodeURIComponent(e)}&password=${encodeURIComponent(p)}`);
+        const res = await r.json();
+        if (res.success) { 
+            sessionStorage.setItem('crm_user', res.name); 
+            if(rem) { 
+                localStorage.setItem('crm_rem_email', e); 
+                localStorage.setItem('crm_rem_pass', p); 
+            } 
+            startApp(); // Запуск системы
+        } else {
+            alert("Ошибка входа: " + (res.error || "Неверные данные"));
         }
+    } catch (err) { 
+        alert("Ошибка сети"); 
+    } finally { 
+        showLoader(false); 
     }
-
-    async function handleRegister() {
-        const n = document.getElementById('regName').value, e = document.getElementById('regEmail').value, p = document.getElementById('regPass').value;
-        if(!n || !e || !p) return alert("Заполните все поля");
-        showLoader(true);
-        try {
-            const r = await fetch(`${SCRIPT_URL}?action=register&email=${encodeURIComponent(e)}&password=${encodeURIComponent(p)}&name=${encodeURIComponent(n)}`);
-            const res = await r.json();
-            if(res.success) { 
-                alert("Регистрация успешна! Теперь войдите."); 
-                toggleAuthMode(false); 
-            } else {
-                alert("Ошибка регистрации");
-            }
-        } catch(err) { 
-            alert("Ошибка соединения при регистрации"); 
-        } finally { 
-            showLoader(false); 
-        }
-    }
+}
 
 async function startApp() {
     const user = sessionStorage.getItem('crm_user');
