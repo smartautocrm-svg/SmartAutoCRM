@@ -2591,38 +2591,35 @@ function renderRequests() {
     const me = sessionStorage.getItem('crm_user');
     
     // 2. Безопасно получаем значение фильтра админа
-    const adminFilterEl = document.getElementById('adminRequestManagerFilter');
+const adminFilterEl = document.getElementById('adminRequestManagerFilter');
     const selectedManager = adminFilterEl ? adminFilterEl.value : 'all';
-          
     const limitMs = 2 * 24 * 60 * 60 * 1000, now = new Date();
-    
+
+    // 2. РАССЧИТЫВАЕМ ВИДИМЫЕ ID (это важно для работы Архива!)
+    const visibleIds = getVisibleIds(requests, 'company', 'createdAt');
+
     // 3. Фильтруем массив запросов
     let f = requests.filter(r => {
-        if (r.isDeleted || !visibleIds.has(String(r.id))) return false;
         if (r.isDeleted) return false;
 
-        // ЛОГИКА АДМИНА: фильтр по выбранному менеджеру
+        // Если это старая запись (не входит в ТОП-10 по компании) - скрываем в архив
+        if (!visibleIds.has(String(r.id))) return false;
+
+        // ЛОГИКА АДМИНА: фильтр по менеджеру
         const matchesAdminFilter = (me === 'admin' && selectedManager !== 'all') ? (r.manager === selectedManager) : true;
 
-        // ЛОГИКА ДОСТУПА: кто что может видеть
+        // ЛОГИКА ДОСТУПА (исправили sharedWith)
         const isRequestShared = (r.sharedWith || "").split(',').map(s => s.trim()).includes(me);
         const hasAccess = (me === 'admin') || (r.manager === me) || isRequestShared || checkAccess(r.company);
 
-        // Если нет доступа ИЛИ не совпадает менеджер в фильтре админа — скрываем
         if (!hasAccess || !matchesAdminFilter) return false;
 
-        // Поиск по названию и грузу
         const companyText = String(r.company || "").toLowerCase();
         const cargoText = String(r.cargo || "").toLowerCase();
-        const matchesSearch = companyText.includes(s) || cargoText.includes(s);
-        
-        // Фильтр завершенных
-        const matchesStatus = hideDone ? r.status !== 'completed' : true;
-        
-        return matchesSearch && matchesStatus;
+        return (companyText.includes(s) || cargoText.includes(s)) && (hideDone ? r.status !== 'completed' : true);
     });
-    
-    // Дальше идет стандартный код отрисовки (totalFound, limitedList и т.д.)
+
+    // 4. ОГРАНИЧИВАЕМ СПИСОК (чтобы не было пустоты)
     const totalFound = f.length;
     const limitedList = f.slice(0, listLimits.requests);
     
