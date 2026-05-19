@@ -895,6 +895,7 @@ button.main:active {
     <button class="tab-btn" id="btn-report" onclick="openTab('report')">📊 <span class="tab-label">ОТЧЕТ</span></button>
     <button class="tab-btn" id="btn-stats" onclick="openTab('stats')">📈 <span class="tab-label">СТАТС</span></button>
     <button class="tab-btn" id="btn-tracking" onclick="openTab('tracking')">🛰️ <span class="tab-label">ТРЕКИНГ</span> <span class="tab-counter" id="count-tracking">0</span></button>
+    <button class="tab-btn" id="btn-archive" style="display:none;" onclick="openTab('archive')">📂 АРХІВ</button>    
     <button class="tab-btn" id="btn-profile" onclick="openTab('profile')">👤</button>
     <button class="tab-btn" id="btn-trash" style="display:none;" onclick="openTab('trash')">🗑️</button>
     <button class="tab-btn" id="btn-logs" style="display:none;" onclick="openTab('logs')">📜</button>
@@ -1407,6 +1408,19 @@ button.main:active {
     </div>
 </div>
 
+    <div id="archive" class="content">
+    <div class="controls-bar">
+        <h3 style="margin:0; color:var(--primary);">📂 АРХІВ (ЗАПИСИ №11+)</h3>
+        <select id="archiveType" onchange="renderArchive()" style="min-width: 150px;">
+            <option value="deals">💰 Сделки</option>
+            <option value="requests">📦 Запросы</option>
+            <option value="calls">📞 Активности</option>
+        </select>
+        <input type="text" id="searchArchive" placeholder="Пошук по компанії..." oninput="renderArchive()">
+    </div>
+    <div class="scroll-list" id="archiveList"></div>
+</div>
+
 <!-- ВКЛАДКА ПРОФИЛЬ -->
 <div id="profile" class="content">
     <div class="scroll-list">
@@ -1548,6 +1562,24 @@ button.main:active {
 <script>
     // СЮДА НУЖНО ВСТАВИТЬ ВАШ URL
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx7FOBG0711CMW05oPvuq2wXP4WuiVyBY-nSAKgPOaHLKMZugEbiRMyzsF8BFq2DXrgeg/exec";
+
+    function getVisibleIds(array, companyKey, dateKey) {
+    const groups = {};
+    // Группируем по компаниям
+    array.filter(x => !x.isDeleted).forEach(item => {
+        const compName = item[companyKey];
+        if (!groups[compName]) groups[compName] = [];
+        groups[compName].push(item);
+    });
+
+    const visibleIds = new Set();
+    // В каждой компании оставляем только 10 самых новых
+    Object.values(groups).forEach(group => {
+        group.sort((a, b) => new Date(b[dateKey]) - new Date(a[dateKey]));
+        group.slice(0, 10).forEach(item => visibleIds.add(String(item.id)));
+    });
+    return visibleIds;
+}
 
     function fCurr(v) {
     return parseFloat(v || 0).toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
@@ -2467,7 +2499,7 @@ function renderReminders() {
           me = sessionStorage.getItem('crm_user'),
           hideDone = document.getElementById('hideDoneCalls').checked,
           onlyOverdue = document.getElementById('showOverdueOnly').checked; // Новая переменная
-
+    const visibleIds = getVisibleIds(reminders, 'name', 'date');
     const now = new Date();
     
     let f = reminders.filter(r => {
@@ -2552,6 +2584,7 @@ async function finishRem(e, id) {
 }
     
 function renderRequests() {
+    const visibleIds = getVisibleIds(requests, 'company', 'createdAt');
     // 1. Получаем элементы управления
     const s = document.getElementById('searchReq').value.toLowerCase();
     const hideDone = document.getElementById('hideDoneRequests').checked;
@@ -2565,6 +2598,7 @@ function renderRequests() {
     
     // 3. Фильтруем массив запросов
     let f = requests.filter(r => {
+        if (r.isDeleted || !visibleIds.has(String(r.id))) return false;
         if (r.isDeleted) return false;
 
         // ЛОГИКА АДМИНА: фильтр по выбранному менеджеру
@@ -2653,6 +2687,7 @@ function finishRequest(e, id) {
 }
     
 function renderDeals() {
+    const visibleIds = getVisibleIds(deals, 'company', 'createdAt');
     const s = document.getElementById('searchDeals').value.toLowerCase();
     const me = sessionStorage.getItem('crm_user');
     const adminFilter = document.getElementById('adminDealManagerFilter').value || 'all';
@@ -2660,6 +2695,7 @@ function renderDeals() {
     const paidFilter = document.getElementById('filterPaid').value;
 
     let f = deals.filter(d => {
+        if (d.isDeleted || !visibleIds.has(String(d.id))) return false;
         if (d.isDeleted) return false;
         const companyText = String(d.company || "").toLowerCase();
         const numText = String(d.num || "").toLowerCase();
@@ -3734,6 +3770,7 @@ function openTab(id) {
     else if (id === 'logs') renderLogs();
     else if (id === 'trash') renderTrash();
     else if (id === 'profile') loadProfile();
+    else if (id === 'archive') renderArchive();
 }
 
     function renderAll() { 
@@ -4295,6 +4332,7 @@ function updateAdminUI() {
     if (user === 'admin') {
         document.getElementById('btn-trash').style.display = 'flex';
         document.getElementById('btn-logs').style.display = 'flex';
+        document.getElementById('btn-archive').style.display = 'flex';
 
         // Список менеджеров для фильтрации
         const managerOptions = '<option value="all">👤 Все менеджеры</option>' + 
@@ -4702,6 +4740,45 @@ document.addEventListener('keydown', (e) => {
         if (typeof closeImageViewer === "function") closeImageViewer();
     }
 });
+
+function renderArchive() {
+    const type = document.getElementById('archiveType').value;
+    const search = document.getElementById('searchArchive').value.toLowerCase();
+    let html = "";
+
+    if (type === 'deals') {
+        const visibleIds = getVisibleIds(deals, 'company', 'createdAt'); // Поправили название
+        const archived = deals.filter(x => !x.isDeleted && !visibleIds.has(String(x.id)) && x.company.toLowerCase().includes(search));
+        html = archived.map(d => `
+            <div class="list-item" onclick="showDealPreview(${d.id}); openTab('deals')">
+                <div class="item-main">
+                    <h4>${d.company} (АРХІВ)</h4>
+                    <p>Угода №${d.num} | Прибуток: <b>${fCurr(d.prof)} USD</b> | Менеджер: ${d.manager}</p>
+                </div>
+            </div>`).join('');
+    } else if (type === 'requests') {
+        const visibleIds = getVisibleIds(requests, 'company', 'createdAt');
+        const archived = requests.filter(x => !x.isDeleted && !visibleIds.has(String(x.id)) && x.company.toLowerCase().includes(search));
+        html = archived.map(r => `
+            <div class="list-item" onclick="showRequestPreview(${r.id}); openTab('requests')">
+                <div class="item-main">
+                    <h4>${r.company} (АРХІВ)</h4>
+                    <p>${r.cargo} | Створено: ${dFmt(r.createdAt)} | Менеджер: ${r.manager}</p>
+                </div>
+            </div>`).join('');
+    } else if (type === 'calls') {
+        const visibleIds = getVisibleIds(reminders, 'name', 'date');
+        const archived = reminders.filter(x => !x.isDeleted && !visibleIds.has(String(x.id)) && x.name.toLowerCase().includes(search));
+        html = archived.map(r => `
+            <div class="list-item" onclick="showCallPreview(${r.id}); openTab('calls')">
+                <div class="item-main">
+                    <h4>${r.name} (АРХІВ)</h4>
+                    <p>${r.topic} | ${dtFmt(r.date)} | Менеджер: ${r.manager}</p>
+                </div>
+            </div>`).join('');
+    }
+    document.getElementById('archiveList').innerHTML = html || '<div style="text-align:center; padding:50px; color:#999;">В архіві немає записів по цій компанії</div>';
+}
     
 </script>
     <div id="notification-container"></div>
