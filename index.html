@@ -4094,12 +4094,26 @@ last6Months.forEach(m => {
     if (charts.loss) charts.loss.destroy(); // Очищаем старый, если был
 
     // Считаем данные из массива запросов
-    const lossCounts = {};
+        const lossCounts = {};
     requests.forEach(r => {
-        // Проверяем, что запрос завершен и в комментарии есть разделитель "|"
-        if (r.status === 'completed' && r.comment && r.comment.includes('|')) {
-            const reason = r.comment.split('|')[0].trim(); // Берем текст ДО палки
-            lossCounts[reason] = (lossCounts[reason] || 0) + 1;
+        // Проверяем, что запрос завершен и есть хоть какой-то текст в комментарии
+        if (r.status === 'completed' && r.comment) {
+            // Если в тексте есть палка — берем левую часть. Если нет — берем весь текст.
+            const reason = r.comment.includes('|') ? r.comment.split('|')[0].trim() : r.comment.trim();
+            
+            // Список наших стандартных причин (чтобы в график не попали обычные комменты)
+            const standardReasons = [
+                "Дорого (высокая ставка)", 
+                "Долго (сроки доставки)", 
+                "Нет транспорта/мест", 
+                "Клиент не на связи / Ghosted", 
+                "Груз отменился / Неактуально", 
+                "Другое (указать в комм.)"
+            ];
+
+            if (standardReasons.includes(reason)) {
+                lossCounts[reason] = (lossCounts[reason] || 0) + 1;
+            }
         }
     });
 
@@ -4338,7 +4352,7 @@ async function deleteNews(id) {
         
         // Формируем текст комментария: "Причина | Доп. текст"
         // Это позволяет сохранить оба значения в одной ячейке таблицы
-        requests[i].comment = reason + (comment ? " | " + comment : ""); 
+        requests[i].comment = reason + " | " + (comment ? comment : ""); 
         
         // Обновляем список на экране (как в оригинале)
         renderRequests();
