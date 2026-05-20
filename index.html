@@ -2878,8 +2878,8 @@ function renderCompanies() {
         const matchN = String(c.name).toLowerCase().includes(s);
         const matchProd = String(c.product || "").toLowerCase().includes(fProd);
         const matchCity = String(c.city || "").toLowerCase().includes(fCity);
-        const matchImp = String(c.import || "").toLowerCase().includes(fImp);
-        const matchExp = String(c.export || "").toLowerCase().includes(fExp);
+        const matchImp = String(c.imp || "").toLowerCase().includes(fImp);
+        const matchExp = String(c.exp || "").toLowerCase().includes(fExp);
         
         let matchT = true; 
         if (cat === 'manager' && valSel) matchT = (c.manager === valSel); 
