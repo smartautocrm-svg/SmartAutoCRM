@@ -2232,6 +2232,7 @@ function showCallPreview(id) {
 function showRequestPreview(id) {
     const r = requests.find(x => x.id == id); 
     if (!r) return;
+    const c = companies.find(x => x.name === r.company) || {};
 
     const me = sessionStorage.getItem('crm_user');
 
@@ -3513,8 +3514,8 @@ async function addDeal() {
         phone: phone, 
         email: document.getElementById('compEmail').value, 
         website: document.getElementById('compWebsite').value, 
-        import: document.getElementById('compImp').value, 
-        export: document.getElementById('compExp').value,
+        imp: document.getElementById('compImp').value, 
+        exp: document.getElementById('compExp').value,
         desc: document.getElementById('compDesc').value,
         createdAt: new Date().toISOString(), 
         activatedAt: (st === 'active' ? new Date().toISOString() : ""), 
