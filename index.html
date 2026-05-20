@@ -1338,9 +1338,11 @@ button.main:active {
                 <h4>Прибыль по менеджерам (ТОП)</h4>
                 <canvas id="chartManagerPerformance"></canvas>
             </div>
+            <div class="chart-box" style="grid-column: span 2; height: 320px; margin-top: 15px;">
+        <h4>Аналитика причин отказов (Запросы)</h4>
+        <div style="height: 250px;">
+            <canvas id="chartLossReasons"></canvas>
         </div>
-
-        <div id="statsContent"></div>
     </div>
 </div>
     
@@ -1489,17 +1491,27 @@ button.main:active {
     </div>
 </div>
     
-    <!-- МОДАЛКА ЗАКРЫТИЯ ЗАПРОСА (ОБЯЗАТЕЛЬНЫЙ КОММЕНТАРИЙ) -->
+   <!-- МОДАЛКА ЗАКРЫТИЯ ЗАПРОСА (ОБЯЗАТЕЛЬНЫЙ ВЫБОР ПРИЧИНЫ) -->
 <div id="requestCloseModal" class="modal-overlay" onclick="if(event.target===this) this.style.display='none'">
     <div class="modal-content" style="width: 400px; border-top: 5px solid var(--danger);">
         <h3>Завершение запроса</h3>
         <p style="font-size: 11px; color: #666; margin-bottom: 10px;">
-            Пожалуйста, укажите причину закрытия запроса (почему не дошли до сделки?):
+            Укажите, почему запрос не дошел до сделки:
         </p>
-        <!-- Поле для ввода комментария -->
-        <textarea id="reqCloseComment" style="width: 100%; height: 100px; padding: 8px; border: 1px solid var(--border); border-radius: 4px;" placeholder="Пример: Клиент ушел к конкурентам из-за цены / Груз отменился..."></textarea>
         
-        <!-- Скрытое поле для хранения ID запроса -->
+        <!-- Выбор причины -->
+        <select id="reqLossReason" style="width: 100%; margin-bottom: 10px; font-weight: bold; border-color: var(--danger);">
+            <option value="">-- Выберите причину отмены --</option>
+            <option value="Дорого (высокая ставка)">💰 Дорого (высокая ставка)</option>
+            <option value="Долго (сроки доставки)">⏱️ Долго (сроки доставки)</option>
+            <option value="Нет транспорта/мест">🚛 Нет транспорта/мест</option>
+            <option value="Клиент не на связи / Ghosted">👻 Клиент не на связи</option>
+            <option value="Груз отменился / Неактуально">❌ Груз отменился / Неактуально</option>
+            <option value="Другое (указать в комм.)">📝 Другое (указать в комм.)</option>
+        </select>
+
+        <textarea id="reqCloseComment" style="width: 100%; height: 80px; padding: 8px; border: 1px solid var(--border); border-radius: 4px;" placeholder="Дополнительный комментарий..."></textarea>
+        
         <input type="hidden" id="reqCloseId">
         
         <div style="display: flex; gap: 10px; margin-top: 15px;">
@@ -1640,7 +1652,7 @@ function forInput(v) {
         unloaded: { label: '🏁 Выгружен/Оплата', color: '#e67e22' },
         closed: { label: '✅ Закрыта', color: '#2e7d32' }
     };
-    let charts = { dyn: null, type: null, perf: null };
+    let charts = { dyn: null, type: null, perf: null, loss: null };
 
     function showLoader(s) { document.getElementById('loader').style.display = s ? 'block' : 'none'; }
     function logout() { sessionStorage.clear(); location.reload(); }
@@ -4069,7 +4081,48 @@ last6Months.forEach(m => {
         charts.type = new Chart(ctxType, { type: 'doughnut', data: { labels: Object.keys(types), datasets: [{ data: Object.values(types), backgroundColor: ['#4285F4', '#34A853', '#FBBC05', '#EA4335', '#673AB7', '#00ACC1', '#FF7043', '#9E9E9E'] }] }, options: { responsive: true, maintainAspectRatio: false } });
         if (charts.perf) charts.perf.destroy();
         charts.perf = new Chart(ctxPerf, { type: 'bar', data: { labels: Object.keys(managersData), datasets: [{ label: 'Прибыль по менеджерам', data: Object.values(managersData), backgroundColor: '#34A853' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } });
-    }
+            const ctxLoss = document.getElementById('chartLossReasons').getContext('2d');
+    if (charts.loss) charts.loss.destroy(); // Очищаем старый, если был
+
+    // Считаем данные из массива запросов
+    const lossCounts = {};
+    requests.forEach(r => {
+        // Проверяем, что запрос завершен и в комментарии есть разделитель "|"
+        if (r.status === 'completed' && r.comment && r.comment.includes('|')) {
+            const reason = r.comment.split('|')[0].trim(); // Берем текст ДО палки
+            lossCounts[reason] = (lossCounts[reason] || 0) + 1;
+        }
+    });
+
+    // Создаем горизонтальный график
+    charts.loss = new Chart(ctxLoss, {
+        type: 'bar',
+        data: {
+            labels: Object.keys(lossCounts),
+            datasets: [{
+                label: 'Запросов',
+                data: Object.values(lossCounts),
+                backgroundColor: [
+                    '#FF7043', '#FFB74D', '#4DB6AC', '#9575CD', '#F06292', '#A1887F'
+                ],
+                borderRadius: 4
+            }]
+        },
+        options: {
+            indexAxis: 'y', // Делает график горизонтальным (удобно читать длинные причины)
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false } // Прячем легенду, так как подписи и так слева
+            },
+            scales: {
+                x: { beginAtZero: true, grid: { display: false } },
+                y: { grid: { display: false } }
+            }
+        }
+    });
+}
+    
 
     function showStatsDetail(key, manager, type) {
         const [y, m] = key.split('-').map(Number);
@@ -4247,29 +4300,44 @@ async function deleteNews(id) {
         document.getElementById('preview-tracking').innerHTML = `<h3>Детали: ${t.num}</h3><div class="preview-grid"><div class="preview-box"><label>Груз</label><span>${t.cargo}</span></div><div class="preview-box"><label>Статус</label><span style="color:var(--primary); font-weight:bold;">${t.status}</span></div><div class="preview-box"><label>Вес/Объем</label><span>${t.weight}кг / ${t.vol}м³</span></div><div class="preview-box"><label>Упаковка</label><span>${t.qty} (${t.pack})</span></div><div class="preview-box"><label>Транспорт</label><span>${t.trans.toUpperCase()}</span></div></div>`;
     }
 
-    async function submitRequestClose() {
+   async function submitRequestClose() {
     const id = document.getElementById('reqCloseId').value;
-    const comment = document.getElementById('reqCloseComment').value.trim();
+    const reason = document.getElementById('reqLossReason').value; // Новое поле (выбор причины)
+    const comment = document.getElementById('reqCloseComment').value.trim(); // Поле комментария
 
-    // ПРОВЕРКА НА ОБЯЗАТЕЛЬНОСТЬ (минимум 5 символов)
-    if (comment.length < 5) {
-        alert("Пожалуйста, укажите причину закрытия (минимум 5 символов). Это поле обязательно.");
+    // --- БЛОК ВАЛИДАЦИИ (сохранено и улучшено) ---
+    
+    // 1. Проверяем, выбрана ли причина из списка (Обязательно)
+    if (!reason) {
+        alert("Пожалуйста, выберите основную причину закрытия из списка!");
         return;
     }
 
-    const i = requests.findIndex(x => x.id == id);
+    // 2. Старая логика: если причина "Другое" или если ты хочешь, чтобы коммент всегда был длинным
+    // Я сделал так: если выбрано "Другое", текст обязателен (мин. 5 символов)
+    if (reason.includes("Другое") && comment.length < 5) {
+        alert("Для причины 'Другое' пожалуйста, укажите подробности (минимум 5 символов).");
+        return;
+    }
+    
+    // --------------------------------------------
+
+    const i = requests.findIndex(x => String(x.id) === String(id));
     if (i > -1) {
-        // Меняем статус на завершенный и сохраняем причину
+        // Меняем статус на завершенный (как в оригинале)
         requests[i].status = 'completed';
-        requests[i].comment = comment; 
         
-        // Обновляем список на экране
+        // Формируем текст комментария: "Причина | Доп. текст"
+        // Это позволяет сохранить оба значения в одной ячейке таблицы
+        requests[i].comment = reason + (comment ? " | " + comment : ""); 
+        
+        // Обновляем список на экране (как в оригинале)
         renderRequests();
         
-        // Закрываем модалку
+        // Закрываем модалку (как в оригинале)
         document.getElementById('requestCloseModal').style.display = 'none';
 
-        // Синхронизируем только одну измененную строку в Google Таблицу
+        // Синхронизируем точечно одну измененную строку в Google Таблицу (как в оригинале)
         await sync('requests', requests[i], 'update'); 
         
         alert("Запрос успешно закрыт.");
