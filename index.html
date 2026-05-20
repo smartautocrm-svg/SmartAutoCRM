@@ -2355,6 +2355,7 @@ function showDealPreview(id) {
 // 2. Обновленная функция просмотра компании
 function showCompanyPreview(n) {
     const c = companies.find(x => x.name === n); 
+    console.log("Данные компании в превью:", c);
     if (!c) return;
     const me = sessionStorage.getItem('crm_user');
 
