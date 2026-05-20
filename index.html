@@ -1626,7 +1626,9 @@ function forInput(v) {
     container.appendChild(div);
 }
     
-    let reminders = [], companies = [], partners = [], requests = [], managers = [], deals = [], tracking = [], crmLogs = [], news = []; let selectedIds = new Set();
+    let reminders = [], companies = [], partners = [], requests = [], managers = [], deals = [], tracking = [], crmLogs = [], news = []; 
+    let teamStructure = {}; 
+    let selectedIds = new Set();
     let listLimits = { 
         calls: 30, 
         requests: 30, 
@@ -1670,13 +1672,16 @@ async function handleLogin() {
     try {
         const r = await fetch(`${SCRIPT_URL}?action=login&email=${encodeURIComponent(e)}&password=${encodeURIComponent(p)}`);
         const res = await r.json();
-        if (res.success) { 
+if (res.success) { 
             sessionStorage.setItem('crm_user', res.name); 
+            sessionStorage.setItem('crm_role', res.role || 'manager'); // ЗАПОМИНАЕМ РОЛЬ
+            sessionStorage.setItem('crm_team', res.team || 'none');     // ЗАПОМИНАЕМ КОМАНДУ
+            
             if(rem) { 
                 localStorage.setItem('crm_rem_email', e); 
                 localStorage.setItem('crm_rem_pass', p); 
             } 
-            startApp(); // Запуск системы
+            startApp(); 
         } else {
             alert("Ошибка входа: " + (res.error || "Неверные данные"));
         }
@@ -1867,6 +1872,7 @@ function processLoadedData(d) {
     if (d.tracking) tracking = d.tracking.map(parsers.tracking);
     if (d.news) news = d.news.map(parsers.news);
     if (d.logs) crmLogs = d.logs;
+    if (d.teamStructure) teamStructure = d.teamStructure;
         const compManSel = document.getElementById('compManager');
     if (compManSel) {
         // Очищаем и заполняем список менеджеров
@@ -2085,20 +2091,54 @@ function deleteFile(dealId, fileId) {
     sync('deals', deals[idx], 'update').then(() => showDealPreview(dealId));
 }
 
-    function checkAccess(n) { const me = sessionStorage.getItem('crm_user'); if (me === 'admin') return true; const c = companies.find(x=>x.name===n); return !c || !c.isPrivate || c.manager===me || (c.sharedWith||"").split(',').includes(me); }
-    function checkDealAccess(d) {
-        const me = sessionStorage.getItem('crm_user');
-        if (me === 'admin') return true; // Админ видит всё всегда
+   function checkAccess(companyName) {
+    const me = sessionStorage.getItem('crm_user');
+    const myRole = sessionStorage.getItem('crm_role');
+    const myTeam = sessionStorage.getItem('crm_team');
 
-        if (d.isPrivateDeal) {
-            // Если сделка приватная — её видит ТОЛЬКО автор сделки
-            return d.manager === me;
-        } else {
-            // Если сделка открытая — её видят те, у кого есть доступ к КОМПАНИИ
-            // (это автор компании + те, кому автор компании открыл доступ через "Поделиться")
-            return checkAccess(d.company);
-        }
+    // 1. Админ видит всё
+    if (myRole === 'admin') return true; 
+
+    const c = companies.find(x => x.name === companyName);
+    if (!c) return true; // Для новых записей
+
+    // 2. Я автор этой компании
+    if (c.manager === me) return true;
+
+    // 3. Мне открыли доступ через "Поделиться"
+    const sharedList = (c.sharedWith || "").split(',').map(s => s.trim());
+    if (sharedList.includes(me)) return true;
+
+    // 4. ИЕРАРХИЯ: Я руководитель (leader) и менеджер этой компании в моей команде
+    if (myRole === 'leader') {
+        const itemManagerInfo = teamStructure[c.manager];
+        if (itemManagerInfo && itemManagerInfo.team === myTeam) return true;
     }
+
+    return false; 
+}
+    
+function checkDealAccess(d) {
+    const me = sessionStorage.getItem('crm_user');
+    const myRole = sessionStorage.getItem('crm_role');
+    const myTeam = sessionStorage.getItem('crm_team');
+
+    if (myRole === 'admin') return true;
+
+    if (d.isPrivateDeal) {
+        // Приватную сделку видит автор
+        if (d.manager === me) return true;
+        // И его руководитель
+        if (myRole === 'leader') {
+            const itemManagerInfo = teamStructure[d.manager];
+            if (itemManagerInfo && itemManagerInfo.team === myTeam) return true;
+        }
+        return false;
+    } else {
+        // Если сделка открытая - проверяем доступ к компании (уже по новой логике выше)
+        return checkAccess(d.company);
+    }
+}
     
     function checkTransportFields(p) {
         const v = document.getElementById(p+'Transport')?.value || document.getElementById(p+'Trans')?.value;
@@ -4370,22 +4410,29 @@ async function deleteNews(id) {
 
 // 1. Проверяем, админ ли зашел, и показываем кнопку
 function updateAdminUI() {
-    const user = sessionStorage.getItem('crm_user');
-    if (user === 'admin') {
-        document.getElementById('btn-trash').style.display = 'flex';
-        document.getElementById('btn-logs').style.display = 'flex';
+    const role = sessionStorage.getItem('crm_role');
+    const team = sessionStorage.getItem('crm_team');
 
-        // Список менеджеров для фильтрации
-        const managerOptions = '<option value="all">👤 Все менеджеры</option>' + 
-                               managers.map(m => `<option value="${m}">${m}</option>`).join('');
+    // Если админ или руководитель - показываем расширенные инструменты
+    if (role === 'admin' || role === 'leader') {
+        if (role === 'admin') {
+            document.getElementById('btn-trash').style.display = 'flex';
+            document.getElementById('btn-logs').style.display = 'flex';
+        }
 
-        // Список ID фильтров, которые нужно включить
+        // Настраиваем фильтр менеджеров
+        const managerOptions = managers.filter(m => {
+            if (role === 'admin') return true; // Админ видит всех
+            // Руководитель видит только себя и свою команду
+            const info = teamStructure[m];
+            return info && info.team === team;
+        }).map(m => `<option value="${m}">${m}</option>`).join('');
+
         const filters = ['adminCallManagerFilter', 'adminRequestManagerFilter', 'adminDealManagerFilter'];
-        
         filters.forEach(id => {
             const el = document.getElementById(id);
             if (el) {
-                el.innerHTML = managerOptions;
+                el.innerHTML = '<option value="all">👤 Все подчиненные</option>' + managerOptions;
                 el.style.display = 'inline-block';
             }
         });
