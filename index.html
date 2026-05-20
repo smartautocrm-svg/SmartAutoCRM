@@ -337,7 +337,7 @@ button.main:active {
         .action-btn:hover { color: var(--primary); }
         .btn-delete:hover { color: var(--danger); }
 
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 7000; }
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); z-index: 30000; }
         .modal-content { background: #fff; padding: 15px; width: 480px; border-radius: 6px; margin: 40px auto; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
 
         /* Общий контейнер превью */
@@ -1339,12 +1339,13 @@ button.main:active {
                 <canvas id="chartManagerPerformance"></canvas>
             </div>
             <div class="chart-box" style="grid-column: span 2; height: 320px; margin-top: 15px;">
-        <h4>Аналитика причин отказов (Запросы)</h4>
-        <div style="height: 250px;">
-            <canvas id="chartLossReasons"></canvas>
-        </div>
+                <h4>Аналитика причин отказов (Запросы)</h4>
+                <div style="height: 250px;">
+                    <canvas id="chartLossReasons"></canvas>
+                </div>
+            </div>
+        </div> <!-- Конец charts-container -->
     </div>
-</div>
     
     <!-- ВКЛАДКА ТРЕКИНГ -->
 <div id="tracking" class="content">
@@ -1491,35 +1492,7 @@ button.main:active {
     </div>
 </div>
     
-   <!-- МОДАЛКА ЗАКРЫТИЯ ЗАПРОСА (ОБЯЗАТЕЛЬНЫЙ ВЫБОР ПРИЧИНЫ) -->
-<div id="requestCloseModal" class="modal-overlay" onclick="if(event.target===this) this.style.display='none'">
-    <div class="modal-content" style="width: 400px; border-top: 5px solid var(--danger);">
-        <h3>Завершение запроса</h3>
-        <p style="font-size: 11px; color: #666; margin-bottom: 10px;">
-            Укажите, почему запрос не дошел до сделки:
-        </p>
-        
-        <!-- Выбор причины -->
-        <select id="reqLossReason" style="width: 100%; margin-bottom: 10px; font-weight: bold; border-color: var(--danger);">
-            <option value="">-- Выберите причину отмены --</option>
-            <option value="Дорого (высокая ставка)">💰 Дорого (высокая ставка)</option>
-            <option value="Долго (сроки доставки)">⏱️ Долго (сроки доставки)</option>
-            <option value="Нет транспорта/мест">🚛 Нет транспорта/мест</option>
-            <option value="Клиент не на связи / Ghosted">👻 Клиент не на связи</option>
-            <option value="Груз отменился / Неактуально">❌ Груз отменился / Неактуально</option>
-            <option value="Другое (указать в комм.)">📝 Другое (указать в комм.)</option>
-        </select>
 
-        <textarea id="reqCloseComment" style="width: 100%; height: 80px; padding: 8px; border: 1px solid var(--border); border-radius: 4px;" placeholder="Дополнительный комментарий..."></textarea>
-        
-        <input type="hidden" id="reqCloseId">
-        
-        <div style="display: flex; gap: 10px; margin-top: 15px;">
-            <button class="main" style="background: var(--success);" onclick="submitRequestClose()">Подтвердить закрытие</button>
-            <button class="main" style="background: var(--cold); width: 100px;" onclick="document.getElementById('requestCloseModal').style.display='none'">Отмена</button>
-        </div>
-    </div>
-</div>
     <!-- МОДАЛКА ЗАВЕРШЕНИЯ СЛЕДУЮЩЕГО ШАГА -->
 <div id="followUpModal" class="modal-overlay" onclick="if(event.target===this) this.style.display='none'">
     <div class="modal-content" style="width: 450px; border-top: 5px solid var(--success);">
@@ -1548,6 +1521,36 @@ button.main:active {
     
 <datalist id="allEntitiesData"></datalist>
     <datalist id="managersDataList"></datalist>
+
+       <!-- МОДАЛКА ЗАКРЫТИЯ ЗАПРОСА (ОБЯЗАТЕЛЬНЫЙ ВЫБОР ПРИЧИНЫ) -->
+<div id="requestCloseModal" class="modal-overlay" onclick="if(event.target===this) this.style.display='none'">
+    <div class="modal-content" style="width: 400px; border-top: 5px solid var(--danger);">
+        <h3>Завершение запроса</h3>
+        <p style="font-size: 11px; color: #666; margin-bottom: 10px;">
+            Укажите, почему запрос не дошел до сделки:
+        </p>
+        
+        <!-- Выбор причины -->
+        <select id="reqLossReason" style="width: 100%; margin-bottom: 10px; font-weight: bold; border-color: var(--danger);">
+            <option value="">-- Выберите причину отмены --</option>
+            <option value="Дорого (высокая ставка)">💰 Дорого (высокая ставка)</option>
+            <option value="Долго (сроки доставки)">⏱️ Долго (сроки доставки)</option>
+            <option value="Нет транспорта/мест">🚛 Нет транспорта/мест</option>
+            <option value="Клиент не на связи / Ghosted">👻 Клиент не на связи</option>
+            <option value="Груз отменился / Неактуально">❌ Груз отменился / Неактуально</option>
+            <option value="Другое (указать в комм.)">📝 Другое (указать в комм.)</option>
+        </select>
+
+        <textarea id="reqCloseComment" style="width: 100%; height: 80px; padding: 8px; border: 1px solid var(--border); border-radius: 4px;" placeholder="Дополнительный комментарий..."></textarea>
+        
+        <input type="hidden" id="reqCloseId">
+        
+        <div style="display: flex; gap: 10px; margin-top: 15px;">
+            <button class="main" style="background: var(--success);" onclick="submitRequestClose()">Подтвердить закрытие</button>
+            <button class="main" style="background: var(--cold); width: 100px;" onclick="document.getElementById('requestCloseModal').style.display='none'">Отмена</button>
+        </div>
+    </div>
+</div>
 
 <script>
     // СЮДА НУЖНО ВСТАВИТЬ ВАШ URL
@@ -2631,6 +2634,11 @@ function finishRequest(e, id) {
     if (i > -1) {
         document.getElementById('reqCloseId').value = id;
         document.getElementById('reqCloseComment').value = ""; 
+        
+        // Сбрасываем выбор причины на пустой вариант
+        const reasonDropdown = document.getElementById('reqLossReason');
+        if (reasonDropdown) reasonDropdown.value = ""; 
+
         document.getElementById('requestCloseModal').style.display = 'block';
     }
 }
