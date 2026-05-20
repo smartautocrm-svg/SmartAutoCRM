@@ -2269,8 +2269,8 @@ function showRequestPreview(id) {
         <h3>Запрос: ${r.company}</h3>
         <div class="preview-grid">
             <div class="preview-box"><label>Груз</label><span>${r.cargo}</span></div>
-            <div class="preview-box"><label>📥 Импорт</label><span>${c.import || '-'}</span></div>
-            <div class="preview-box"><label>📤 Экспорт</label><span>${c.export || '-'}</span></div>
+            <div class="preview-box"><label>📥 Импорт</label><span>${c['import'] || '-'}</span></div>
+            <div class="preview-box"><label>📤 Экспорт</label><span>${c['export'] || '-'}</span></div>
             <div class="preview-box"><label>Тип запроса</label><span>${r.type || '-'}</span></div>
             <div class="preview-box"><label>Транспорт</label><span>${r.transport} ${r.container || ''}</span></div>
             <div class="preview-box"><label>Вес/Объем</label><span>${r.weight}кг / ${r.vol}м³</span></div>
