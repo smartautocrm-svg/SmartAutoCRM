@@ -1815,7 +1815,7 @@ const parsers = {
     companies: x => ({ 
         id: x[0], name: String(x[1]||""), contact: String(x[2]||""), phone: String(x[3]||""), 
         product: String(x[4]||""), city: String(x[5]||""), email: String(x[6]||""), 
-        import: String(x[7]||""), export: String(x[8]||""), status: x[9], 
+        imp: String(x[7]||""),  exp: String(x[8]||""), status: x[9], 
         createdAt: x[10], activatedAt: x[11], manager: String(x[12]||""), 
         isPrivate: String(x[13]) === "true", sharedWith: String(x[14]||""), 
         website: String(x[15]||""), isDeleted: x[16] === true || x[16] === 'true',
@@ -1961,7 +1961,7 @@ function exportCurrentData() {
     };
 }
     function formatRow(sh, o) {
-        if (sh === 'companies') return [o.id, o.name, o.contact, o.phone, o.product || "", o.city || "", o.email || "", o.import || "", o.export || "", o.status, o.createdAt, o.activatedAt || "", o.manager, o.isPrivate, o.sharedWith || "", o.website || "", o.isDeleted || false, o.desc || ""];
+        if (sh === 'companies') return [o.id, o.name, o.contact, o.phone, o.product || "", o.city || "", o.email || "", o.imp || "", o.exp || "", o.status, o.createdAt, o.activatedAt || "", o.manager, o.isPrivate, o.sharedWith || "", o.website || "", o.isDeleted || false, o.desc || ""];
 if (sh === 'requests') return [o.id, o.company, o.cargo, o.transport, o.weight, o.vol, o.value, o.currency, o.load, o.unload, o.desc, o.createdAt, o.status, o.comment, o.container, o.zip, o.manager, o.contQty || "", o.type || "", o.sharedWith || "", o.isDeleted || false];
 
 if (sh === 'deals') return [
@@ -2269,8 +2269,8 @@ function showRequestPreview(id) {
         <h3>Запрос: ${r.company}</h3>
         <div class="preview-grid">
             <div class="preview-box"><label>Груз</label><span>${r.cargo}</span></div>
-            <div class="preview-box"><label>📥 Импорт</label><span>${c['import'] || '-'}</span></div>
-            <div class="preview-box"><label>📤 Экспорт</label><span>${c['export'] || '-'}</span></div>
+            <div class="preview-box"><label>📥 Импорт</label><span>${c.imp || '-'}</span></div>
+            <div class="preview-box"><label>📤 Экспорт</label><span>${c.exp || '-'}</span></div>
             <div class="preview-box"><label>Тип запроса</label><span>${r.type || '-'}</span></div>
             <div class="preview-box"><label>Транспорт</label><span>${r.transport} ${r.container || ''}</span></div>
             <div class="preview-box"><label>Вес/Объем</label><span>${r.weight}кг / ${r.vol}м³</span></div>
