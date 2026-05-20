@@ -3392,28 +3392,45 @@ async function addDeal() {
 
     if (!n || !p || !m) return alert("Поля Название, Груз и Менеджер обязательны!");
 
-    // --- БЛОК ПРОВЕРКИ ДУБЛИКАТОВ ---
-    
-    // 1. Проверка по названию (без учета регистра)
-    const duplicateName = companies.find(c => c.name.toLowerCase() === n.toLowerCase());
-    
-    // 2. Проверка по телефону (только если телефон введен)
-    let duplicatePhone = null;
-    if (phone) {
-        // Убираем из номеров лишние символы (пробелы, тире, скобки) для точного сравнения
-        const cleanNewPhone = phone.replace(/\D/g, '');
-        duplicatePhone = companies.find(c => {
-            if (!c.phone) return false;
-            return c.phone.replace(/\D/g, '') === cleanNewPhone;
-        });
-    }
+    // --- УСИЛЕННЫЙ БЛОК ПРОВЕРКИ ДУБЛИКАТОВ ---
 
-    if (duplicateName) {
-        return alert(`❌ ОШИБКА: Компания "${n}" уже есть в базе!\nМенеджер: ${duplicateName.manager}\nСтатус: ${statusMap[duplicateName.status].label}`);
-    }
+    // 1. Нормализация названия (удаляем пробелы, спецсимволы, в нижний регистр)
+    const normalizeName = (str) => str.toLowerCase().replace(/[^a-zа-я0-9]/gi, '');
+    const newNameNormalized = normalizeName(n);
 
-    if (duplicatePhone) {
-        return alert(`❌ ОШИБКА: Телефон ${phone} уже закреплен за компанией "${duplicatePhone.name}"!\nМенеджер: ${duplicatePhone.manager}`);
+    // 2. Нормализация телефона (только последние 9 цифр)
+    const normalizePhoneTail = (num) => {
+        const digits = num.replace(/\D/g, ''); // оставляем только цифры
+        return digits.length >= 9 ? digits.slice(-9) : (digits.length > 0 ? digits : null);
+    };
+    const newPhoneTail = normalizePhoneTail(phone);
+
+    // Ищем дубликаты
+    const duplicate = companies.find(c => {
+        if (c.isDeleted) return false;
+
+        // Проверка по названию
+        const existNameNormalized = normalizeName(c.name);
+        if (newNameNormalized === existNameNormalized) return true;
+
+        // Проверка по телефону (если введен)
+        if (newPhoneTail) {
+            const existPhoneTail = normalizePhoneTail(c.phone || "");
+            if (existPhoneTail && newPhoneTail === existPhoneTail) return true;
+        }
+
+        return false;
+    });
+
+    if (duplicate) {
+        return alert(
+            `❌ ОШИБКА: Похожая компания уже есть в базе!\n\n` +
+            `Найден совпавшний объект: "${duplicate.name}"\n` +
+            `Менеджер: ${duplicate.manager}\n` +
+            `Статус: ${statusMap[duplicate.status].label}\n` +
+            `Телефон в базе: ${duplicate.phone}\n\n` +
+            `Создание дубликата заблокировано.`
+        );
     }
 
     // --- КОНЕЦ БЛОКА ПРОВЕРКИ ---
@@ -3440,8 +3457,8 @@ async function addDeal() {
 
     companies.push(newItem); 
     renderCompanies();
-    updateCounters();  // Обновить счетчик компаний
-    updateDatalists(); // ОБЯЗАТЕЛЬНО: чтобы компания появилась в подсказках (список клиентов)
+    updateCounters();
+    updateDatalists();
     await sync('companies', companies, 'append'); 
     
     // Очистка полей
