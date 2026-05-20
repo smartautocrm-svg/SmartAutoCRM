@@ -1674,8 +1674,8 @@ async function handleLogin() {
         const res = await r.json();
 if (res.success) { 
             sessionStorage.setItem('crm_user', res.name); 
-            sessionStorage.setItem('crm_role', res.role || 'manager'); // ЗАПОМИНАЕМ РОЛЬ
-            sessionStorage.setItem('crm_team', res.team || 'none');     // ЗАПОМИНАЕМ КОМАНДУ
+            sessionStorage.setItem('crm_role', res.role || 'manager'); // СОХРАНЯЕМ РОЛЬ
+            sessionStorage.setItem('crm_team', res.team || 'none');     // СОХРАНЯЕМ КОМАНДУ
             
             if(rem) { 
                 localStorage.setItem('crm_rem_email', e); 
@@ -2091,31 +2091,32 @@ function deleteFile(dealId, fileId) {
     sync('deals', deals[idx], 'update').then(() => showDealPreview(dealId));
 }
 
-   function checkAccess(companyName) {
+function checkAccess(companyName) {
     const me = sessionStorage.getItem('crm_user');
     const myRole = sessionStorage.getItem('crm_role');
     const myTeam = sessionStorage.getItem('crm_team');
 
-    // 1. Админ видит всё
+    // 1. Админ видит абсолютно всё
     if (myRole === 'admin') return true; 
 
     const c = companies.find(x => x.name === companyName);
-    if (!c) return true; // Для новых записей
+    if (!c) return true; // Для новых записей разрешаем ввод
 
-    // 2. Я автор этой компании
+    // 2. Если я автор этой компании - доступ есть
     if (c.manager === me) return true;
 
-    // 3. Мне открыли доступ через "Поделиться"
+    // 3. Если мне открыли доступ через кнопку "Поделиться"
     const sharedList = (c.sharedWith || "").split(',').map(s => s.trim());
     if (sharedList.includes(me)) return true;
 
-    // 4. ИЕРАРХИЯ: Я руководитель (leader) и менеджер этой компании в моей команде
+    // 4. ЛОГИКА ИЕРАРХИИ: Я руководитель (leader) и менеджер этой компании в моей команде
     if (myRole === 'leader') {
         const itemManagerInfo = teamStructure[c.manager];
+        // Если у менеджера компании такая же команда, как у меня - я его вижу
         if (itemManagerInfo && itemManagerInfo.team === myTeam) return true;
     }
 
-    return false; 
+    return false; // В остальных случаях - закрыто
 }
     
 function checkDealAccess(d) {
@@ -2128,14 +2129,14 @@ function checkDealAccess(d) {
     if (d.isPrivateDeal) {
         // Приватную сделку видит автор
         if (d.manager === me) return true;
-        // И его руководитель
+        // И его руководитель (leader)
         if (myRole === 'leader') {
             const itemManagerInfo = teamStructure[d.manager];
             if (itemManagerInfo && itemManagerInfo.team === myTeam) return true;
         }
         return false;
     } else {
-        // Если сделка открытая - проверяем доступ к компании (уже по новой логике выше)
+        // Если сделка открытая - проверяем общий доступ к компании (из Шага 4)
         return checkAccess(d.company);
     }
 }
@@ -4417,17 +4418,16 @@ function updateAdminUI() {
     const role = sessionStorage.getItem('crm_role');
     const team = sessionStorage.getItem('crm_team');
 
-    // Если админ или руководитель - показываем расширенные инструменты
+    // Если админ или руководитель - открываем доп. фильтры
     if (role === 'admin' || role === 'leader') {
         if (role === 'admin') {
             document.getElementById('btn-trash').style.display = 'flex';
             document.getElementById('btn-logs').style.display = 'flex';
         }
 
-        // Настраиваем фильтр менеджеров
+        // В фильтрах менеджеров показываем только тех, кто в команде РОПа
         const managerOptions = managers.filter(m => {
-            if (role === 'admin') return true; // Админ видит всех
-            // Руководитель видит только себя и свою команду
+            if (role === 'admin') return true; 
             const info = teamStructure[m];
             return info && info.team === team;
         }).map(m => `<option value="${m}">${m}</option>`).join('');
