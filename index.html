@@ -1887,9 +1887,15 @@ function processLoadedData(d) {
     if (d.news) news = d.news.map(parsers.news);
     if (d.logs) crmLogs = d.logs;
     if (d.teamStructure) teamStructure = d.teamStructure;
-
-    // --- ДОБАВЬТЕ ЭТУ СТРОКУ В КОНЕЦ ФУНКЦИИ ---
-    updateAdminUI(); 
+        const compManSel = document.getElementById('compManager');
+    if (compManSel) {
+        // Очищаем и заполняем список менеджеров
+        compManSel.innerHTML = '<option value="">Выберите менеджера *</option>' + 
+            managers.map(m => `<option value="${m}">${m}</option>`).join('');
+            
+        // Устанавливаем текущего пользователя по умолчанию
+        compManSel.value = sessionStorage.getItem('crm_user');
+}
 }
 
 function mergeDelta(delta) {
@@ -4614,17 +4620,20 @@ async function deleteNews(id) {
 function updateAdminUI() {
     const role = sessionStorage.getItem('crm_role');
     const myTeam = sessionStorage.getItem('crm_team');
-    
-    // Если данные о структуре команд еще не прилетели — выходим, чтобы не рисовать пустые списки
-    if (!teamStructure || Object.keys(teamStructure).length === 0) return;
 
     if (role === 'admin' || role === 'leader') {
+        // 1. Показываем панели управления в СТАТС и ОТЧЕТ
         document.querySelectorAll('#admin-report-selector, #admin-stats-selector').forEach(el => el.style.display = 'flex');
 
+        // 2. Только для АДМИНА: показываем Корзину и Логи
         if (role === 'admin') {
-            document.querySelectorAll('#btn-trash, #btn-logs').forEach(el => { if(el) el.style.display = 'flex'; });
+            const trashBtn = document.getElementById('btn-trash');
+            const logsBtn = document.getElementById('btn-logs');
+            if (trashBtn) trashBtn.style.display = 'flex';
+            if (logsBtn) logsBtn.style.display = 'flex';
         }
 
+        // 3. Настройка фильтра ГРУПП (Команд) в СТАТС
         const teamFilter = document.getElementById('statsTeamFilter');
         if (teamFilter) {
             if (role === 'admin') {
@@ -4633,44 +4642,50 @@ function updateAdminUI() {
                     allTeams.map(t => `<option value="${t}">${t.toUpperCase()}</option>`).join('');
                 teamFilter.disabled = false;
             } else {
-                teamFilter.innerHTML = `<option value="${myTeam}">${myTeam ? myTeam.toUpperCase() : 'БЕЗ ГРУППЫ'}</option>`;
+                // Лидер заперт в своей группе
+                teamFilter.innerHTML = `<option value="${myTeam}">${myTeam.toUpperCase()}</option>`;
                 teamFilter.disabled = true; 
             }
         }
+
+        // 4. Запускаем наполнение ВСЕХ списков менеджеров в системе
         updateStatsManagerList();
     }
 }
 // Вспомогательная функция для обновления списка менеджеров в зависимости от выбранной команды
 function updateStatsManagerList() {
     const role = sessionStorage.getItem('crm_role');
-    const myTeam = sessionStorage.getItem('crm_team') || "";
-    const teamFilterValue = document.getElementById('statsTeamFilter')?.value || 'all';
+    const myTeam = sessionStorage.getItem('crm_team');
+    const selTeam = document.getElementById('statsTeamFilter')?.value || 'all';
     
-    // Определяем команду для фильтрации
-    const teamToMatch = (role === 'leader') ? myTeam.toLowerCase() : teamFilterValue.toLowerCase();
+    // Определяем, какую команду фильтруем
+    const teamToMatch = (role === 'leader') ? myTeam : selTeam;
 
-    // Собираем людей
+    // 1. Собираем список имен (Sales + Ops + прочие) из нашей команды
     let filteredNames = Object.keys(teamStructure).filter(name => {
         const info = teamStructure[name];
-        if (!info || !info.team) return false;
         if (teamToMatch === 'all') return true;
-        return info.team.toLowerCase() === teamToMatch;
+        return info && info.team && info.team.toLowerCase() === teamToMatch.toLowerCase();
     });
 
-    // Формируем список (добавил иконку для Марии и других)
+    // 2. Создаем HTML опций (сохраняем старый функционал "Все")
     const optionsHtml = '<option value="all">👤 Все сотрудники группы</option>' + 
         filteredNames.map(m => `<option value="${m}">${m}</option>`).join('');
 
-    const filters = [
-        'statsManagerFilter', 'reportManagerFilter', 
-        'adminCallManagerFilter', 'adminRequestManagerFilter', 'adminDealManagerFilter'
+    // 3. ПРИМЕНЯЕМ ЭТОТ СПИСОК КО ВСЕМ ФИЛЬТРАМ В СИСТЕМЕ (ничего не потеряно!)
+    const allFilters = [
+        'statsManagerFilter',        // Фильтр во вкладке СТАТС
+        'reportManagerFilter',       // Фильтр во вкладке ОТЧЕТ
+        'adminCallManagerFilter',    // Фильтр во вкладке АКТИВНОСТЬ
+        'adminRequestManagerFilter', // Фильтр во вкладке ЗАПРОСЫ
+        'adminDealManagerFilter'     // Фильтр во вкладке СДЕЛКИ
     ];
 
-    filters.forEach(id => {
+    allFilters.forEach(id => {
         const el = document.getElementById(id);
         if (el) {
             el.innerHTML = optionsHtml;
-            el.style.display = 'inline-block';
+            el.style.display = 'inline-block'; // Убеждаемся, что фильтр виден
         }
     });
 }
