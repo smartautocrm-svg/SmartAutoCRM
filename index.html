@@ -4183,14 +4183,19 @@ function renderManagerStats() {
     updateCharts(monthlyData, typeLabels, managerLabels);
 }
 
-   function updateCharts(monthly, types, managersData) {
+   ffunction updateCharts(monthly, types, managersData) {
     const ctxDyn = document.getElementById('chartProfitDynamics').getContext('2d');
     const ctxType = document.getElementById('chartProfitByType').getContext('2d');
     const ctxPerf = document.getElementById('chartManagerPerformance').getContext('2d');
     const ctxLoss = document.getElementById('chartLossReasons').getContext('2d');
 
-    // 1. Динамика прибыли
+    // 1. Убиваем старые графики перед перерисовкой
     if (charts.dyn) charts.dyn.destroy();
+    if (charts.type) charts.type.destroy();
+    if (charts.perf) charts.perf.destroy();
+    if (charts.loss) charts.loss.destroy();
+
+    // 2. ГРАФИК ДИНАМИКИ
     const sortedMonths = Object.keys(monthly).sort();
     charts.dyn = new Chart(ctxDyn, { 
         type: 'line', 
@@ -4198,25 +4203,21 @@ function renderManagerStats() {
         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } 
     });
 
-    // 2. Типы сделок
-    if (charts.type) charts.type.destroy();
+    // 3. ГРАФИК ТИПОВ
     charts.type = new Chart(ctxType, { 
         type: 'doughnut', 
         data: { labels: Object.keys(types), datasets: [{ data: Object.values(types), backgroundColor: ['#511f54', '#8e44ad', '#2e7d32', '#f29900', '#d93025', '#00ACC1'] }] },
         options: { responsive: true, maintainAspectRatio: false } 
     });
 
-    // 3. Эффективность менеджеров
-    if (charts.perf) charts.perf.destroy();
+    // 4. ГРАФИК МЕНЕДЖЕРОВ
     charts.perf = new Chart(ctxPerf, { 
         type: 'bar', 
         data: { labels: Object.keys(managersData), datasets: [{ label: 'Прибыль', data: Object.values(managersData), backgroundColor: '#511f54' }] },
         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } 
     });
 
-    // --- 4. АНАЛИТИКА ПРИЧИН ОТКАЗОВ (ИСПРАВЛЕНО) ---
-    if (charts.loss) charts.loss.destroy();
-
+    // 5. ГРАФИК ПРИЧИН ОТКАЗОВ (ТОЛЬКО ИЗ СПИСКА)
     const me = sessionStorage.getItem('crm_user');
     const role = sessionStorage.getItem('crm_role');
     const myTeam = sessionStorage.getItem('crm_team');
@@ -4224,52 +4225,37 @@ function renderManagerStats() {
     const selYear = document.getElementById('statsYearFilter').value;
     const selMonth = document.getElementById('statsMonthFilter').value;
 
+    const validKeys = ["Дорого (высокая ставка)", "Долго (сроки доставки)", "Нет транспорта/мест", "Клиент не на связи / Ghosted", "Груз отменился / Неактуально", "Другое (указать в комм.)"];
     const lossCounts = {};
-    
+
     requests.forEach(r => {
         if (r.isDeleted || r.status !== 'completed' || !r.comment) return;
-        
-        const rDate = new Date(r.createdAt);
         const mInfo = teamStructure[r.manager] || { team: 'none' };
-
-        // Проверка доступа для отображения в статистике
-        let hasAccess = false;
-        if (role === 'admin') hasAccess = true;
-        else if (role === 'leader') hasAccess = (mInfo.team === myTeam);
-        else hasAccess = (r.manager === me);
-
+        
+        // Доступ
+        let hasAccess = (role === 'admin') || (role === 'leader' && mInfo.team === myTeam) || (r.manager === me);
         if (!hasAccess) return;
 
-        // Фильтр по выбранному менеджеру и дате
+        // Фильтры даты и менеджера
+        const rDate = new Date(r.createdAt);
         if (selMan !== 'all' && r.manager !== selMan) return;
         if (selYear !== 'all' && rDate.getFullYear().toString() !== selYear) return;
         if (selMonth !== 'all' && rDate.getMonth().toString() !== selMonth) return;
 
-        // Извлекаем название пункта (до символа |)
+        // Берем только чистую причину (до |)
         let reason = r.comment.split('|')[0].trim();
-        
-        // Игнорируем технические пометки типа "Конвертировано"
-        if (reason.includes("Конвертировано")) return;
-
-        lossCounts[reason] = (lossCounts[reason] || 0) + 1;
+        if (validKeys.includes(reason)) {
+            lossCounts[reason] = (lossCounts[reason] || 0) + 1;
+        }
     });
-
-    const labels = Object.keys(lossCounts);
-    const data = Object.values(lossCounts);
 
     charts.loss = new Chart(ctxLoss, {
         type: 'bar',
         data: {
-            labels: labels.length ? labels : ["Нет данных за период"],
-            datasets: [{ label: 'Запросов', data: data.length ? data : [0], backgroundColor: '#d93025', borderRadius: 4 }]
+            labels: Object.keys(lossCounts).length ? Object.keys(lossCounts) : ["Нет данных"],
+            datasets: [{ label: 'Запросов', data: Object.values(lossCounts), backgroundColor: '#d93025', borderRadius: 4 }]
         },
-        options: {
-            indexAxis: 'y',
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
-            scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } }
-        }
+        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
     });
 }
 
