@@ -4145,72 +4145,118 @@ last6Months.forEach(m => {
 }
 
     function updateCharts(monthly, types, managersData) {
-        const ctxDyn = document.getElementById('chartProfitDynamics').getContext('2d');
-        const ctxType = document.getElementById('chartProfitByType').getContext('2d');
-        const ctxPerf = document.getElementById('chartManagerPerformance').getContext('2d');
-        if (charts.dyn) charts.dyn.destroy();
-        const sortedMonths = Object.keys(monthly).sort();
-        charts.dyn = new Chart(ctxDyn, { type: 'line', data: { labels: sortedMonths, datasets: [{ label: 'Прибыль USD', data: sortedMonths.map(m => monthly[m]), borderColor: '#1a73e8', backgroundColor: 'rgba(26, 115, 232, 0.1)', fill: true, tension: 0.3 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } });
-        if (charts.type) charts.type.destroy();
-        charts.type = new Chart(ctxType, { type: 'doughnut', data: { labels: Object.keys(types), datasets: [{ data: Object.values(types), backgroundColor: ['#4285F4', '#34A853', '#FBBC05', '#EA4335', '#673AB7', '#00ACC1', '#FF7043', '#9E9E9E'] }] }, options: { responsive: true, maintainAspectRatio: false } });
-        if (charts.perf) charts.perf.destroy();
-        charts.perf = new Chart(ctxPerf, { type: 'bar', data: { labels: Object.keys(managersData), datasets: [{ label: 'Прибыль по менеджерам', data: Object.values(managersData), backgroundColor: '#34A853' }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } });
-            const ctxLoss = document.getElementById('chartLossReasons').getContext('2d');
-    if (charts.loss) charts.loss.destroy(); // Очищаем старый, если был
+    const ctxDyn = document.getElementById('chartProfitDynamics').getContext('2d');
+    const ctxType = document.getElementById('chartProfitByType').getContext('2d');
+    const ctxPerf = document.getElementById('chartManagerPerformance').getContext('2d');
+    const ctxLoss = document.getElementById('chartLossReasons').getContext('2d');
 
-    // Считаем данные из массива запросов
-        const lossCounts = {};
-    requests.filter(r => !r.isDeleted).forEach(r => {
-        // Проверяем, что запрос завершен и есть хоть какой-то текст в комментарии
-        if (r.status === 'completed' && r.comment) {
-            // Если в тексте есть палка — берем левую часть. Если нет — берем весь текст.
-            const reason = r.comment.includes('|') ? r.comment.split('|')[0].trim() : r.comment.trim();
-            
-            // Список наших стандартных причин (чтобы в график не попали обычные комменты)
-            const standardReasons = [
-                "Дорого (высокая ставка)", 
-                "Долго (сроки доставки)", 
-                "Нет транспорта/мест", 
-                "Клиент не на связи / Ghosted", 
-                "Груз отменился / Неактуально", 
-                "Другое (указать в комм.)"
-            ];
-
-            if (standardReasons.includes(reason)) {
-                lossCounts[reason] = (lossCounts[reason] || 0) + 1;
-            }
-        }
+    // 1. График динамики прибыли
+    if (charts.dyn) charts.dyn.destroy();
+    const sortedMonths = Object.keys(monthly).sort();
+    charts.dyn = new Chart(ctxDyn, { 
+        type: 'line', 
+        data: { 
+            labels: sortedMonths, 
+            datasets: [{ 
+                label: 'Прибыль USD', 
+                data: sortedMonths.map(m => monthly[m]), 
+                borderColor: '#511f54', 
+                backgroundColor: 'rgba(81, 31, 84, 0.1)', 
+                fill: true, 
+                tension: 0.3 
+            }] 
+        }, 
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } 
     });
 
-    // Создаем горизонтальный график
+    // 2. График типов сделок
+    if (charts.type) charts.type.destroy();
+    charts.type = new Chart(ctxType, { 
+        type: 'doughnut', 
+        data: { 
+            labels: Object.keys(types), 
+            datasets: [{ 
+                data: Object.values(types), 
+                backgroundColor: ['#511f54', '#8e44ad', '#2e7d32', '#f29900', '#d93025', '#00ACC1', '#FF7043', '#9E9E9E'] 
+            }] 
+        }, 
+        options: { responsive: true, maintainAspectRatio: false } 
+    });
+
+    // 3. График эффективности менеджеров
+    if (charts.perf) charts.perf.destroy();
+    charts.perf = new Chart(ctxPerf, { 
+        type: 'bar', 
+        data: { 
+            labels: Object.keys(managersData), 
+            datasets: [{ 
+                label: 'Прибыль', 
+                data: Object.values(managersData), 
+                backgroundColor: '#511f54' 
+            }] 
+        }, 
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } 
+    });
+
+    // --- 4. АНАЛИТИКА ПРИЧИН ОТКАЗОВ (ИСПРАВЛЕННЫЙ БЛОК) ---
+    if (charts.loss) charts.loss.destroy();
+
+    // Получаем текущие фильтры из UI, чтобы график отказов соответствовал выбранному периоду/менеджеру
+    const me = sessionStorage.getItem('crm_user');
+    const selMan = (me === 'admin') ? (document.getElementById('statsManagerFilter').value || 'all') : me;
+    const selYear = document.getElementById('statsYearFilter').value;
+    const selMonth = document.getElementById('statsMonthFilter').value;
+
+    const lossCounts = {};
+    
+    requests.filter(r => {
+        if (r.isDeleted || r.status !== 'completed' || !r.comment) return false;
+        
+        const rDate = new Date(r.createdAt);
+        const matchesMan = (selMan === 'all') ? true : (r.manager === selMan);
+        const matchesYear = (selYear === 'all') ? true : (rDate.getFullYear().toString() === selYear);
+        const matchesMonth = (selMonth === 'all') ? true : (rDate.getMonth().toString() === selMonth);
+        
+        return matchesMan && matchesYear && matchesMonth;
+    }).forEach(r => {
+        // Извлекаем только причину (всё что до символа | )
+        let reason = r.comment.split('|')[0].trim();
+        
+        // Если вдруг причина пустая или это сообщение о конвертации в сделку - пропускаем
+        if (!reason || reason.includes("Конвертировано")) return;
+
+        lossCounts[reason] = (lossCounts[reason] || 0) + 1;
+    });
+
+    // Если данных нет, покажем пустой график с надписью
+    const labels = Object.keys(lossCounts);
+    const data = Object.values(lossCounts);
+
     charts.loss = new Chart(ctxLoss, {
         type: 'bar',
         data: {
-            labels: Object.keys(lossCounts),
+            labels: labels.length ? labels : ["Нет данных за период"],
             datasets: [{
                 label: 'Запросов',
-                data: Object.values(lossCounts),
-                backgroundColor: [
-                    '#FF7043', '#FFB74D', '#4DB6AC', '#9575CD', '#F06292', '#A1887F'
-                ],
+                data: data.length ? data : [0],
+                backgroundColor: '#d93025', // Красный цвет для отказов
                 borderRadius: 4
             }]
         },
         options: {
-            indexAxis: 'y', // Делает график горизонтальным (удобно читать длинные причины)
+            indexAxis: 'y', // Горизонтальный график
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: { display: false } // Прячем легенду, так как подписи и так слева
+                legend: { display: false }
             },
             scales: {
-                x: { beginAtZero: true, grid: { display: false } },
+                x: { beginAtZero: true, grid: { display: false }, ticks: { stepSize: 1 } },
                 y: { grid: { display: false } }
             }
         }
     });
 }
-    
 
     function showStatsDetail(key, manager, type) {
     const [y, m] = key.split('-').map(Number);
