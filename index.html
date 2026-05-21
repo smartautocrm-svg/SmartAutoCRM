@@ -4619,37 +4619,48 @@ async function deleteNews(id) {
 // 1. Проверяем, админ ли зашел, и показываем кнопку
 function updateAdminUI() {
     const role = sessionStorage.getItem('crm_role');
-    const team = sessionStorage.getItem('crm_team');
+    const myTeam = sessionStorage.getItem('crm_team');
     const me = sessionStorage.getItem('crm_user');
 
     if (role === 'admin' || role === 'leader') {
-        // Показываем кнопки админки
+        // 1. Показываем скрытые кнопки управления
         if (role === 'admin') {
             document.getElementById('btn-trash').style.display = 'flex';
             document.getElementById('btn-logs').style.display = 'flex';
         }
         
-        // Показываем панель управления в статистике и отчетах
+        // Показываем селекторы в Статистике и Отчетах
         document.querySelectorAll('#admin-report-selector, #admin-stats-selector').forEach(el => el.style.display = 'flex');
 
-        // 1. Заполняем список команд (только для админа)
+        // 2. Настраиваем фильтр ГРУПП (Команд)
         const teamFilter = document.getElementById('statsTeamFilter');
         if (teamFilter) {
-            // Собираем уникальные названия команд из teamStructure
-            const allTeams = [...new Set(Object.values(teamStructure).map(x => x.team))].filter(t => t && t !== 'none');
-            
             if (role === 'admin') {
+                const allTeams = [...new Set(Object.values(teamStructure).map(x => x.team))].filter(t => t && t !== 'none');
                 teamFilter.innerHTML = '<option value="all">🌐 Все группы</option>' + 
                     allTeams.map(t => `<option value="${t}">${t.toUpperCase()}</option>`).join('');
+                teamFilter.disabled = false;
             } else {
-                // Лидер видит только свою команду
-                teamFilter.innerHTML = `<option value="${team}">${team.toUpperCase()}</option>`;
-                teamFilter.disabled = true; // Запрещаем менять команду
+                // ДЛЯ ЛИДЕРА: только его команда, выбор заблокирован
+                teamFilter.innerHTML = `<option value="${myTeam}">${myTeam.toUpperCase()}</option>`;
+                teamFilter.disabled = true; 
             }
         }
 
-        // 2. Инициализируем список менеджеров
-        updateStatsManagerList();
+        // 3. Наполняем списки менеджеров (и во вкладке СТАТС, и во вкладке ОТЧЕТ)
+        updateStatsManagerList(); // Для СТАТС
+        
+        // Для вкладки ОТЧЕТ (Activity)
+        const reportManFilter = document.getElementById('reportManagerFilter');
+        if (reportManFilter) {
+            let filteredManagers = Object.keys(teamStructure).filter(name => {
+                const info = teamStructure[name];
+                return (role === 'admin') ? true : (info.team === myTeam);
+            });
+
+            reportManFilter.innerHTML = '<option value="all">👤 Все сотрудники группы</option>' + 
+                filteredManagers.map(m => `<option value="${m}">${m}</option>`).join('');
+        }
     }
 }
 
@@ -4662,15 +4673,14 @@ function updateStatsManagerList() {
     
     if (!manFilter) return;
 
-    // Берем всех пользователей из структуры, у которых совпадает команда
+    // Определяем, какую команду мы сейчас фильтруем
+    // Если зашел лидер - это всегда его команда. Если админ - та, которую он выбрал.
+    const teamToView = (role === 'leader') ? myTeam : selTeam;
+
     let filteredManagers = Object.keys(teamStructure).filter(userName => {
         const info = teamStructure[userName];
-        
-        // Если админ выбрал "Все группы" - показываем всех
-        if (selTeam === 'all') return true;
-        
-        // В остальных случаях - только тех, кто в выбранной команде
-        return info && info.team === selTeam;
+        if (teamToView === 'all') return true;
+        return info && info.team === teamToView;
     });
 
     manFilter.innerHTML = '<option value="all">👤 Вся команда (Sales + Ops)</option>' + 
