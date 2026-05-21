@@ -4620,19 +4620,20 @@ async function deleteNews(id) {
 function updateAdminUI() {
     const role = sessionStorage.getItem('crm_role');
     const myTeam = sessionStorage.getItem('crm_team');
-    const me = sessionStorage.getItem('crm_user');
 
     if (role === 'admin' || role === 'leader') {
-        // 1. Показываем скрытые кнопки управления
-        if (role === 'admin') {
-            document.getElementById('btn-trash').style.display = 'flex';
-            document.getElementById('btn-logs').style.display = 'flex';
-        }
-        
-        // Показываем селекторы в Статистике и Отчетах
+        // 1. Показываем панели управления в СТАТС и ОТЧЕТ
         document.querySelectorAll('#admin-report-selector, #admin-stats-selector').forEach(el => el.style.display = 'flex');
 
-        // 2. Настраиваем фильтр ГРУПП (Команд)
+        // 2. Только для АДМИНА: показываем Корзину и Логи
+        if (role === 'admin') {
+            const trashBtn = document.getElementById('btn-trash');
+            const logsBtn = document.getElementById('btn-logs');
+            if (trashBtn) trashBtn.style.display = 'flex';
+            if (logsBtn) logsBtn.style.display = 'flex';
+        }
+
+        // 3. Настройка фильтра ГРУПП (Команд) в СТАТС
         const teamFilter = document.getElementById('statsTeamFilter');
         if (teamFilter) {
             if (role === 'admin') {
@@ -4641,74 +4642,52 @@ function updateAdminUI() {
                     allTeams.map(t => `<option value="${t}">${t.toUpperCase()}</option>`).join('');
                 teamFilter.disabled = false;
             } else {
-                // ДЛЯ ЛИДЕРА: только его команда, выбор заблокирован
+                // Лидер заперт в своей группе
                 teamFilter.innerHTML = `<option value="${myTeam}">${myTeam.toUpperCase()}</option>`;
                 teamFilter.disabled = true; 
             }
         }
 
-        // 3. Наполняем списки менеджеров (и во вкладке СТАТС, и во вкладке ОТЧЕТ)
-        updateStatsManagerList(); // Для СТАТС
-        
-        // Для вкладки ОТЧЕТ (Activity)
-        const reportManFilter = document.getElementById('reportManagerFilter');
-        if (reportManFilter) {
-            let filteredManagers = Object.keys(teamStructure).filter(name => {
-                const info = teamStructure[name];
-                return (role === 'admin') ? true : (info.team === myTeam);
-            });
-
-            reportManFilter.innerHTML = '<option value="all">👤 Все сотрудники группы</option>' + 
-                filteredManagers.map(m => `<option value="${m}">${m}</option>`).join('');
-        }
+        // 4. Запускаем наполнение ВСЕХ списков менеджеров в системе
+        updateStatsManagerList();
     }
 }
-
 // Вспомогательная функция для обновления списка менеджеров в зависимости от выбранной команды
 function updateStatsManagerList() {
     const role = sessionStorage.getItem('crm_role');
     const myTeam = sessionStorage.getItem('crm_team');
     const selTeam = document.getElementById('statsTeamFilter')?.value || 'all';
-    const manFilter = document.getElementById('statsManagerFilter');
     
-    if (!manFilter) return;
+    // Определяем, какую команду фильтруем
+    const teamToMatch = (role === 'leader') ? myTeam : selTeam;
 
-    // Определяем, какую команду мы сейчас фильтруем
-    // Если зашел лидер - это всегда его команда. Если админ - та, которую он выбрал.
-    const teamToView = (role === 'leader') ? myTeam : selTeam;
-
-    let filteredManagers = Object.keys(teamStructure).filter(userName => {
-        const info = teamStructure[userName];
-        if (teamToView === 'all') return true;
-        return info && info.team === teamToView;
+    // 1. Собираем список имен (Sales + Ops + прочие) из нашей команды
+    let filteredNames = Object.keys(teamStructure).filter(name => {
+        const info = teamStructure[name];
+        if (teamToMatch === 'all') return true;
+        return info && info.team && info.team.toLowerCase() === teamToMatch.toLowerCase();
     });
 
-    manFilter.innerHTML = '<option value="all">👤 Вся команда (Sales + Ops)</option>' + 
-        filteredManagers.map(m => `<option value="${m}">${m}</option>`).join('');
-}
+    // 2. Создаем HTML опций (сохраняем старый функционал "Все")
+    const optionsHtml = '<option value="all">👤 Все сотрудники группы</option>' + 
+        filteredNames.map(m => `<option value="${m}">${m}</option>`).join('');
 
-// 2. Отображение удаленных объектов в корзине
-function renderTrash() {
-    const type = document.getElementById('trashType').value;
-    let data = getArrayBySheet(type);
-    
-    // Фильтруем только то, что помечено как удаленное
-    const deletedItems = data.filter(x => x.isDeleted);
+    // 3. ПРИМЕНЯЕМ ЭТОТ СПИСОК КО ВСЕМ ФИЛЬТРАМ В СИСТЕМЕ (ничего не потеряно!)
+    const allFilters = [
+        'statsManagerFilter',        // Фильтр во вкладке СТАТС
+        'reportManagerFilter',       // Фильтр во вкладке ОТЧЕТ
+        'adminCallManagerFilter',    // Фильтр во вкладке АКТИВНОСТЬ
+        'adminRequestManagerFilter', // Фильтр во вкладке ЗАПРОСЫ
+        'adminDealManagerFilter'     // Фильтр во вкладке СДЕЛКИ
+    ];
 
-    let html = deletedItems.map(x => `
-        <div class="list-item" style="border-left: 4px solid var(--danger); margin-bottom: 5px;">
-            <div class="item-main">
-                <h4>${x.name || x.num || x.company || 'Объект без имени'}</h4>
-                <p>Менеджер: ${x.manager || 'автор'} | Дата: ${dFmt(x.createdAt || x.date || '')}</p>
-            </div>
-            <div class="item-actions">
-                <button class="main" style="background:var(--success); width:120px; font-size:10px;" onclick="restoreItem('${type}', '${x.id}')">Восстановить</button>
-                <button class="main" style="background:var(--danger); width:40px; font-size:10px;" onclick="hardDeleteItem('${type}', '${x.id}')">×</button>
-            </div>
-        </div>
-    `).join('');
-
-    document.getElementById('trashList').innerHTML = html || '<div style="text-align:center; padding:50px; color:#999;">В корзине пусто</div>';
+    allFilters.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.innerHTML = optionsHtml;
+            el.style.display = 'inline-block'; // Убеждаемся, что фильтр виден
+        }
+    });
 }
 
 // 3. Восстановление объекта (изменяем только нужный список)
