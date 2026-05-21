@@ -4630,12 +4630,13 @@ function updateAdminUI() {
 }
 // Вспомогательная функция для обновления списка менеджеров в зависимости от выбранной команды
 function updateStatsManagerList() {
+    if (!teamStructure || Object.keys(teamStructure).length === 0) return;
     const role = sessionStorage.getItem('crm_role');
     const myTeam = sessionStorage.getItem('crm_team');
     const selTeam = document.getElementById('statsTeamFilter')?.value || 'all';
     
     // Определяем, какую команду фильтруем
-    const teamToMatch = (role === 'leader') ? myTeam : selTeam;
+    const teamToMatch = (role === 'leader') ? (myTeam || "none") : (selTeam || "all");
 
     // 1. Собираем список имен из teamStructure, у которых совпадает команда
 let filteredNames = Object.keys(teamStructure).filter(name => {
