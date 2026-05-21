@@ -4183,7 +4183,7 @@ function renderManagerStats() {
     updateCharts(monthlyData, typeLabels, managerLabels);
 }
 
-   ffunction updateCharts(monthly, types, managersData) {
+   function updateCharts(monthly, types, managersData) {
     const ctxDyn = document.getElementById('chartProfitDynamics').getContext('2d');
     const ctxType = document.getElementById('chartProfitByType').getContext('2d');
     const ctxPerf = document.getElementById('chartManagerPerformance').getContext('2d');
@@ -4225,24 +4225,18 @@ function renderManagerStats() {
     const selYear = document.getElementById('statsYearFilter').value;
     const selMonth = document.getElementById('statsMonthFilter').value;
 
-    const validKeys = ["Дорого (высокая ставка)", "Долго (сроки доставки)", "Нет транспорта/мест", "Клиент не на связи / Ghosted", "Груз отменился / Неактуально", "Другое (указать в комм.)"];
-    const lossCounts = {};
-
+const validKeys = ["Дорого (высокая ставка)", "Долго (сроки доставки)", "Нет транспорта/мест", "Клиент не на связи / Ghosted", "Груз отменился / Неактуально", "Другое (указать в комм.)"];
+    
     requests.forEach(r => {
         if (r.isDeleted || r.status !== 'completed' || !r.comment) return;
         const mInfo = teamStructure[r.manager] || { team: 'none' };
         
-        // Доступ
-        let hasAccess = (role === 'admin') || (role === 'leader' && mInfo.team === myTeam) || (r.manager === me);
-        if (!hasAccess) return;
-
-        // Фильтры даты и менеджера
-        const rDate = new Date(r.createdAt);
+        // Проверка доступа Лидера к сотруднику
+        if (role !== 'admin' && role === 'leader' && mInfo.team !== myTeam) return;
+        if (role !== 'admin' && role !== 'leader' && r.manager !== me) return;
         if (selMan !== 'all' && r.manager !== selMan) return;
-        if (selYear !== 'all' && rDate.getFullYear().toString() !== selYear) return;
-        if (selMonth !== 'all' && rDate.getMonth().toString() !== selMonth) return;
 
-        // Берем только чистую причину (до |)
+        // Отсекаем ручной комментарий и проверяем по списку
         let reason = r.comment.split('|')[0].trim();
         if (validKeys.includes(reason)) {
             lossCounts[reason] = (lossCounts[reason] || 0) + 1;
@@ -4618,10 +4612,9 @@ function updateAdminUI() {
                     allTeams.map(t => `<option value="${t}">${t.toUpperCase()}</option>`).join('');
                 teamFilter.disabled = false;
             } else {
-                // Лидер: жестко ставим его команду
                 teamFilter.innerHTML = `<option value="${myTeam}">${myTeam.toUpperCase()}</option>`;
                 teamFilter.value = myTeam;
-                teamFilter.disabled = true; // Лидер не может менять свою группу на другую
+                teamFilter.disabled = true; // Добавь эту строку
             }
         }
         updateStatsManagerList();
@@ -4640,11 +4633,11 @@ function updateStatsManagerList() {
     const teamToMatch = (role === 'leader') ? myTeam : selTeam;
 
     // 1. Собираем список имен из teamStructure, у которых совпадает команда
-    let filteredNames = Object.keys(teamStructure).filter(name => {
+let filteredNames = Object.keys(teamStructure).filter(name => {
         const info = teamStructure[name];
         if (teamToMatch === 'all') return true;
-        // Сравнение без учета регистра и пробелов
-        return info && info.team && info.team.toLowerCase().trim() === teamToMatch.toLowerCase().trim();
+        // Сравнение команды сотрудника с командой Лидера
+        return info && info.team && info.team.toString().toLowerCase() === teamToMatch.toString().toLowerCase();
     });
 
     // 2. Создаем HTML опций
