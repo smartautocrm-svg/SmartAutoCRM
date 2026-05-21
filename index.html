@@ -4241,21 +4241,15 @@ const validKeys = [
     ];
     
 requests.forEach(r => {
-        // Проверяем только закрытые запросы с заполненной причиной
-        if (r.status !== 'completed' || !r.lossReason) return;
+        // Если в колонке число или пусто — пропускаем
+        if (r.status !== 'completed' || !r.lossReason || !isNaN(r.lossReason)) return;
         
         const mInfo = teamStructure[r.manager] || { team: 'none' };
-        const reqTeam = String(mInfo.team || "").trim().toLowerCase();
-        const leaderTeam = String(myTeam || "").trim().toLowerCase();
-
-        // 1. Проверка доступа Лидера к статистике сотрудника
-        if (role === 'leader' && reqTeam !== leaderTeam) return;
-        if (role !== 'admin' && role !== 'leader' && r.manager !== me) return;
-
-        // 2. Фильтр по выбранному менеджеру в селекторе
+        
+        if (role === 'leader' && mInfo.team !== myTeam) return;
+        if (role === 'manager' && r.manager !== me) return;
         if (selMan !== 'all' && r.manager !== selMan) return;
 
-        // 3. Считаем статистику
         let label = r.lossReason;
         lossCounts[label] = (lossCounts[label] || 0) + 1;
     });
