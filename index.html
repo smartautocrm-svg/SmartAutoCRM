@@ -1719,11 +1719,19 @@ async function startApp() {
         renderAll();
     }
 
-    if (user === 'admin') { 
-        document.querySelectorAll('#admin-report-selector, #admin-stats-selector').forEach(el=>el.style.display='flex'); 
+    const role = sessionStorage.getItem('crm_role');
+    if (role === 'admin' || role === 'leader') { 
+    // Показываем селекторы выбора менеджеров и групп в Статистике и Отчетах
+    document.querySelectorAll('#admin-report-selector, #admin-stats-selector').forEach(el=>el.style.display='flex'); 
+    
+    // Показываем фильтр по менеджеру во вкладке Сделки
+    if (document.getElementById('adminDealManagerFilter')) {
         document.getElementById('adminDealManagerFilter').style.display = 'inline-block';
-        updateAdminUI(); 
     }
+    
+    // Запускаем настройку списков менеджеров и групп
+    updateAdminUI(); 
+}
 
     const currentYear = new Date().getFullYear();
     let yearHtml = `<option value="all">Все годы</option>`;
@@ -4321,18 +4329,83 @@ function renderManagerStats() {
 }
 
     function generateReport() {
-        const me = sessionStorage.getItem('crm_user');
-        let selMan = (me === 'admin') ? (document.getElementById('reportManagerFilter').value || 'all') : me;
-        const selYear = document.getElementById('reportYearFilter').value, selMonth = document.getElementById('reportMonthFilter').value;
-        const ms = ["Янв", "Фев", "Мар", "Апр", "Май", "Июн", "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек"], ap = new Map(); 
-        const mk = (ds) => { if (!ds) return; const d = new Date(ds); if (isNaN(d)) return; if (selYear !== 'all' && d.getFullYear().toString() !== selYear) return; if (selMonth !== 'all' && d.getMonth().toString() !== selMonth) return; const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; ap.set(k, {y:d.getFullYear(), m:d.getMonth()}); }; 
-        reminders.filter(r => selMan === 'all' || r.manager === selMan).forEach(r => mk(r.date)); 
-        requests.filter(r => selMan === 'all' || r.manager === selMan).forEach(r => mk(r.createdAt)); 
-        companies.filter(c => selMan === 'all' || c.manager === selMan).forEach(c => mk(c.activatedAt));
-        let h = `<h3>📊 Активность: ${selMan==='all'?'Все':selMan}</h3><table class="report-table"><thead><tr><th>Период</th><th>Звонки</th><th>Запросы</th><th>Новые клиенты</th></tr></thead><tbody>`; 
-        Array.from(ap.keys()).sort().reverse().forEach(k => { const {y, m} = ap.get(k); const c = reminders.filter(r => { const d = new Date(r.date); return (selMan === 'all' || r.manager === selMan) && d.getMonth() === m && d.getFullYear() === y; }).length; const rq = requests.filter(r => { const d = new Date(r.createdAt); return (selMan === 'all' || r.manager === selMan) && d.getMonth() === m && d.getFullYear() === y; }).length; const nc = companies.filter(co => { if(!co.activatedAt) return false; const d = new Date(co.activatedAt); return (selMan === 'all' || co.manager === selMan) && d.getMonth() === m && d.getFullYear() === y && co.status === 'active'; }).length; h += `<tr><td>${ms[m]} ${y}</td><td>${c}</td><td>${rq}</td><td style="color:var(--success); font-weight:bold;">${nc}</td></tr>`; }); 
-        document.getElementById('reportData').innerHTML = h + '</tbody></table>'; 
-    }
+    const me = sessionStorage.getItem('crm_user');
+    const role = sessionStorage.getItem('crm_role');
+    const myTeam = sessionStorage.getItem('crm_team');
+    
+    // Определяем выбранного менеджера
+    let selMan = (role === 'admin' || role === 'leader') ? (document.getElementById('reportManagerFilter').value || 'all') : me;
+    
+    const selYear = document.getElementById('reportYearFilter').value;
+    const selMonth = document.getElementById('reportMonthFilter').value;
+    
+    const ms = ["Янв", "Фев", "Мар", "Апр", "Май", "Июн", "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек"];
+    const ap = new Map(); 
+
+    // Фильтруем данные один раз
+    const filterByAccess = (item) => {
+        if (!item) return false;
+        const date = new Date(item.date || item.createdAt);
+        if (isNaN(date)) return false;
+
+        // Фильтр по дате
+        if (selYear !== 'all' && date.getFullYear().toString() !== selYear) return false;
+        if (selMonth !== 'all' && date.getMonth().toString() !== selMonth) return false;
+
+        const mInfo = teamStructure[item.manager] || {};
+        
+        // ЛОГИКА ДОСТУПА: 
+        // 1. Если админ - видит всё.
+        // 2. Если лидер - видит только свою группу.
+        // 3. Если менеджер - только себя.
+        if (role === 'admin') {
+            if (selMan !== 'all' && item.manager !== selMan) return false;
+        } else if (role === 'leader') {
+            if (mInfo.team !== myTeam) return false; // Чужие команды не берем
+            if (selMan !== 'all' && item.manager !== selMan) return false;
+        } else {
+            if (item.manager !== me) return false;
+        }
+        return true;
+    };
+
+    const mk = (ds) => { 
+        const d = new Date(ds);
+        const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+        ap.set(k, {y:d.getFullYear(), m:d.getMonth()}); 
+    }; 
+
+    // Собираем периоды
+    reminders.filter(filterByAccess).forEach(r => mk(r.date)); 
+    requests.filter(filterByAccess).forEach(r => mk(r.createdAt)); 
+    companies.filter(c => c.status === 'active' && filterByAccess({manager: c.manager, createdAt: c.activatedAt})).forEach(c => mk(c.activatedAt));
+
+    let h = `<h3>📊 Активность: ${selMan==='all' ? (role==='leader'?'Моя группа': 'Все') : selMan}</h3>
+             <table class="report-table"><thead><tr><th>Период</th><th>Звонки</th><th>Запросы</th><th>Новые клиенты</th></tr></thead><tbody>`; 
+
+    Array.from(ap.keys()).sort().reverse().forEach(k => { 
+        const {y, m} = ap.get(k); 
+        
+        const c = reminders.filter(filterByAccess).filter(r => { 
+            const d = new Date(r.date); 
+            return d.getMonth() === m && d.getFullYear() === y; 
+        }).length;
+
+        const rq = requests.filter(filterByAccess).filter(r => { 
+            const d = new Date(r.createdAt); 
+            return d.getMonth() === m && d.getFullYear() === y; 
+        }).length;
+
+        const nc = companies.filter(co => co.status === 'active' && filterByAccess({manager: co.manager, createdAt: co.activatedAt})).filter(co => { 
+            const d = new Date(co.activatedAt); 
+            return d.getMonth() === m && d.getFullYear() === y; 
+        }).length;
+
+        h += `<tr><td>${ms[m]} ${y}</td><td>${c}</td><td>${rq}</td><td style="color:var(--success); font-weight:bold;">${nc}</td></tr>`; 
+    }); 
+
+    document.getElementById('reportData').innerHTML = h + '</tbody></table>'; 
+}
 
     // --- ЛОГИКА ТРЕКИНГА ---
     function checkTrackingAccess(item) {
