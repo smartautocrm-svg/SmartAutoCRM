@@ -4361,13 +4361,28 @@ function renderManagerStats() {
         if (role === 'admin') {
             if (selMan !== 'all' && item.manager !== selMan) return false;
         } else if (role === 'leader') {
-            if (mInfo.team !== myTeam) return false; // Чужие команды не берем
-            if (selMan !== 'all' && item.manager !== selMan) return false;
-        } else {
-            if (item.manager !== me) return false;
+        // Проверяем: совпадает ли команда сотрудника (item.manager) с вашей командой (myTeam)
+        // mInfo мы получили выше на строке 4355 через teamStructure
+        if (mInfo.team !== myTeam) {
+            return false; // Если команда не ваша — отсекаем данные
         }
+
+        // Если команда ваша, проверяем фильтр по конкретному человеку
+        // Если в фильтре выбрано "Все сотрудники" (selMan === 'all'), 
+        // то сюда попадут и ваши Sales, и ваш Operations.
+        if (selMan !== 'all' && item.manager !== selMan) {
+            return false; // Если выбран конкретный человек, а запись принадлежит не ему — отсекаем
+        }
+        
+        // Если сотрудник из вашей команды и прошел фильтр по имени — разрешаем показ
         return true;
-    };
+
+    } else {
+        // Блок для обычного менеджера: видит только свои записи
+        if (item.manager !== me) return false;
+    }
+    return true; // Разрешаем показ, если ни одно из условий false не сработало
+};
 
     const mk = (ds) => { 
         const d = new Date(ds);
@@ -4641,20 +4656,24 @@ function updateAdminUI() {
 // Вспомогательная функция для обновления списка менеджеров в зависимости от выбранной команды
 function updateStatsManagerList() {
     const role = sessionStorage.getItem('crm_role');
-    const team = sessionStorage.getItem('crm_team');
-    const selTeam = document.getElementById('statsTeamFilter').value;
+    const myTeam = sessionStorage.getItem('crm_team');
+    const selTeam = document.getElementById('statsTeamFilter')?.value || 'all';
     const manFilter = document.getElementById('statsManagerFilter');
     
     if (!manFilter) return;
 
-    // Фильтруем менеджеров по выбранной команде
-    let filteredManagers = managers.filter(m => {
-        const info = teamStructure[m];
+    // Берем всех пользователей из структуры, у которых совпадает команда
+    let filteredManagers = Object.keys(teamStructure).filter(userName => {
+        const info = teamStructure[userName];
+        
+        // Если админ выбрал "Все группы" - показываем всех
         if (selTeam === 'all') return true;
+        
+        // В остальных случаях - только тех, кто в выбранной команде
         return info && info.team === selTeam;
     });
 
-    manFilter.innerHTML = '<option value="all">👤 Все сотрудники</option>' + 
+    manFilter.innerHTML = '<option value="all">👤 Вся команда (Sales + Ops)</option>' + 
         filteredManagers.map(m => `<option value="${m}">${m}</option>`).join('');
 }
 
