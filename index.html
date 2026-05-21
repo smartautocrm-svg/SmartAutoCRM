@@ -1959,6 +1959,7 @@ async function loadCloudData() {
     } finally { 
         showLoader(false); 
     }
+    updateAdminUI();
 }
 
 function exportCurrentData() {
@@ -4225,26 +4226,31 @@ function renderManagerStats() {
     const selYear = document.getElementById('statsYearFilter').value;
     const selMonth = document.getElementById('statsMonthFilter').value;
 
-const validKeys = ["Дорого (высокая ставка)", "Долго (сроки доставки)", "Нет транспорта/мест", "Клиент не на связи / Ghosted", "Груз отменился / Неактуально", "Другое (указать в комм.)"];
+const validKeys = [
+        "Дорого (высокая ставка)", 
+        "Долго (сроки доставки)", 
+        "Нет транспорта/мест", 
+        "Клиент не на связи / Ghosted", 
+        "Груз отменился / Неактуально", 
+        "Другое (указать в комм.)"
+    ];
     
-    requests.forEach(r => {
+     requests.forEach(r => {
         if (r.isDeleted || r.status !== 'completed' || !r.comment) return;
         
         const mInfo = teamStructure[r.manager] || { team: 'none' };
-        const reqTeam = String(mInfo.team || "").trim().toLowerCase();
-        const leaderTeam = String(myTeam || "").trim().toLowerCase();
-
+        
         // Проверка доступа
-        if (role !== 'admin' && role === 'leader' && reqTeam !== leaderTeam) return;
+        if (role === 'leader' && mInfo.team !== myTeam) return;
         if (role !== 'admin' && role !== 'leader' && r.manager !== me) return;
         if (selMan !== 'all' && r.manager !== selMan) return;
 
-        // Берем причину до символа |
-        let reason = r.comment.split('|')[0].trim();
+        // Берем часть ДО палки | и чистим пробелы
+        let reasonInDb = r.comment.split('|')[0].trim();
         
-        // Важно: проверяем наличие текста в списке validKeys
-        if (validKeys.some(k => reason.includes(k))) {
-            lossCounts[reason] = (lossCounts[reason] || 0) + 1;
+        // Если эта причина есть в нашем списке - добавляем в график
+        if (validKeys.includes(reasonInDb)) {
+            lossCounts[reasonInDb] = (lossCounts[reasonInDb] || 0) + 1;
         }
     });
 
@@ -4641,13 +4647,10 @@ function updateStatsManagerList() {
     // 1. Собираем список имен из teamStructure, у которых совпадает команда
 let filteredNames = Object.keys(teamStructure).filter(name => {
         const info = teamStructure[name];
+        // Если мы админ и выбрали "Все группы", показываем всех
         if (teamToMatch === 'all') return true;
-        
-        // Очищаем от пробелов и приводим к одному регистру для надежности
-        const dbTeam = String(info.team || "").trim().toLowerCase();
-        const leaderTeam = String(teamToMatch).trim().toLowerCase();
-        
-        return dbTeam === leaderTeam;
+        // Лидер видит только тех, у кого совпадает команда (без учета пробелов и регистра)
+        return info && info.team && info.team.toString().trim().toLowerCase() === teamToMatch.toString().trim().toLowerCase();
     });
     // 2. Создаем HTML опций
     // Важно: Лидеру тоже нужно видеть "Все сотрудники группы"
