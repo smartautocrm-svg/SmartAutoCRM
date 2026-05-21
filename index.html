@@ -1841,7 +1841,8 @@ const parsers = {
         unload: String(x[9]||""), desc: String(x[10]||""), createdAt: x[11], status: x[12], 
         comment: x[13], container: x[14], zip: x[15], manager: String(x[16]||""), 
         contQty: x[17], type: x[18], sharedWith: String(x[19] || ""), 
-        isDeleted: x[20] === true || x[20] === 'true'
+        isDeleted: x[20] === true || x[20] === 'true',
+        lossReason: String(x[21] || "") // НОВАЯ КОЛОНКА
     }),
     deals: x => {
         let parsedFiles = [];
@@ -1949,6 +1950,10 @@ async function loadCloudData() {
         updateCounters(); 
         updateDatalists();
         
+        // ВАЖНО: Добавь эти две строки:
+        if (typeof updateAdminUI === "function") updateAdminUI();
+        if (typeof updateStatsManagerList === "function") updateStatsManagerList();
+
         const activeTab = document.querySelector('.content.active').id;
         renderTabById(activeTab);
         document.getElementById('sync-status').innerText = "Синхро: " + new Date().toLocaleTimeString();
@@ -1977,7 +1982,7 @@ function exportCurrentData() {
 }
     function formatRow(sh, o) {
         if (sh === 'companies') return [o.id, o.name, o.contact, o.phone, o.product || "", o.city || "", o.email || "", o.imp || "", o.exp || "", o.status, o.createdAt, o.activatedAt || "", o.manager, o.isPrivate, o.sharedWith || "", o.website || "", o.isDeleted || false, o.desc || ""];
-if (sh === 'requests') return [o.id, o.company, o.cargo, o.transport, o.weight, o.vol, o.value, o.currency, o.load, o.unload, o.desc, o.createdAt, o.status, o.comment, o.container, o.zip, o.manager, o.contQty || "", o.type || "", o.sharedWith || "", o.isDeleted || false];
+if (sh === 'requests') return [o.id, o.company, o.cargo, o.transport, o.weight, o.vol, o.value, o.currency, o.load, o.unload, o.desc, o.createdAt, o.status, o.comment, o.container, o.zip, o.manager, o.contQty || "", o.type || "", o.sharedWith || "", o.isDeleted || false, o.lossReason || ""];
 
 if (sh === 'deals') return [
     o.id, o.num, o.company, o.cargo, o.trans, o.weight, o.vol, o.value, o.curr, 
@@ -4235,23 +4240,24 @@ const validKeys = [
         "Другое (указать в комм.)"
     ];
     
-     requests.forEach(r => {
-        if (r.isDeleted || r.status !== 'completed' || !r.comment) return;
+requests.forEach(r => {
+        // Проверяем только закрытые запросы с заполненной причиной
+        if (r.status !== 'completed' || !r.lossReason) return;
         
         const mInfo = teamStructure[r.manager] || { team: 'none' };
-        
-        // Проверка доступа
-        if (role === 'leader' && mInfo.team !== myTeam) return;
+        const reqTeam = String(mInfo.team || "").trim().toLowerCase();
+        const leaderTeam = String(myTeam || "").trim().toLowerCase();
+
+        // 1. Проверка доступа Лидера к статистике сотрудника
+        if (role === 'leader' && reqTeam !== leaderTeam) return;
         if (role !== 'admin' && role !== 'leader' && r.manager !== me) return;
+
+        // 2. Фильтр по выбранному менеджеру в селекторе
         if (selMan !== 'all' && r.manager !== selMan) return;
 
-        // Берем часть ДО палки | и чистим пробелы
-        let reasonInDb = r.comment.split('|')[0].trim();
-        
-        // Если эта причина есть в нашем списке - добавляем в график
-        if (validKeys.includes(reasonInDb)) {
-            lossCounts[reasonInDb] = (lossCounts[reasonInDb] || 0) + 1;
-        }
+        // 3. Считаем статистику
+        let label = r.lossReason;
+        lossCounts[label] = (lossCounts[label] || 0) + 1;
     });
 
     charts.loss = new Chart(ctxLoss, {
@@ -4552,10 +4558,10 @@ async function deleteNews(id) {
 
    async function submitRequestClose() {
     const id = document.getElementById('reqCloseId').value;
-    const reason = document.getElementById('reqLossReason').value; // Новое поле (выбор причины)
-    const comment = document.getElementById('reqCloseComment').value.trim(); // Поле комментария
+    const reason = document.getElementById('reqLossReason').value; // Список
+    const comment = document.getElementById('reqCloseComment').value.trim(); // Ручной текст
 
-    // --- БЛОК ВАЛИДАЦИИ (сохранено и улучшено) ---
+    // --- БЛОК ВАЛИДАЦИИ (Твои оригинальные правила) ---
     
     // 1. Проверяем, выбрана ли причина из списка (Обязательно)
     if (!reason) {
@@ -4563,10 +4569,9 @@ async function deleteNews(id) {
         return;
     }
 
-    // 2. Старая логика: если причина "Другое" или если ты хочешь, чтобы коммент всегда был длинным
-    // Я сделал так: если выбрано "Другое", текст обязателен (мин. 5 символов)
+    // 2. Если выбрано "Другое", текст обязателен (минимум 5 символов)
     if (reason.includes("Другое") && comment.length < 5) {
-        alert("Для причины 'Другое' пожалуйста, укажите подробности (минимум 5 символов).");
+        alert("Для причины 'Другое' пожалуйста, укажите подробности в комментарии (минимум 5 символов).");
         return;
     }
     
@@ -4574,23 +4579,23 @@ async function deleteNews(id) {
 
     const i = requests.findIndex(x => String(x.id) === String(id));
     if (i > -1) {
-        // Меняем статус на завершенный (как в оригинале)
+        // Устанавливаем статус
         requests[i].status = 'completed';
         
-        // Формируем текст комментария: "Причина | Доп. текст"
-        // Это позволяет сохранить оба значения в одной ячейке таблицы
-        requests[i].comment = reason + " | " + (comment ? comment : ""); 
+        // РАСПРЕДЕЛЯЕМ ПО КОЛОНКАМ:
+        requests[i].lossReason = reason; // Идет в новую колонку V (для графиков)
+        requests[i].comment = comment;    // Идет в колонку N (твой ручной текст)
         
-        // Обновляем список на экране (как в оригинале)
+        // Обновляем интерфейс
         renderRequests();
         
-        // Закрываем модалку (как в оригинале)
+        // Закрываем модалку
         document.getElementById('requestCloseModal').style.display = 'none';
 
-        // Синхронизируем точечно одну измененную строку в Google Таблицу (как в оригинале)
+        // Отправляем в Google Таблицу (через режим update)
         await sync('requests', requests[i], 'update'); 
         
-        alert("Запрос успешно закрыт.");
+        alert("Запрос успешно закрыт и данные распределены по колонкам.");
     }
 }
     // --- ФУНКЦИИ КОРЗИНЫ (ADMIN ONLY) ---
@@ -4647,10 +4652,13 @@ function updateStatsManagerList() {
     // 1. Собираем список имен из teamStructure, у которых совпадает команда
 let filteredNames = Object.keys(teamStructure).filter(name => {
         const info = teamStructure[name];
-        // Если мы админ и выбрали "Все группы", показываем всех
         if (teamToMatch === 'all') return true;
-        // Лидер видит только тех, у кого совпадает команда (без учета пробелов и регистра)
-        return info && info.team && info.team.toString().trim().toLowerCase() === teamToMatch.toString().trim().toLowerCase();
+        
+        // Принудительно очищаем и переводим в нижний регистр для сравнения
+        const dbTeam = String(info.team || "").trim().toLowerCase();
+        const targetTeam = String(teamToMatch).trim().toLowerCase();
+        
+        return dbTeam === targetTeam;
     });
     // 2. Создаем HTML опций
     // Важно: Лидеру тоже нужно видеть "Все сотрудники группы"
