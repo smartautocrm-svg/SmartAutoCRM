@@ -4183,112 +4183,75 @@ function renderManagerStats() {
     updateCharts(monthlyData, typeLabels, managerLabels);
 }
 
-    function updateCharts(monthly, types, managersData) {
+   function updateCharts(monthly, types, managersData) {
     const ctxDyn = document.getElementById('chartProfitDynamics').getContext('2d');
     const ctxType = document.getElementById('chartProfitByType').getContext('2d');
     const ctxPerf = document.getElementById('chartManagerPerformance').getContext('2d');
     const ctxLoss = document.getElementById('chartLossReasons').getContext('2d');
 
-    // 1. График динамики прибыли
+    // 1. Динамика прибыли
     if (charts.dyn) charts.dyn.destroy();
     const sortedMonths = Object.keys(monthly).sort();
     charts.dyn = new Chart(ctxDyn, { 
         type: 'line', 
-        data: { 
-            labels: sortedMonths, 
-            datasets: [{ 
-                label: 'Прибыль USD', 
-                data: sortedMonths.map(m => monthly[m]), 
-                borderColor: '#511f54', 
-                backgroundColor: 'rgba(81, 31, 84, 0.1)', 
-                fill: true, 
-                tension: 0.3 
-            }] 
-        }, 
+        data: { labels: sortedMonths, datasets: [{ label: 'Прибыль USD', data: sortedMonths.map(m => monthly[m]), borderColor: '#511f54', backgroundColor: 'rgba(81, 31, 84, 0.1)', fill: true, tension: 0.3 }] },
         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } 
     });
 
-    // 2. График типов сделок
+    // 2. Типы сделок
     if (charts.type) charts.type.destroy();
     charts.type = new Chart(ctxType, { 
         type: 'doughnut', 
-        data: { 
-            labels: Object.keys(types), 
-            datasets: [{ 
-                data: Object.values(types), 
-                backgroundColor: ['#511f54', '#8e44ad', '#2e7d32', '#f29900', '#d93025', '#00ACC1', '#FF7043', '#9E9E9E'] 
-            }] 
-        }, 
+        data: { labels: Object.keys(types), datasets: [{ data: Object.values(types), backgroundColor: ['#511f54', '#8e44ad', '#2e7d32', '#f29900', '#d93025', '#00ACC1'] }] },
         options: { responsive: true, maintainAspectRatio: false } 
     });
 
-    // 3. График эффективности менеджеров
+    // 3. Эффективность менеджеров
     if (charts.perf) charts.perf.destroy();
     charts.perf = new Chart(ctxPerf, { 
         type: 'bar', 
-        data: { 
-            labels: Object.keys(managersData), 
-            datasets: [{ 
-                label: 'Прибыль', 
-                data: Object.values(managersData), 
-                backgroundColor: '#511f54' 
-            }] 
-        }, 
+        data: { labels: Object.keys(managersData), datasets: [{ label: 'Прибыль', data: Object.values(managersData), backgroundColor: '#511f54' }] },
         options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } 
     });
 
-    // --- 4. АНАЛИТИКА ПРИЧИН ОТКАЗОВ (ИСПРАВЛЕННЫЙ БЛОК) ---
+    // --- 4. АНАЛИТИКА ПРИЧИН ОТКАЗОВ (ИСПРАВЛЕНО) ---
     if (charts.loss) charts.loss.destroy();
 
     const me = sessionStorage.getItem('crm_user');
     const role = sessionStorage.getItem('crm_role');
     const myTeam = sessionStorage.getItem('crm_team');
-    
     const selMan = (role === 'admin' || role === 'leader') ? (document.getElementById('statsManagerFilter').value || 'all') : me;
     const selYear = document.getElementById('statsYearFilter').value;
     const selMonth = document.getElementById('statsMonthFilter').value;
 
-    // Список валидных причин из вашего HTML-селектора (reqLossReason)
-    const validReasons = [
-        "Дорого (высокая ставка)",
-        "Долго (сроки доставки)",
-        "Нет транспорта/мест",
-        "Клиент не на связи / Ghosted",
-        "Груз отменился / Неактуально",
-        "Другое (указать в комм.)"
-    ];
-
     const lossCounts = {};
     
-    requests.filter(r => {
-        if (r.isDeleted || r.status !== 'completed' || !r.comment) return false;
+    requests.forEach(r => {
+        if (r.isDeleted || r.status !== 'completed' || !r.comment) return;
         
         const rDate = new Date(r.createdAt);
-        const mInfo = teamStructure[r.manager] || {};
+        const mInfo = teamStructure[r.manager] || { team: 'none' };
 
-        // Фильтр по правам (менеджер видит только себя, лидер - группу, админ - всех)
+        // Проверка доступа для отображения в статистике
         let hasAccess = false;
         if (role === 'admin') hasAccess = true;
         else if (role === 'leader') hasAccess = (mInfo.team === myTeam);
         else hasAccess = (r.manager === me);
 
-        if (!hasAccess) return false;
+        if (!hasAccess) return;
 
-        // Фильтр по выбранному менеджеру в селекторе (если админ/лидер его крутят)
-        const matchesMan = (selMan === 'all') ? true : (r.manager === selMan);
-        const matchesYear = (selYear === 'all') ? true : (rDate.getFullYear().toString() === selYear);
-        const matchesMonth = (selMonth === 'all') ? true : (rDate.getMonth().toString() === selMonth);
-        
-        return matchesMan && matchesYear && matchesMonth;
-    }).forEach(r => {
-        // Берем только часть ДО разделителя "|"
+        // Фильтр по выбранному менеджеру и дате
+        if (selMan !== 'all' && r.manager !== selMan) return;
+        if (selYear !== 'all' && rDate.getFullYear().toString() !== selYear) return;
+        if (selMonth !== 'all' && rDate.getMonth().toString() !== selMonth) return;
+
+        // Извлекаем название пункта (до символа |)
         let reason = r.comment.split('|')[0].trim();
         
-        // ПРОВЕРКА: Если причина совпадает с одной из списка validReasons - считаем её
-        // Если это ручной текст или пометка "Конвертировано" - игнорируем
-        if (validReasons.some(vr => reason.includes(vr))) {
-            lossCounts[reason] = (lossCounts[reason] || 0) + 1;
-        }
+        // Игнорируем технические пометки типа "Конвертировано"
+        if (reason.includes("Конвертировано")) return;
+
+        lossCounts[reason] = (lossCounts[reason] || 0) + 1;
     });
 
     const labels = Object.keys(lossCounts);
@@ -4297,23 +4260,15 @@ function renderManagerStats() {
     charts.loss = new Chart(ctxLoss, {
         type: 'bar',
         data: {
-            labels: labels.length ? labels : ["Нет данных"],
-            datasets: [{
-                label: 'Запросов',
-                data: data.length ? data : [0],
-                backgroundColor: '#d93025',
-                borderRadius: 4
-            }]
+            labels: labels.length ? labels : ["Нет данных за период"],
+            datasets: [{ label: 'Запросов', data: data.length ? data : [0], backgroundColor: '#d93025', borderRadius: 4 }]
         },
         options: {
             indexAxis: 'y',
             responsive: true,
             maintainAspectRatio: false,
             plugins: { legend: { display: false } },
-            scales: {
-                x: { beginAtZero: true, ticks: { stepSize: 1 } },
-                y: { grid: { display: false } }
-            }
+            scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } }
         }
     });
 }
@@ -4654,49 +4609,37 @@ function updateAdminUI() {
     const role = sessionStorage.getItem('crm_role');
     const myTeam = sessionStorage.getItem('crm_team');
 
-    // 1. Управление системными кнопками (Корзина и Логи) - ТОЛЬКО ДЛЯ АДМИНА
     const trashBtn = document.getElementById('btn-trash');
     const logsBtn = document.getElementById('btn-logs');
     
     if (role === 'admin') {
         if (trashBtn) trashBtn.style.display = 'flex';
         if (logsBtn) logsBtn.style.display = 'flex';
-    } else {
-        if (trashBtn) trashBtn.style.display = 'none';
-        if (logsBtn) logsBtn.style.display = 'none';
     }
 
-    // 2. Управление селекторами в ОТЧЕТАХ и СТАТИСТИКЕ
     const reportControls = document.getElementById('admin-report-selector');
     const statsControls = document.getElementById('admin-stats-selector');
 
     if (role === 'admin' || role === 'leader') {
-        // Показываем панели выбора менеджеров/групп
         if (reportControls) reportControls.style.display = 'flex';
         if (statsControls) statsControls.style.display = 'flex';
 
-        // 3. Настройка фильтра ГРУПП (Команд) в Статистике
         const teamFilter = document.getElementById('statsTeamFilter');
         if (teamFilter) {
             if (role === 'admin') {
-                // Админ видит все уникальные команды из структуры
-                const allTeams = [...new Set(Object.values(teamStructure).map(x => x.team))].filter(t => t && t !== 'none');
+                const allTeams = [...new Set(Object.values(teamStructure).map(x => x.team))].filter(t => t && t !== 'none' && t !== 'all');
                 teamFilter.innerHTML = '<option value="all">🌐 Все группы</option>' + 
                     allTeams.map(t => `<option value="${t}">${t.toUpperCase()}</option>`).join('');
                 teamFilter.disabled = false;
             } else {
-                // Лидер заблокирован на своей группе
+                // Лидер: жестко ставим его команду
                 teamFilter.innerHTML = `<option value="${myTeam}">${myTeam.toUpperCase()}</option>`;
                 teamFilter.value = myTeam;
-                teamFilter.disabled = true; 
+                teamFilter.disabled = true; // Лидер не может менять свою группу на другую
             }
         }
-
-        // 4. Обновляем списки менеджеров во всех выпадающих списках (с учетом роли)
         updateStatsManagerList();
-
     } else {
-        // Если это обычный Менеджер или Оперейшн - скрываем все админ-панели выбора
         if (reportControls) reportControls.style.display = 'none';
         if (statsControls) statsControls.style.display = 'none';
     }
@@ -4710,31 +4653,33 @@ function updateStatsManagerList() {
     // Определяем, какую команду фильтруем
     const teamToMatch = (role === 'leader') ? myTeam : selTeam;
 
-    // 1. Собираем список имен (Sales + Ops + прочие) из нашей команды
+    // 1. Собираем список имен из teamStructure, у которых совпадает команда
     let filteredNames = Object.keys(teamStructure).filter(name => {
         const info = teamStructure[name];
         if (teamToMatch === 'all') return true;
-        return info && info.team && info.team.toLowerCase() === teamToMatch.toLowerCase();
+        // Сравнение без учета регистра и пробелов
+        return info && info.team && info.team.toLowerCase().trim() === teamToMatch.toLowerCase().trim();
     });
 
-    // 2. Создаем HTML опций (сохраняем старый функционал "Все")
+    // 2. Создаем HTML опций
+    // Важно: Лидеру тоже нужно видеть "Все сотрудники группы"
     const optionsHtml = '<option value="all">👤 Все сотрудники группы</option>' + 
         filteredNames.map(m => `<option value="${m}">${m}</option>`).join('');
 
-    // 3. ПРИМЕНЯЕМ ЭТОТ СПИСОК КО ВСЕМ ФИЛЬТРАМ В СИСТЕМЕ (ничего не потеряно!)
+    // 3. Применяем ко всем фильтрам
     const allFilters = [
-        'statsManagerFilter',        // Фильтр во вкладке СТАТС
-        'reportManagerFilter',       // Фильтр во вкладке ОТЧЕТ
-        'adminCallManagerFilter',    // Фильтр во вкладке АКТИВНОСТЬ
-        'adminRequestManagerFilter', // Фильтр во вкладке ЗАПРОСЫ
-        'adminDealManagerFilter'     // Фильтр во вкладке СДЕЛКИ
+        'statsManagerFilter',
+        'reportManagerFilter',
+        'adminCallManagerFilter',
+        'adminRequestManagerFilter',
+        'adminDealManagerFilter'
     ];
 
     allFilters.forEach(id => {
         const el = document.getElementById(id);
         if (el) {
             el.innerHTML = optionsHtml;
-            el.style.display = 'inline-block'; // Убеждаемся, что фильтр виден
+            el.style.display = 'inline-block';
         }
     });
 }
