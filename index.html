@@ -1644,8 +1644,8 @@ function forInput(v) {
     let reminders = [], companies = [], partners = [], requests = [], managers = [], deals = [], tracking = [], crmLogs = [], news = []; 
     
     // --- ЛОГИКА МОРСКОГО ТРЕКИНГА ---
-   const SHIPPING_LINES = {
-    // MAERSK GROUP (Maersk, Sealand, Safmarine, Hamburg Sud)
+  const SHIPPING_LINES = {
+    // MAERSK GROUP
     "MAEU": "https://www.maersk.com/tracking/", "MSKU": "https://www.maersk.com/tracking/", 
     "PONU": "https://www.maersk.com/tracking/", "SUDU": "https://www.maersk.com/tracking/",
     "SAFU": "https://www.maersk.com/tracking/", "MUKU": "https://www.maersk.com/tracking/",
@@ -1654,13 +1654,13 @@ function forInput(v) {
     "HASU": "https://www.maersk.com/tracking/", "MCMU": "https://www.maersk.com/tracking/",
     "TTNU": "https://www.maersk.com/tracking/", "LVLU": "https://www.maersk.com/tracking/",
 
-    // MSC (Mediterranean Shipping Company) + МШК
+    // MSC + МШК
     "MSCU": "https://www.msc.com/en/track-a-shipment?number=", "MEDU": "https://www.msc.com/en/track-a-shipment?number=",
     "MSNU": "https://www.msc.com/en/track-a-shipment?number=", "TGHU": "https://www.msc.com/en/track-a-shipment?number=",
     "TCLU": "https://www.msc.com/en/track-a-shipment?number=", "GSCU": "https://www.msc.com/en/track-a-shipment?number=",
     "GLDU": "https://www.msc.com/en/track-a-shipment?number=", "MILU": "https://www.msc.com/en/track-a-shipment?number=",
 
-    // CMA CGM GROUP (CMA CGM, APL, ANL, CNC, Mercosul)
+    // CMA CGM + СМА + APL
     "CMAU": "https://www.cma-cgm.com/ebusiness/tracking/search?SearchBy=Container&SearchValue=",
     "CGMU": "https://www.cma-cgm.com/ebusiness/tracking/search?SearchBy=Container&SearchValue=",
     "TCNU": "https://www.cma-cgm.com/ebusiness/tracking/search?SearchBy=Container&SearchValue=",
@@ -1668,86 +1668,51 @@ function forInput(v) {
     "ANLU": "https://www.cma-cgm.com/ebusiness/tracking/search?SearchBy=Container&SearchValue=",
     "CMBU": "https://www.cma-cgm.com/ebusiness/tracking/search?SearchBy=Container&SearchValue=",
     "CNCU": "https://www.cma-cgm.com/ebusiness/tracking/search?SearchBy=Container&SearchValue=",
-    "CSVU": "https://www.cma-cgm.com/ebusiness/tracking/search?SearchBy=Container&SearchValue=",
-    "TIHU": "https://www.cma-cgm.com/ebusiness/tracking/search?SearchBy=Container&SearchValue=",
 
-    // HAPAG-LLOYD (Hapag, UASC, CP Ships)
+    // HAPAG-LLOYD
     "HLXU": "https://www.hapag-lloyd.com/en/online-business/track-and-trace/container-tracing.html?container=",
     "HLCU": "https://www.hapag-lloyd.com/en/online-business/track-and-trace/container-tracing.html?container=",
     "HLBU": "https://www.hapag-lloyd.com/en/online-business/track-and-trace/container-tracing.html?container=",
     "UASC": "https://www.hapag-lloyd.com/en/online-business/track-and-trace/container-tracing.html?container=",
-    "UACU": "https://www.hapag-lloyd.com/en/online-business/track-and-trace/container-tracing.html?container=",
-    "HAMU": "https://www.hapag-lloyd.com/en/online-business/track-and-trace/container-tracing.html?container=",
-    "CPSU": "https://www.hapag-lloyd.com/en/online-business/track-and-trace/container-tracing.html?container=",
 
-    // COSCO SHIPPING (COSCO, OOCL)
+    // COSCO + OOCL
     "COSU": "https://elines.coscoshipping.com/ebusiness/cargoTracking?number=",
     "CSQU": "https://elines.coscoshipping.com/ebusiness/cargoTracking?number=",
-    "CCLU": "https://elines.coscoshipping.com/ebusiness/cargoTracking?number=",
-    "CHHU": "https://elines.coscoshipping.com/ebusiness/cargoTracking?number=",
     "OOLU": "https://www.oocl.com/eng/ourservices/containerbooking/tracking/Pages/default.aspx?number=",
     "OOCL": "https://www.oocl.com/eng/ourservices/containerbooking/tracking/Pages/default.aspx?number=",
 
-    // ONE (Ocean Network Express - NYK, MOL, K-Line)
+    // ONE (NYK, MOL, K-Line)
     "ONEU": "https://tracking.one-line.com/one-ecom/manage-shipment/cargo-tracking?unNo=",
     "NYKU": "https://tracking.one-line.com/one-ecom/manage-shipment/cargo-tracking?unNo=",
     "MOLU": "https://tracking.one-line.com/one-ecom/manage-shipment/cargo-tracking?unNo=",
     "KKLU": "https://tracking.one-line.com/one-ecom/manage-shipment/cargo-tracking?unNo=",
-    "KLINE": "https://tracking.one-line.com/one-ecom/manage-shipment/cargo-tracking?unNo=",
 
     // EVERGREEN
     "EGCU": "https://www.shipmentlink.com/servlet/TDB1_CargoTracking.do?scvalue=",
     "EMCU": "https://www.shipmentlink.com/servlet/TDB1_CargoTracking.do?scvalue=",
-    "EISU": "https://www.shipmentlink.com/servlet/TDB1_CargoTracking.do?scvalue=",
-    "UGMU": "https://www.shipmentlink.com/servlet/TDB1_CargoTracking.do?scvalue=",
-    "HTMU": "https://www.shipmentlink.com/servlet/TDB1_CargoTracking.do?scvalue=",
-
-    // YANG MING
-    "YMLU": "https://www.yangming.com/e-service/track_trace/track_trace_cargo_tracking.aspx?tno=",
-    "YMMU": "https://www.yangming.com/e-service/track_trace/track_trace_cargo_tracking.aspx?tno=",
 
     // ZIM
     "ZIMU": "https://www.zim.com/tools/track-a-shipment?containerNumber=",
     "ZCSU": "https://www.zim.com/tools/track-a-shipment?containerNumber=",
 
-    // HMM (Hyundai Merchant Marine)
+    // YANG MING
+    "YMLU": "https://www.yangming.com/e-service/track_trace/track_trace_cargo_tracking.aspx?tno=",
+
+    // HMM
     "HMCU": "https://www.hmm21.com/cms/business/ebusiness/trackAndTrace/index.jsp?number=",
-    "HDMU": "https://www.hmm21.com/cms/business/ebusiness/trackAndTrace/index.jsp?number=",
 
-    // WAN HAI
-    "WHSU": "https://www.wanhai.com/views/cargo_track/cargo_tracking.xhtml?q_type=C&q_num=",
-    "WHLU": "https://www.wanhai.com/views/cargo_track/cargo_tracking.xhtml?q_type=C&q_num=",
-
-    // PIL (Pacific International Lines)
-    "PCIU": "https://www.pilship.com/shared/container-tracking/index.html?container=",
-    "PILU": "https://www.pilship.com/shared/container-tracking/index.html?container=",
-
-    // ARKAS / EMES
-    "AMFU": "https://www.arkasline.com.tr/en/container-tracking.html?container=",
-    "ARKU": "https://www.arkasline.com.tr/en/container-tracking.html?container=",
-    "EMES": "https://www.arkasline.com.tr/en/container-tracking.html?container=",
-
-    // SINOKOR
-    "SNKO": "http://www.sinokor.co.kr/tracking/container_tracking.jsp?cntr_no=",
-
-    // TS LINES
-    "TSLU": "https://www.tslines.com/en/cargo-tracking",
-
-    // KMTC
-    "KMTU": "https://www.ekmtc.com/ccis1000/main.do",
-
-    // INTERASIA
-    "IASU": "https://www.interasia.cc/en/cargo-tracking",
-
-    // LIZING / LEASING (Обычно отслеживаются на сайтах линий, но часто встречаются)
-    "CAIU": "https://www.track-trace.com/container/", // CAI
-    "TEXU": "https://www.track-trace.com/container/", // Textainer
-    "TRHU": "https://www.track-trace.com/container/", // Triton
-    "FCIU": "https://www.track-trace.com/container/", // Florens
-    "GESU": "https://www.track-trace.com/container/", // Seaco
-    "SEGU": "https://www.track-trace.com/container/", // Seaco
-    "BMOU": "https://www.track-trace.com/container/", // Beacon
-    "CRXU": "https://www.track-trace.com/container/", // Crowley
+    // LIZING (Лизинговые компании - теперь через GoComet)
+    "CAIU": "https://www.gocomet.com/container-tracking?container_number=",
+    "TEXU": "https://www.gocomet.com/container-tracking?container_number=",
+    "TRHU": "https://www.gocomet.com/container-tracking?container_number=",
+    "FCIU": "https://www.gocomet.com/container-tracking?container_number=",
+    "GESU": "https://www.gocomet.com/container-tracking?container_number=",
+    "SEGU": "https://www.gocomet.com/container-tracking?container_number=",
+    "BMOU": "https://www.gocomet.com/container-tracking?container_number=",
+    "SKLU": "https://www.gocomet.com/container-tracking?container_number=",
+    "TGBU": "https://www.gocomet.com/container-tracking?container_number=",
+    "DFSU": "https://www.gocomet.com/container-tracking?container_number=",
+    "UETU": "https://www.gocomet.com/container-tracking?container_number="
 };
 
 function openOceanTracking(containerNum) {
@@ -1758,12 +1723,10 @@ function openOceanTracking(containerNum) {
     let url = SHIPPING_LINES[prefix];
     
     if (url) {
-        // Если нашли линию в словаре
         window.open(url + cleanNum, '_blank');
     } else {
-        // Если линия неизвестна — открываем универсальный агрегатор Track-Trace
-        alert("Префикс " + prefix + " не найден в базе линий. Открываем общий трекинг.");
-        window.open("https://www.track-trace.com/container/" + cleanNum, '_blank');
+        // Если линия неизвестна — открываем GoComet вместо Track-Trace
+        window.open("https://www.gocomet.com/container-tracking?container_number=" + cleanNum, '_blank');
     }
 }
 
@@ -4739,77 +4702,45 @@ async function deleteNews(id) {
     const localRes = tracking.find(t => t.num.toUpperCase() === num);
     const lineUrl = SHIPPING_LINES[prefix];
 
-    // ГИГАНТСКИЙ СЛОВАРЬ НАЗВАНИЙ
     const lineNames = {
-        // Maersk Group
-        "MAEU":"Maersk Line", "MSKU":"Maersk Line", "PONU":"Maersk (P&O)", "SUDU":"Hamburg Sud", "SAFU":"Safmarine", "SEAU":"Sealand", "SEAL":"Sealand", "HASU":"Hamburg Sud",
-        // MSC
-        "MSCU":"MSC", "MEDU":"MSC", "MSNU":"МШК (MSC)", "TGHU":"MSC/Leasing", "TCLU":"MSC", "GSCU":"MSC", "GLDU":"MSC",
-        // CMA CGM
-        "CMAU":"CMA CGM", "CGMU":"CMA CGM", "TCNU":"СМА (CMA CGM)", "APLU":"APL", "ANLU":"ANL", "CMBU":"CMA CGM", "CNCU":"CNC Line",
-        // Hapag
-        "HLXU":"Hapag-Lloyd", "HLCU":"Hapag-Lloyd", "HLBU":"Hapag-Lloyd", "UASC":"UASC (Hapag)", "UACU":"UASC", "HAMU":"Hamburg Sud",
-        // Cosco/Oocl
-        "COSU":"COSCO", "CSQU":"COSCO", "CCLU":"COSCO", "CHHU":"COSCO", "OOLU":"OOCL", "OOCL":"OOCL",
-        // ONE
-        "ONEU":"ONE (Ocean Network Express)", "NYKU":"NYK Line", "MOLU":"MOL", "KKLU":"K-Line",
-        // Evergreen
-        "EGCU":"Evergreen", "EMCU":"Evergreen", "EISU":"Evergreen",
-        // Others
-        "ZIMU":"ZIM", "ZCSU":"ZIM", "YMLU":"Yang Ming", "HMCU":"HMM (Hyundai)", "WHSU":"Wan Hai", "PCIU":"PIL", "PILU":"PIL",
-        "AMFU":"Arkas", "ARKU":"Arkas", "SNKO":"Sinokor", "TSLU":"TS Lines", "IASU":"Interasia"
+        "MAEU":"Maersk Line", "MSKU":"Maersk Line", "PONU":"Maersk (P&O)", "SUDU":"Hamburg Sud", "MSCU":"MSC", "MSNU":"МШК (MSC)", "MEDU":"MSC", "TGHU":"MSC",
+        "CMAU":"CMA CGM", "TCNU":"СМА (CMA CGM)", "CGMU":"CMA CGM", "APLU":"APL", "HLXU":"Hapag-Lloyd", "COSU":"COSCO", "ONEU":"ONE", "EGCU":"Evergreen",
+        "ZIMU":"ZIM", "YMLU":"Yang Ming", "HMCU":"HMM", "CAIU":"CAI Leasing", "TEXU":"Textainer", "TRHU":"Triton"
     };
 
     let html = "";
 
-    // 1. Поиск во внутренней базе
+    // Внутренний результат (ваша база)
     if (localRes) {
-        html += `
-            <div class="card" style="border: 2px solid var(--primary); padding: 15px; margin-top: 20px;">
-                <h3 style="color:var(--primary); margin-bottom: 10px;">📦 Внутренний статус: ${localRes.num}</h3>
-                <div class="preview-grid">
-                    <div class="preview-box"><label>Груз</label><span>${localRes.cargo}</span></div>
-                    <div class="preview-box"><label>Статус</label><span style="color:var(--success); font-weight:bold;">${localRes.status.toUpperCase()}</span></div>
-                    <div class="preview-box"><label>Вес / Объем</label><span>${localRes.weight} кг / ${localRes.vol} м³</span></div>
-                    <div class="preview-box"><label>Менеджер</label><span>${localRes.manager}</span></div>
-                </div>
-            </div>`;
+        html += `<div class="card" style="border: 2px solid var(--primary); padding: 15px; margin-top: 20px;"><h3 style="color:var(--primary); margin-bottom: 10px;">📦 База SmartAuto</h3><div class="preview-grid"><div class="preview-box"><label>Груз</label><span>${localRes.cargo}</span></div><div class="preview-box"><label>Статус</label><span style="color:var(--success); font-weight:bold;">${localRes.status.toUpperCase()}</span></div><div class="preview-box"><label>Вес / Объем</label><span>${localRes.weight} кг / ${localRes.vol} м³</span></div><div class="preview-box"><label>Менеджер</label><span>${localRes.manager}</span></div></div></div>`;
     }
 
-    // 2. Логика для внешнего трекинга
+    // Внешний трекинг
     if (lineUrl) {
-        const lineDisplayName = lineNames[prefix] || `Морская линия (${prefix})`;
-        const isLeasing = ["CAIU", "TEXU", "TRHU", "FCIU", "GESU", "SEGU", "BMOU"].includes(prefix);
-        
+        const lineDisplayName = lineNames[prefix] || `Линия (${prefix})`;
         html += `
-            <div style="margin-top: 20px; padding: 20px; background: #f0f7ff; border-radius: 12px; border: 1px solid #1a73e8; text-align: center;">
+            <div style="margin-top: 20px; padding: 20px; background: #e8f0fe; border-radius: 12px; border: 1px solid #1a73e8; text-align: center;">
                 <div style="font-size: 28px; margin-bottom: 10px;">🚢</div>
-                <h4 style="margin: 0 0 10px 0; color: #1a73e8;">Обнаружен контейнер ${lineDisplayName}</h4>
-                <p style="font-size: 11px; color: #555; margin-bottom: 15px;">
-                    ${isLeasing ? 'Этот контейнер принадлежит лизинговой компании. Мы перенаправим вас на глобальный поиск.' : 'Вы можете отследить этот груз в реальном времени на официальном сайте линии.'}
-                </p>
+                <h4 style="margin: 0 0 10px 0; color: #1a73e8;">Контейнер опознан: ${lineDisplayName}</h4>
+                <p style="font-size: 11px; color: #555; margin-bottom: 15px;">Нажмите кнопку для перехода к онлайн-отслеживанию:</p>
                 <button class="main" onclick="window.open('${lineUrl}${num}', '_blank')" style="background:#1a73e8; width: 100%;">
-                    ОТСЛЕДИТЬ ${prefix} НА САЙТЕ ЛИНИИ
+                    ОТКРЫТЬ ТРЕКИНГ ${prefix}
                 </button>
             </div>`;
     } else if (/^[A-Z]{4}\d+/.test(num)) {
-        // Если формат контейнера верный, но префикса нет в нашей базе
+        // Fallback на GoComet для всех остальных контейнеров
         html += `
             <div style="margin-top: 20px; padding: 20px; background: #f8f9fa; border-radius: 12px; border: 1px solid #ccc; text-align: center;">
-                <h4 style="margin: 0 0 10px 0;">Морской контейнер (неизв. линия)</h4>
-                <p style="font-size: 11px; color: #666; margin-bottom: 15px;">
-                    Префикс <b>${prefix}</b> не найден в быстром списке, но вы можете использовать универсальный трекинг:
-                </p>
-                <button class="main" onclick="window.open('https://www.track-trace.com/container/${num}', '_blank')" style="background:#666; width: 100%;">
-                    ОТКРЫТЬ GLOBAL TRACK-TRACE
+                <h4 style="margin: 0 0 10px 0;">Морской контейнер</h4>
+                <p style="font-size: 11px; color: #666; margin-bottom: 15px;">Префикс <b>${prefix}</b> не в нашей быстрой базе, пробуем глобальный поиск:</p>
+                <button class="main" onclick="window.open('https://www.gocomet.com/container-tracking?container_number=${num}', '_blank')" style="background:#666; width: 100%;">
+                    ГЛОБАЛЬНЫЙ ПОИСК (GOCOMET)
                 </button>
             </div>`;
     }
 
-    if (!localRes && !lineUrl && !/^[A-Z]{4}\d+/.test(num)) {
-        html = `<div style="color:var(--danger); padding: 20px; text-align: center; font-weight: bold;">
-                    ❌ Номер не найден в CRM и не распознан как контейнер.
-                </div>`;
+    if (!localRes && !html) {
+        html = `<div style="color:var(--danger); padding: 20px; text-align: center; font-weight: bold;">❌ Номер не найден.</div>`;
     }
 
     container.innerHTML = html;
