@@ -1928,6 +1928,9 @@ async function loadCloudData() {
         const url = `${SCRIPT_URL}?action=getAllData&since=${lastSyncTimestamp}`;
         const r = await fetch(url);
         const d = await r.json();
+
+        if (d.managers) managers = d.managers;
+        if (d.teamStructure) teamStructure = d.teamStructure;
         
         if (!d || d.error) {
             document.getElementById('sync-status').innerText = "Ошибка синхро";
@@ -4617,10 +4620,6 @@ function updateAdminUI() {
 }
 // Вспомогательная функция для обновления списка менеджеров в зависимости от выбранной команды
 function updateStatsManagerList() {
-    if (!teamStructure || Object.keys(teamStructure).length === 0) {
-        console.warn("Данные команд еще не подтянулись");
-        return;
-    }
     
     const role = sessionStorage.getItem('crm_role');
     const myName = sessionStorage.getItem('crm_user');
@@ -4634,23 +4633,29 @@ function updateStatsManagerList() {
     // Админ смотрит то, что выбрал в селекторе. Лидер - только свою группу.
     let targetTeam = (role === 'admin') ? selTeam : myTeam;
     
-    let filteredNames = [];
+   let filteredNames = [];
 
-    if (targetTeam === "all" || targetTeam === "all") {
-        filteredNames = Object.keys(teamStructure);
-    } else {
-        filteredNames = Object.keys(teamStructure).filter(name => {
-            const info = teamStructure[name];
-            return String(info.team || "").trim().toLowerCase() === targetTeam;
-        });
+    if (teamStructure && Object.keys(teamStructure).length > 0) {
+        if (targetTeam === "all") {
+            filteredNames = Object.keys(teamStructure);
+        } else {
+            filteredNames = Object.keys(teamStructure).filter(name => {
+                const info = teamStructure[name];
+                // Сравниваем максимально безопасно
+                return info && String(info.team || "").trim().toLowerCase() === targetTeam;
+            });
+        }
     }
 
-    // Если вдруг по фильтру пусто — берем всех, чтобы не было пустого окна
-    if (filteredNames.length === 0) filteredNames = managers;
+    // Если по фильтру команды никого не нашли, принудительно берем общий список managers
+    // Это гарантирует, что список не будет пустым, пока данные грузятся
+    if (!filteredNames || filteredNames.length === 0) {
+        filteredNames = managers; 
+    }
 
-    // Генерируем HTML. Админ и Лидер могут выбрать "Все сотрудники"
+    // Собираем HTML (используем Set, чтобы убрать дубликаты имен)
     let optionsHtml = (role === 'admin' || role === 'leader') ? '<option value="all">👤 Все сотрудники</option>' : '';
-    optionsHtml += filteredNames.sort().map(m => `<option value="${m}">${m}</option>`).join('');
+    optionsHtml += [...new Set(filteredNames)].sort().map(m => `<option value="${m}">${m}</option>`).join('');
 
     // Рассылаем во все фильтры
     const filters = ['statsManagerFilter', 'reportManagerFilter', 'adminCallManagerFilter', 'adminRequestManagerFilter', 'adminDealManagerFilter'];
