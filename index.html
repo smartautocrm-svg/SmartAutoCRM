@@ -1708,6 +1708,45 @@ function forInput(v) {
     "SKLU": "https://www.searates.com/container/tracking/?number="
 };
 
+    const AIRLINE_PREFIXES = {
+    // ЕВРОПА
+    "080": "https://www.lotcargo.com/en/tracking?awb=",        // LOT Polish Airlines
+    "020": "https://www.lufthansa-cargo.com/tracking?awb=",   // Lufthansa
+    "257": "https://www.lufthansa-cargo.com/tracking?awb=",   // Austrian Airlines
+    "057": "https://www.afklcargo.com/mycargo/shipment-tracking?awbNumber=", // Air France
+    "074": "https://www.afklcargo.com/mycargo/shipment-tracking?awbNumber=", // KLM
+    "082": "https://www.brusselsairlines.com/com/cargo/tracking.aspx?awb=",  // Brussels Airlines
+    "125": "https://www.britishairways.com/travel/cargo-tracking/public/en_gb?awbNumber=", // British Airways
+    "083": "https://www.sas.dk/en/cargo/tracking/?awb=",      // SAS
+    "047": "https://www.tapcargo.com/en/track-trace?awbNumber=", // TAP Portugal
+    "172": "https://www.cargolux.com/tracking?awb=",          // Cargolux
+
+    // БЛИЖНИЙ ВОСТОК (Самые популярные)
+    "176": "https://www.skycargo.com/tracking/?awb=",         // Emirates
+    "141": "https://www.flydubaicargo.com/tracking/?awb=",    // FlyDubai
+    "235": "https://www.turkishcargo.com.tr/en/online-services/shipment-tracking?awb=", // Turkish Airlines
+    "157": "https://www.qrcargo.com/s/track-your-shipment?awbNumber=", // Qatar Airways
+    "607": "https://www.etihadcargo.com/en/tracking?awb=",    // Etihad
+    "065": "https://www.saudiacargo.com/tracking?awb=",       // Saudi Cargo
+
+    // АЗИЯ
+    "999": "https://www.airchinacargo.com/en/index.php/index/tracking.html?awb=", // Air China
+    "784": "https://tang.csair.com/EN/Common/CargoTracking.aspx?awb=", // China Southern
+    "112": "https://www.airchina.com.cn/cargo/en/index.html", // China Eastern
+    "160": "https://www.cathaycargo.com/en-us/manageyourshipment/trackyourshipment.html?trackit=awb&awbno=", // Cathay Pacific
+    "618": "https://www.siacargo.com/en_UK/tracking/",        // Singapore Airlines
+    "180": "https://www.koreanaircargo.com/tracking/tracking.do?awbNo=", // Korean Air
+    "988": "https://www.asianacargo.com/tracking/viewTracking.do?awbNo=", // Asiana
+    "297": "https://www.china-airlines.com/us/en/cargo/tracking-awb",    // China Airlines
+    "403": "https://www.polaraircargo.com/tracking/?awb=",    // Polar Air
+
+    // АМЕРИКА
+    "001": "https://www.aacargo.com/CargoTracking/index.html?awb=",      // American Airlines
+    "006": "https://www.delta.com/cargo/tracking.awb?awb=",              // Delta
+    "023": "https://www.fedex.com/en-us/tracking.html?tracknumbers=",    // FedEx (Air)
+    "402": "https://www.ups.com/track?loc=en_US",                        // UPS Air
+};
+
 function openOceanTracking(containerNum) {
     if (!containerNum) return;
     const cleanNum = containerNum.trim().toUpperCase();
@@ -4684,72 +4723,94 @@ async function deleteNews(id) {
     }
 }
 
-   function searchPublicTracking() {
+  function searchPublicTracking() {
     const rawNum = document.getElementById('publicTrackSearch').value.trim();
     if (!rawNum) return;
 
-    const num = rawNum.toUpperCase();
+    // Очищаем номер от пробелов и приводим к верхнему регистру
+    const num = rawNum.toUpperCase().replace(/\s/g, ''); 
     const container = document.getElementById('publicTrackResult');
-    const prefix = num.substring(0, 4);
     
+    // 1. ПОИСК ВО ВНУТРЕННЕЙ БАЗЕ CRM (SmartAuto)
     const localRes = tracking.find(t => t.num.toUpperCase() === num);
-    const lineUrl = SHIPPING_LINES[prefix];
 
-    const lineNames = {
-        "MAEU":"Maersk Line", "MSKU":"Maersk Line", "PONU":"Maersk (P&O)", "SUDU":"Hamburg Sud", 
-        "MSCU":"MSC", "MSNU":"МШК (MSC)", "MEDU":"MSC", "TGHU":"MSC", "TCLU":"MSC",
-        "CMAU":"CMA CGM", "TCNU":"СМА (CMA CGM)", "CGMU":"CMA CGM", "APLU":"APL",
-        "HLXU":"Hapag-Lloyd", "COSU":"COSCO", "ONEU":"ONE", "EGCU":"Evergreen",
-        "ZIMU":"ZIM", "YMLU":"Yang Ming", "HMCU":"HMM", "CAIU":"CAI Leasing", "TEXU":"Textainer", "TRHU":"Triton"
+    // 2. СЛОВАРЬ КРАСИВЫХ НАЗВАНИЙ (Для подписей в карточках)
+    const displayNames = {
+        // Море
+        "MAEU": "Maersk Line", "MSKU": "Maersk Line", "PONU": "Maersk (P&O)", "SUDU": "Hamburg Sud",
+        "MSCU": "MSC", "MEDU": "MSC", "MSNU": "МШК (MSC)", "TCNU": "СМА (CMA CGM)", "CMAU": "CMA CGM",
+        "HLXU": "Hapag-Lloyd", "COSU": "COSCO", "OOLU": "OOCL", "ONEU": "ONE", "EGCU": "Evergreen",
+        // Авиа
+        "176": "Emirates SkyCargo", "141": "FlyDubai Cargo", "080": "LOT Polish Airlines",
+        "235": "Turkish Cargo", "157": "Qatar Airways", "020": "Lufthansa Cargo",
+        "172": "Cargolux", "607": "Etihad Cargo", "057": "Air France", "074": "KLM"
     };
 
     let html = "";
 
-    // 1. Поиск в CRM
+    // --- БЛОК А: Если груз найден в вашей CRM ---
     if (localRes) {
         html += `
             <div class="card" style="border: 2px solid var(--primary); padding: 15px; margin-top: 20px;">
-                <h3 style="color:var(--primary); margin-bottom: 10px;">📦 Информация из базы SmartAuto</h3>
+                <h3 style="color:var(--primary); margin-bottom: 10px;">📦 Информация SmartAuto</h3>
                 <div class="preview-grid">
                     <div class="preview-box"><label>Груз</label><span>${localRes.cargo}</span></div>
-                    <div class="preview-box"><label>Текущий статус</label><span style="color:var(--success); font-weight:bold;">${localRes.status.toUpperCase()}</span></div>
-                    <div class="preview-box"><label>Вес / Объем</label><span>${localRes.weight} кг / ${localRes.vol} м³</span></div>
+                    <div class="preview-box"><label>Статус</label><span style="color:var(--success); font-weight:bold;">${localRes.status.toUpperCase()}</span></div>
+                    <div class="preview-box"><label>Параметры</label><span>${localRes.weight} кг / ${localRes.vol} м³</span></div>
                     <div class="preview-box"><label>Менеджер</label><span>${localRes.manager}</span></div>
                 </div>
             </div>`;
     }
 
-    // 2. Внешний трекинг
-    if (lineUrl) {
-        const lineDisplayName = lineNames[prefix] || `Линия (${prefix})`;
+    // --- БЛОК Б: Определение типа (МОРЕ или АВИА) ---
+    const isContainer = /^[A-Z]{4}\d+/.test(num); // 4 буквы + цифры
+    const isAWB = /^\d{3}-?\d{8}$/.test(num);    // 3 цифры + 8 цифр
+
+    if (isContainer) {
+        // ЛОГИКА МОРСКОГО КОНТЕЙНЕРА
+        const prefix = num.substring(0, 4);
+        const lineUrl = SHIPPING_LINES[prefix];
+        const lineName = displayNames[prefix] || `Линия (${prefix})`;
+
         html += `
             <div style="margin-top: 20px; padding: 20px; background: #e8f0fe; border-radius: 12px; border: 1px solid #1a73e8; text-align: center;">
                 <div style="font-size: 28px; margin-bottom: 10px;">🚢</div>
-                <h4 style="margin: 0 0 10px 0; color: #1a73e8;">Контейнер ${lineDisplayName}</h4>
-                <p style="font-size: 11px; color: #555; margin-bottom: 15px;">Мы можем отследить этот груз онлайн на сайте перевозчика или агрегатора.</p>
-                <button class="main" onclick="window.open('${lineUrl}${num}', '_blank')" style="background:#1a73e8; width: 100%;">
-                    ОТСЛЕДИТЬ ${prefix} ЧЕРЕЗ SEARATES / ЛИНИЮ
+                <h4 style="margin: 0 0 5px 0; color: #1a73e8;">Морской контейнер ${lineName}</h4>
+                <p style="font-size: 11px; color: #555; margin-bottom: 15px;">Мы можем отследить этот контейнер напрямую на сайте линии или через SeaRates.</p>
+                <button class="main" onclick="window.open('${lineUrl ? lineUrl + num : 'https://www.searates.com/container/tracking/?number=' + num}', '_blank')" style="background:#1a73e8; width: 100%;">
+                    ОТКРЫТЬ ВНЕШНИЙ ТРЕКИНГ
                 </button>
             </div>`;
-    } else if (/^[A-Z]{4}\d+/.test(num)) {
-        // Если префикс неизвестен, но это контейнер — всегда SeaRates
+
+    } else if (isAWB) {
+        // ЛОГИКА АВИАНАКЛАДНОЙ
+        const prefix = num.substring(0, 3);
+        const cleanAwb = num.replace('-', '');
+        const airlineUrl = AIRLINE_PREFIXES[prefix];
+        const airlineName = displayNames[prefix] || `Авиакомпания (код ${prefix})`;
+
         html += `
-            <div style="margin-top: 20px; padding: 20px; background: #f8f9fa; border-radius: 12px; border: 1px solid #ccc; text-align: center;">
-                <h4 style="margin: 0 0 10px 0;">Морской контейнер</h4>
-                <p style="font-size: 11px; color: #666; margin-bottom: 15px;">Префикс <b>${prefix}</b> не в нашей быстрой базе. Используем глобальный поиск SeaRates:</p>
-                <button class="main" onclick="window.open('https://www.searates.com/container/tracking/?number=${num}', '_blank')" style="background:#666; width: 100%;">
-                    ГЛОБАЛЬНЫЙ ПОИСК (SEARATES)
+            <div style="margin-top: 20px; padding: 20px; background: #fff8e1; border-radius: 12px; border: 1px solid #ffc107; text-align: center;">
+                <div style="font-size: 28px; margin-bottom: 10px;">✈️</div>
+                <h4 style="margin: 0 0 5px 0; color: #856404;">${airlineName}</h4>
+                <p style="font-size: 11px; color: #666; margin-bottom: 15px;">Обнаружен формат авианакладной (AWB). Нажмите для перехода к трекингу.</p>
+                <button class="main" onclick="window.open('${airlineUrl ? airlineUrl + cleanAwb : 'https://www.track-trace.com/aircargo?awb=' + num}', '_blank')" style="background:#ffc107; color: #000; width: 100%;">
+                    ОТКРЫТЬ ТРЕКИНГ АВИАЛИНИИ
                 </button>
             </div>`;
     }
 
-    if (!localRes && !html) {
-        html = `<div style="color:var(--danger); padding: 20px; text-align: center; font-weight: bold;">❌ Номер не найден.</div>`;
+    // --- БЛОК В: Если ничего не определено ---
+    if (!localRes && !isContainer && !isAWB) {
+        html = `
+            <div style="color:var(--danger); padding: 20px; text-align: center; font-weight: bold; background: #fff5f5; border-radius: 8px; margin-top: 20px;">
+                ❌ Номер не найден или имеет неверный формат.<br>
+                <small style="font-weight: normal; color: #666;">Введите номер контейнера (напр. MSCU...) или AWB (напр. 176...)</small>
+            </div>`;
     }
 
     container.innerHTML = html;
 }
-
     function showTrackPreview(id) {
     const t = tracking.find(x => x.id == id); 
     if (!t) return;
