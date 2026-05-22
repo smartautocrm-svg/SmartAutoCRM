@@ -1642,6 +1642,40 @@ function forInput(v) {
 }
     
     let reminders = [], companies = [], partners = [], requests = [], managers = [], deals = [], tracking = [], crmLogs = [], news = []; 
+    
+    // --- ЛОГИКА МОРСКОГО ТРЕКИНГА ---
+const SHIPPING_LINES = {
+    "MSCU": "https://www.msc.com/en/track-a-shipment?number=",
+    "MAEU": "https://www.maersk.com/tracking/",
+    "MSKU": "https://www.maersk.com/tracking/",
+    "PONU": "https://www.maersk.com/tracking/",
+    "CMAU": "https://www.cma-cgm.com/ebusiness/tracking/search?SearchBy=Container&SearchValue=",
+    "HLXU": "https://www.hapag-lloyd.com/en/online-business/track-and-trace/container-tracing.html?container=",
+    "COSU": "https://elines.coscoshipping.com/ebusiness/cargoTracking?number=",
+    "ONEU": "https://tracking.one-line.com/one-ecom/manage-shipment/cargo-tracking?unNo=",
+    "EGCU": "https://www.shipmentlink.com/servlet/TDB1_CargoTracking.do?scvalue=",
+    "ZIMU": "https://www.zim.com/tools/track-a-shipment?containerNumber=",
+    "YMLU": "https://www.yangming.com/e-service/track_trace/track_trace_cargo_tracking.aspx?tno="
+};
+
+function openOceanTracking(containerNum) {
+    if (!containerNum) return;
+    const cleanNum = containerNum.trim().toUpperCase();
+    const prefix = cleanNum.substring(0, 4);
+    
+    let url = SHIPPING_LINES[prefix];
+    
+    if (url) {
+        // Если нашли линию в словаре
+        window.open(url + cleanNum, '_blank');
+    } else {
+        // Если линия неизвестна — открываем универсальный агрегатор Track-Trace
+        alert("Префикс " + prefix + " не найден в базе линий. Открываем общий трекинг.");
+        window.open("https://www.track-trace.com/container/" + cleanNum, '_blank');
+    }
+}
+
+    
     let teamStructure = {}; 
     let selectedIds = new Set();
     let listLimits = { 
@@ -4615,9 +4649,26 @@ async function deleteNews(id) {
     }
 
     function showTrackPreview(id) {
-        const t = tracking.find(x => x.id == id); if (!t) return;
-        document.getElementById('preview-tracking').innerHTML = `<h3>Детали: ${t.num}</h3><div class="preview-grid"><div class="preview-box"><label>Груз</label><span>${t.cargo}</span></div><div class="preview-box"><label>Статус</label><span style="color:var(--primary); font-weight:bold;">${t.status}</span></div><div class="preview-box"><label>Вес/Объем</label><span>${t.weight}кг / ${t.vol}м³</span></div><div class="preview-box"><label>Упаковка</label><span>${t.qty} (${t.pack})</span></div><div class="preview-box"><label>Транспорт</label><span>${t.trans.toUpperCase()}</span></div></div>`;
-    }
+    const t = tracking.find(x => x.id == id); 
+    if (!t) return;
+
+    // Проверяем, является ли номер морским контейнером (обычно 4 буквы в начале)
+    const isContainer = /^[A-Z]{4}/.test(t.num.toUpperCase());
+    const trackingBtn = isContainer ? 
+        `<button class="main" style="background:#1a73e8; margin-top:10px; height:30px;" onclick="openOceanTracking('${t.num}')">🌐 Отследить на сайте линии</button>` : '';
+
+    document.getElementById('preview-tracking').innerHTML = `
+        <h3>Детали: ${t.num}</h3>
+        <div class="preview-grid">
+            <div class="preview-box"><label>Груз</label><span>${t.cargo}</span></div>
+            <div class="preview-box"><label>Статус</label><span style="color:var(--primary); font-weight:bold;">${t.status}</span></div>
+            <div class="preview-box"><label>Вес/Объем</label><span>${t.weight}кг / ${t.vol}м³</span></div>
+            <div class="preview-box"><label>Упаковка</label><span>${t.qty} (${t.pack})</span></div>
+            <div class="preview-box"><label>Транспорт</label><span>${t.trans.toUpperCase()}</span></div>
+        </div>
+        ${trackingBtn}
+    `;
+}
 
    async function submitRequestClose() {
     const id = document.getElementById('reqCloseId').value;
