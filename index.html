@@ -1667,6 +1667,7 @@ function forInput(v) {
     // CMA CGM GROUP (CMA CGM, APL, ANL, CNC)
     "CMAU": "https://www.cma-cgm.com/ebusiness/tracking/search?SearchBy=Container&SearchValue=",
     "CGMU": "https://www.cma-cgm.com/ebusiness/tracking/search?SearchBy=Container&SearchValue=",
+    "TCNU": "https://www.cma-cgm.com/ebusiness/tracking/search?SearchBy=Container&SearchValue=",
     "APLU": "https://www.cma-cgm.com/ebusiness/tracking/search?SearchBy=Container&SearchValue=",
     "APZ":  "https://www.cma-cgm.com/ebusiness/tracking/search?SearchBy=Container&SearchValue=",
     "ANLU": "https://www.cma-cgm.com/ebusiness/tracking/search?SearchBy=Container&SearchValue=",
@@ -4713,7 +4714,7 @@ async function deleteNews(id) {
     }
 }
 
-    function searchPublicTracking() {
+   function searchPublicTracking() {
     const rawNum = document.getElementById('publicTrackSearch').value.trim();
     if (!rawNum) return;
 
@@ -4721,17 +4722,15 @@ async function deleteNews(id) {
     const container = document.getElementById('publicTrackResult');
     const prefix = num.substring(0, 4);
     
-    // 1. Поиск во внутренней CRM
     const localRes = tracking.find(t => t.num.toUpperCase() === num);
-    
-    // 2. Поиск в справочнике линий
     const lineUrl = SHIPPING_LINES[prefix];
 
-    // Словарь названий для красивого вывода
+    // Словарь имен (добавили МШК и СМА)
     const lineNames = {
         "MAEU": "Maersk Line", "MSKU": "Maersk Line", "PONU": "Maersk (P&O)", "SUDU": "Hamburg Sud",
-        "MSCU": "MSC", "MEDU": "MSC", "TGHU": "MSC",
-        "CMAU": "CMA CGM", "APLU": "APL (CMA CGM)", "ANLU": "ANL",
+        "MSCU": "MSC", "MEDU": "MSC", "MSNU": "МШК (MSC)", "TGHU": "MSC", "TCLU": "MSC",
+        "CMAU": "CMA CGM", "CGMU": "CMA CGM", "TCNU": "СМА (CMA CGM)", // Добавили СМА
+        "APLU": "APL (CMA CGM)", "ANLU": "ANL",
         "HLXU": "Hapag-Lloyd", "HLCU": "Hapag-Lloyd", "UASC": "UASC",
         "COSU": "COSCO", "OOLU": "OOCL", "OOCL": "OOCL",
         "ONEU": "Ocean Network Express (ONE)", "NYKU": "NYK Line", "MOLU": "MOL",
@@ -4741,7 +4740,7 @@ async function deleteNews(id) {
 
     let html = "";
 
-    // Если нашли груз внутри CRM (ваша база данных)
+    // 1. Поиск во внутренней базе
     if (localRes) {
         html += `
             <div class="card" style="border: 2px solid var(--primary); padding: 15px; margin-top: 20px;">
@@ -4755,34 +4754,35 @@ async function deleteNews(id) {
             </div>`;
     }
 
-    // Если это морской контейнер (известный или нет)
+    // 2. Распознавание линии
     if (lineUrl) {
         const lineDisplayName = lineNames[prefix] || `Линия (${prefix})`;
         html += `
             <div style="margin-top: 20px; padding: 20px; background: #e8f0fe; border-radius: 12px; border: 1px solid #1a73e8; text-align: center;">
                 <div style="font-size: 28px; margin-bottom: 10px;">🚢</div>
                 <h4 style="margin: 0 0 10px 0; color: #1a73e8;">Обнаружен контейнер ${lineDisplayName}</h4>
-                <p style="font-size: 12px; color: #555; margin-bottom: 15px;">Нажмите кнопку ниже, чтобы перейти к официальному трекингу перевозчика.</p>
+                <p style="font-size: 12px; color: #555; margin-bottom: 15px;">Нажмите кнопку ниже для перехода к официальному трекингу.</p>
                 <button class="main" onclick="window.open('${lineUrl}${num}', '_blank')" style="background:#1a73e8; width: 100%;">
                     ОТСЛЕДИТЬ НА САЙТЕ ${prefix}
                 </button>
             </div>`;
-    } else if (/^[A-Z]{4}\d{6,7}/.test(num)) {
-        // Если формат похож на контейнер (4 буквы + цифры), но префикса нет в базе
+    } 
+    // 3. Формат контейнера (4 буквы + цифры), но линии нет в списке
+    else if (/^[A-Z]{4}\d{6,7}/.test(num)) {
         html += `
             <div style="margin-top: 20px; padding: 20px; background: #f8f9fa; border-radius: 12px; border: 1px solid #ccc; text-align: center;">
                 <h4 style="margin: 0 0 10px 0;">Неизвестная морская линия</h4>
-                <p style="font-size: 11px; color: #666; margin-bottom: 15px;">Префикс <b>${prefix}</b> не найден в нашей базе. Попробуйте поиск через глобальный агрегатор:</p>
+                <p style="font-size: 11px; color: #666; margin-bottom: 15px;">Префикс <b>${prefix}</b> не найден в нашей базе. Попробуйте поиск через агрегатор:</p>
                 <button class="main" onclick="window.open('https://www.track-trace.com/container/${num}', '_blank')" style="background:#666; width: 100%;">
                     GLOBAL TRACK-TRACE
                 </button>
             </div>`;
     }
 
-    // Если совсем ничего
+    // 4. Пустой результат
     if (!localRes && !lineUrl && !/^[A-Z]{4}\d{6,7}/.test(num)) {
         html = `<div style="color:var(--danger); padding: 20px; text-align: center; font-weight: bold;">
-                    ❌ Номер не распознан. Пожалуйста, проверьте формат.
+                    ❌ Номер не найден в CRM и не распознан как морской контейнер.
                 </div>`;
     }
 
