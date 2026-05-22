@@ -1710,7 +1710,7 @@ function forInput(v) {
 
     const AIRLINE_PREFIXES = {
     // ЕВРОПА
-    "080": "https://www.lotcargo.com/en/tracking?awb=",        // LOT Polish Airlines
+    "080": "https://cargo-tracking.lot.com/",        // LOT Polish Airlines
     "020": "https://www.lufthansa-cargo.com/tracking?awb=",   // Lufthansa
     "257": "https://www.lufthansa-cargo.com/tracking?awb=",   // Austrian Airlines
     "057": "https://www.afklcargo.com/mycargo/shipment-tracking?awbNumber=", // Air France
@@ -1723,7 +1723,7 @@ function forInput(v) {
 
     // БЛИЖНИЙ ВОСТОК (Самые популярные)
     "176": "https://www.skycargo.com/tracking/?awb=",         // Emirates
-    "141": "https://www.flydubaicargo.com/tracking/?awb=",    // FlyDubai
+    "141": "https://parcelsapp.com/en/tracking/",    // FlyDubai
     "235": "https://www.turkishcargo.com.tr/en/online-services/shipment-tracking?awb=", // Turkish Airlines
     "157": "https://www.qrcargo.com/s/track-your-shipment?awbNumber=", // Qatar Airways
     "607": "https://www.etihadcargo.com/en/tracking?awb=",    // Etihad
@@ -4782,19 +4782,23 @@ async function deleteNews(id) {
                 </button>
             </div>`;
 
-    } else if (isAWB) {
-        // ЛОГИКА АВИАНАКЛАДНОЙ
-        const prefix = num.substring(0, 3);
+  } else if (isAWB) {
+        const prefixAWB = num.substring(0, 3);
         const cleanAwb = num.replace('-', '');
-        const airlineUrl = AIRLINE_PREFIXES[prefix];
-        const airlineName = displayNames[prefix] || `Авиакомпания (код ${prefix})`;
+        
+        // Добавляем красивое имя из словаря displayNames
+        const airlineName = displayNames[prefixAWB] || `Авиакомпания (код ${prefixAWB})`;
+
+        let finalUrl = (prefixAWB === "141") ? "https://parcelsapp.com/en/tracking/" + cleanAwb :
+                       (prefixAWB === "080") ? "https://cargo-tracking.lot.com/" :
+                       (AIRLINE_PREFIXES[prefixAWB] ? AIRLINE_PREFIXES[prefixAWB] + cleanAwb : "https://www.track-trace.com/aircargo?awb=" + num);
 
         html += `
             <div style="margin-top: 20px; padding: 20px; background: #fff8e1; border-radius: 12px; border: 1px solid #ffc107; text-align: center;">
                 <div style="font-size: 28px; margin-bottom: 10px;">✈️</div>
-                <h4 style="margin: 0 0 5px 0; color: #856404;">${airlineName}</h4>
-                <p style="font-size: 11px; color: #666; margin-bottom: 15px;">Обнаружен формат авианакладной (AWB). Нажмите для перехода к трекингу.</p>
-                <button class="main" onclick="window.open('${airlineUrl ? airlineUrl + cleanAwb : 'https://www.track-trace.com/aircargo?awb=' + num}', '_blank')" style="background:#ffc107; color: #000; width: 100%;">
+                <h4 style="margin: 0 0 10px 0; color: #856404;">${airlineName}</h4>
+                <p style="font-size: 11px; color: #666; margin-bottom: 15px;">Номер накладной: ${num}</p>
+                <button class="main" onclick="window.open('${finalUrl}', '_blank')" style="background:#ffc107; color: #000; width: 100%;">
                     ОТКРЫТЬ ТРЕКИНГ АВИАЛИНИИ
                 </button>
             </div>`;
