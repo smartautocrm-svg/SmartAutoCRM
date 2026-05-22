@@ -4601,10 +4601,12 @@ function updateAdminUI() {
 
         const teamFilter = document.getElementById('statsTeamFilter');
         if (teamFilter) {
+            const currentSelectedTeam = teamFilter.value; // 1. Сохраняем текущий выбор
             if (role === 'admin') {
                 const allTeams = [...new Set(Object.values(teamStructure).map(x => x.team))].filter(t => t && t !== 'none' && t !== 'all');
                 teamFilter.innerHTML = '<option value="all">🌐 Все группы</option>' + 
                     allTeams.map(t => `<option value="${t}">${t.toUpperCase()}</option>`).join('');
+                teamFilter.value = currentSelectedTeam || "all"; // 2. Возвращаем выбор на место
                 teamFilter.disabled = false;
             } else {
                 teamFilter.innerHTML = `<option value="${myTeam}">${myTeam.toUpperCase()}</option>`;
@@ -4662,14 +4664,17 @@ function updateStatsManagerList() {
     filters.forEach(id => {
         const el = document.getElementById(id);
         if (el) {
-            el.innerHTML = optionsHtml;
-            // Если менеджер/опер - принудительно ставим его имя и блокируем
+            const savedValue = el.value; // 1. Запоминаем, кто был выбран
+            el.innerHTML = optionsHtml;  // 2. Обновляем список (тут выбор обычно слетает)
+            
+            // 3. Возвращаем выбор назад
             if (role !== 'admin' && role !== 'leader') {
-                el.value = myName;
+                el.value = myName; // Рядовым всегда ставим их имя
+            } else if (savedValue) {
+                el.value = savedValue; // Админу и Лидеру возвращаем то, что они выбрали сами
             }
         }
     });
-}
 // 3. Восстановление объекта (изменяем только нужный список)
 async function restoreItem(sh, id) {
     if (!confirm("Восстановить этот объект в общую базу?")) return;
