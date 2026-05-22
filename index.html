@@ -1060,7 +1060,7 @@ button.main:active {
                     <option value="море">🚢 Море</option>
                     <option value="ж/д">🚂 Ж/Д</option>
                 </select>
-                <select id="reqContainer" style="display:none;">${CONTAINER_TYPES_HTML}</select>
+                <select id="reqContainer" style="display:none;"></select>
                 <input type="number" id="reqContQty" style="display:none;" placeholder="Кол-во конт.">
                 <input type="number" id="reqWeight" placeholder="Вес (кг)"><input type="number" id="reqVol" placeholder="Объем (м³)"><input type="number" id="reqValue" placeholder="Инвойс">
                 <select id="reqCurrency"><option value="USD">USD</option><option value="EUR">EUR</option></select><input type="text" id="reqLoad" placeholder="Загрузка"><input type="text" id="reqZip" placeholder="Индекс"><input type="text" id="reqUnload" placeholder="Выгрузка"><textarea id="reqDesc" style="grid-column: span 2;" placeholder="Детали..."></textarea>
@@ -1117,7 +1117,7 @@ button.main:active {
                     <option value="ж/д">🚂 Ж/Д</option>
                 </select>
 
-                <select id="dealContainer" style="display:none;">${CONTAINER_TYPES_HTML}</select>
+                <select id="dealContainer" style="display:none;"></select>
                 <input type="number" id="dealContQty" style="display:none;" placeholder="Кол-во конт.">
                 <input type="text" id="dealBL" style="display:none;" placeholder="№ Коносамента">
                 <input type="text" id="dealAWB" style="display:none;" placeholder="№ Авианакладной">
@@ -1844,6 +1844,8 @@ if (res.success) {
 }
 
 async function startApp() {
+    if (document.getElementById('reqContainer')) document.getElementById('reqContainer').innerHTML = CONTAINER_TYPES_HTML;
+    if (document.getElementById('dealContainer')) document.getElementById('dealContainer').innerHTML = CONTAINER_TYPES_HTML;
     const user = sessionStorage.getItem('crm_user');
     if (!user) {
         const re = localStorage.getItem('crm_rem_email'), rp = localStorage.getItem('crm_rem_pass');
