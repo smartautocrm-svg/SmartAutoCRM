@@ -1060,7 +1060,7 @@ button.main:active {
                     <option value="море">🚢 Море</option>
                     <option value="ж/д">🚂 Ж/Д</option>
                 </select>
-                <select id="reqContainer" style="display:none;"><option value="">Тип контейнера</option><option value="20GP">20GP</option><option value="40HC">40HC</option></select>
+                <select id="reqContainer" style="display:none;">${CONTAINER_TYPES_HTML}</select>
                 <input type="number" id="reqContQty" style="display:none;" placeholder="Кол-во конт.">
                 <input type="number" id="reqWeight" placeholder="Вес (кг)"><input type="number" id="reqVol" placeholder="Объем (м³)"><input type="number" id="reqValue" placeholder="Инвойс">
                 <select id="reqCurrency"><option value="USD">USD</option><option value="EUR">EUR</option></select><input type="text" id="reqLoad" placeholder="Загрузка"><input type="text" id="reqZip" placeholder="Индекс"><input type="text" id="reqUnload" placeholder="Выгрузка"><textarea id="reqDesc" style="grid-column: span 2;" placeholder="Детали..."></textarea>
@@ -1117,7 +1117,7 @@ button.main:active {
                     <option value="ж/д">🚂 Ж/Д</option>
                 </select>
 
-                <select id="dealContainer" style="display:none;"><option value="">Контейнер</option><option value="20GP">20GP</option><option value="40HC">40HC</option></select>
+                <select id="dealContainer" style="display:none;">${CONTAINER_TYPES_HTML}</select>
                 <input type="number" id="dealContQty" style="display:none;" placeholder="Кол-во конт.">
                 <input type="text" id="dealBL" style="display:none;" placeholder="№ Коносамента">
                 <input type="text" id="dealAWB" style="display:none;" placeholder="№ Авианакладной">
@@ -1571,6 +1571,21 @@ button.main:active {
 <script>
     // СЮДА НУЖНО ВСТАВИТЬ ВАШ URL
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx7FOBG0711CMW05oPvuq2wXP4WuiVyBY-nSAKgPOaHLKMZugEbiRMyzsF8BFq2DXrgeg/exec";
+
+    const CONTAINER_TYPES_HTML = `
+    <option value="">Тип контейнера</option>
+    <option value="20GP">20' Dry Standard</option>
+    <option value="40GP">40' Dry Standard</option>
+    <option value="40HC">40' High Cube</option>
+    <option value="45HC">45' High Cube</option>
+    <option value="20RF">20' Reefer (Ref)</option>
+    <option value="40RF">40' Reefer HC</option>
+    <option value="20OT">20' Open Top</option>
+    <option value="40OT">40' Open Top</option>
+    <option value="20FR">20' Flat Rack</option>
+    <option value="40FR">40' Flat Rack</option>
+    <option value="20TK">20' Tank (ISO)</option>
+`;
 
     function fCurr(v) {
     return parseFloat(v || 0).toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
@@ -3232,8 +3247,7 @@ async function savePartnersAccess() {
         </select>
 
         <select id="eReqCont" style="display:${r.transport === 'море' ? 'block' : 'none'}">
-            <option value="20GP" ${r.container === '20GP' ? 'selected' : ''}>20GP</option>
-            <option value="40HC" ${r.container === '40HC' ? 'selected' : ''}>40HC</option>
+        ${CONTAINER_TYPES_HTML.replace(`value="${r.container}"`, `value="${r.container}" selected`)}
         </select>
 
         <input type="number" id="eReqContQty" value="${r.contQty}" style="display:${r.transport === 'море' ? 'block' : 'none'}" placeholder="Кол-во конт.">
@@ -3271,7 +3285,9 @@ async function savePartnersAccess() {
                     <option value="ж/д" ${d.trans==='ж/д'?'selected':''}>🚂 Ж/Д</option>
                 </select>
 
-                <select id="eDealCont" style="display:none;"><option value="20GP" ${d.container==='20GP'?'selected':''}>20GP</option><option value="40HC" ${d.container==='40HC'?'selected':''}>40HC</option></select>
+                <select id="eDealCont" style="display:none;">
+                ${CONTAINER_TYPES_HTML.replace(`value="${d.container}"`, `value="${d.container}" selected`)}
+                </select>
                 <input type="number" id="eDealContQty" value="${d.contQty || ''}" style="display:none;" placeholder="Кол-во конт.">
                 <input type="text" id="eDealBL" value="${d.blNum || ''}" style="display:none;" placeholder="№ Коносамента">
                 <input type="text" id="eDealAWB" value="${d.awbNum || ''}" style="display:none;" placeholder="№ Авианакладной">
