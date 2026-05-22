@@ -525,7 +525,19 @@ button.main:active {
         .period-controls { background: #f0f7ff; padding: 10px; border: 1px solid var(--border); margin-bottom: 15px; border-radius: 4px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
         
         .charts-container { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; }
-        .chart-box { background: white; padding: 15px; border: 1px solid var(--border); border-radius: 6px; height: 260px; }
+        .chart-box {
+    background: white;
+    padding: 20px;
+    border: 1px solid var(--border);
+    border-radius: 12px; /* Более мягкие углы */
+    height: 300px; /* Увеличили высоту */
+    box-shadow: 0 2px 10px rgba(0,0,0,0.02); /* Тонкая тень */
+    transition: transform 0.3s ease;
+}
+.chart-box:hover {
+    transform: translateY(-5px); /* Эффект парения при наведении */
+    box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+}
         .chart-box h4 { margin: 0 0 10px 0; font-size: 11px; color: #666; text-transform: uppercase; text-align: center; }
 
         /* Профиль */
@@ -4410,66 +4422,137 @@ function renderManagerStats() {
     const ctxPerf = document.getElementById('chartManagerPerformance').getContext('2d');
     const ctxLoss = document.getElementById('chartLossReasons').getContext('2d');
 
-    // 1. Убиваем старые графики перед перерисовкой
+    // Настройки шрифтов и цветов
+    const primaryColor = '#511f54';
+    const secondaryColor = '#8e44ad';
+    const gridColor = '#f0f0f0';
+    Chart.defaults.font.family = "'Segoe UI', sans-serif";
+    Chart.defaults.color = '#5f6368';
+
+    // 1. График динамики прибыли (Area Chart с градиентом)
     if (charts.dyn) charts.dyn.destroy();
-    if (charts.type) charts.type.destroy();
-    if (charts.perf) charts.perf.destroy();
-    if (charts.loss) charts.loss.destroy();
+    const gradDyn = ctxDyn.createLinearGradient(0, 0, 0, 300);
+    gradDyn.addColorStop(0, 'rgba(81, 31, 84, 0.3)');
+    gradDyn.addColorStop(1, 'rgba(81, 31, 84, 0.0)');
 
-    // 2. ГРАФИК ДИНАМИКИ
     const sortedMonths = Object.keys(monthly).sort();
-    charts.dyn = new Chart(ctxDyn, { 
-        type: 'line', 
-        data: { labels: sortedMonths, datasets: [{ label: 'Прибыль USD', data: sortedMonths.map(m => monthly[m]), borderColor: '#511f54', backgroundColor: 'rgba(81, 31, 84, 0.1)', fill: true, tension: 0.3 }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } 
+    charts.dyn = new Chart(ctxDyn, {
+        type: 'line',
+        data: {
+            labels: sortedMonths.map(m => {
+                const [y, mon] = m.split('-');
+                const names = ["Янв", "Фев", "Мар", "Апр", "Май", "Июн", "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек"];
+                return names[parseInt(mon)-1];
+            }),
+            datasets: [{
+                label: 'Прибыль USD',
+                data: sortedMonths.map(m => monthly[m]),
+                borderColor: primaryColor,
+                borderWidth: 3,
+                backgroundColor: gradDyn,
+                fill: true,
+                tension: 0.4, // Плавные линии
+                pointRadius: 4,
+                pointBackgroundColor: '#fff',
+                pointBorderWidth: 2,
+                pointHoverRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, grid: { borderDash: [5, 5], color: gridColor } },
+                x: { grid: { display: false } }
+            }
+        }
     });
 
-    // 3. ГРАФИК ТИПОВ
-    charts.type = new Chart(ctxType, { 
-        type: 'doughnut', 
-        data: { labels: Object.keys(types), datasets: [{ data: Object.values(types), backgroundColor: ['#511f54', '#8e44ad', '#2e7d32', '#f29900', '#d93025', '#00ACC1'] }] },
-        options: { responsive: true, maintainAspectRatio: false } 
+    // 2. Прибыль по типам (Doughnut с "дыркой" и скруглениями)
+    if (charts.type) charts.type.destroy();
+    charts.type = new Chart(ctxType, {
+        type: 'doughnut',
+        data: {
+            labels: Object.keys(types),
+            datasets: [{
+                data: Object.values(types),
+                backgroundColor: [primaryColor, '#9b59b6', '#2ecc71', '#f1c40f', '#e74c3c', '#3498db', '#1abc9c'],
+                hoverOffset: 10,
+                borderRadius: 5,
+                spacing: 2
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { usePointStyle: true, padding: 15, font: { size: 10 } } }
+            },
+            cutout: '70%' // Делаем кольцо тоньше
+        }
     });
 
-    // 4. ГРАФИК МЕНЕДЖЕРОВ
-    charts.perf = new Chart(ctxPerf, { 
-        type: 'bar', 
-        data: { labels: Object.keys(managersData), datasets: [{ label: 'Прибыль', data: Object.values(managersData), backgroundColor: '#511f54' }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } } 
+    // 3. ТОП Менеджеров (Bar Chart со скругленными углами)
+    if (charts.perf) charts.perf.destroy();
+    charts.perf = new Chart(ctxPerf, {
+        type: 'bar',
+        data: {
+            labels: Object.keys(managersData),
+            datasets: [{
+                label: 'Прибыль',
+                data: Object.values(managersData),
+                backgroundColor: primaryColor,
+                borderRadius: 8, // Скругляем бары
+                barPercentage: 0.6
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { grid: { borderDash: [5, 5], color: gridColor } },
+                x: { grid: { display: false } }
+            }
+        }
     });
 
-   // 5. ГРАФИК ПРИЧИН ОТКАЗОВ (ИСПРАВЛЕНО)
+    // 4. Причины отказов (Horizontal Bar)
     const me = sessionStorage.getItem('crm_user');
     const role = sessionStorage.getItem('crm_role');
     const myTeam = String(sessionStorage.getItem('crm_team') || "none").trim().toLowerCase();
     const selMan = (role === 'admin' || role === 'leader') ? (document.getElementById('statsManagerFilter').value || 'all') : me;
 
-    const lossCounts = {}; // <--- ВОТ ЭТОЙ СТРОКИ НЕ ХВАТАЛО!
-
+    const lossCounts = {};
     requests.forEach(r => {
         if (r.status !== 'completed' || !r.lossReason) return;
-        
         const mInfo = teamStructure[r.manager] || { team: 'none' };
-        const dealTeam = String(mInfo.team || "").trim().toLowerCase();
-        
-        // Фильтр по правам доступа
-        if (role === 'leader' && dealTeam !== myTeam) return;
+        if (role === 'leader' && String(mInfo.team).toLowerCase() !== myTeam) return;
         if (role === 'manager' && r.manager !== me) return;
-        
-        // Фильтр по выбранному менеджеру в UI
         if (selMan !== 'all' && r.manager !== selMan) return;
-
-        let label = r.lossReason;
-        lossCounts[label] = (lossCounts[label] || 0) + 1;
+        lossCounts[r.lossReason] = (lossCounts[r.lossReason] || 0) + 1;
     });
 
+    if (charts.loss) charts.loss.destroy();
     charts.loss = new Chart(ctxLoss, {
         type: 'bar',
         data: {
-            labels: Object.keys(lossCounts).length ? Object.keys(lossCounts) : ["Нет данных"],
-            datasets: [{ label: 'Запросов', data: Object.values(lossCounts), backgroundColor: '#d93025', borderRadius: 4 }]
+            labels: Object.keys(lossCounts),
+            datasets: [{
+                data: Object.values(lossCounts),
+                backgroundColor: 'rgba(217, 48, 37, 0.8)',
+                borderRadius: 5,
+                barPercentage: 0.5
+            }]
         },
-        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        options: {
+            indexAxis: 'y',
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { grid: { display: false } },
+                y: { grid: { display: false } }
+            }
+        }
     });
 }
     function showStatsDetail(key, manager, type) {
