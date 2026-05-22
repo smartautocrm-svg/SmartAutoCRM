@@ -5345,6 +5345,60 @@ document.addEventListener('keydown', (e) => {
     }
 });
     
+    // --- БЛОК ГОРЯЧИХ КЛАВИШ ---
+document.addEventListener('keydown', function(e) {
+    // Проверяем, зажат ли Alt
+    if (e.altKey) {
+        switch(e.code) {
+            case 'KeyS': // Alt + S — Глобальный поиск
+                e.preventDefault();
+                const searchInput = document.getElementById('globalSearchInput');
+                searchInput.focus();
+                searchInput.select(); // Сразу выделяем текст, чтобы можно было вбить новый
+                break;
+
+            case 'KeyN': // Alt + N — Создать новую компанию
+                e.preventDefault();
+                openTab('companies');
+                setTimeout(() => {
+                    const compInput = document.getElementById('compName');
+                    if (compInput) compInput.focus();
+                }, 100);
+                break;
+
+            case 'KeyD': // Alt + D — Главная (Dashboard)
+                e.preventDefault();
+                openTab('dashboard');
+                break;
+
+            case 'KeyT': // Alt + T — Трекинг
+                e.preventDefault();
+                openTab('tracking');
+                // Если юзер — обычный клиент, фокусим поиск трекинга
+                const trackInput = document.getElementById('publicTrackSearch');
+                if (trackInput) trackInput.focus();
+                break;
+
+            case 'KeyQ': // Alt + Q — Создать запрос (Quick request)
+                e.preventDefault();
+                openTab('requests');
+                setTimeout(() => document.getElementById('reqComp').focus(), 100);
+                break;
+
+            case 'KeyA': // Alt + A — Активность (Calls)
+                e.preventDefault();
+                openTab('calls');
+                setTimeout(() => document.getElementById('callName').focus(), 100);
+                break;
+        }
+    }
+
+    // Обработка Enter в поиске трекинга (чтобы не кликать мышкой)
+    if (e.key === 'Enter' && document.activeElement.id === 'publicTrackSearch') {
+        searchPublicTracking();
+    }
+});
+    
 </script>
     <div id="notification-container"></div>
     <div id="bulk-actions-bar">
