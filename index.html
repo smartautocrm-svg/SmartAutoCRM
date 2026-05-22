@@ -2927,7 +2927,7 @@ function renderCompanies() {
 
             <div class="item-main">
                 <h4>${c.isPrivate ? '🔒 ' : ''}${c.name} ${isForgotten ? '<span class="forgotten-tag">⚠️ ЗАБЫТА</span>' : ''}</h4>
-                <p>${checkAccess(c.name) ? statusMap[c.status].label : '🔒 Ограничен'} | ${c.manager}</p>
+                <p>${checkAccess(c.name) ? statusMap[c.status].label : '🔒 Ограничен'} | ${c.manager} | 📅 ${dFmt(c.createdAt)}</p>
             </div>
             <div class="item-actions">
                 <button class="action-btn" onclick="openEdit('${c.id}','company')">✎</button>
