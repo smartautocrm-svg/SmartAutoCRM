@@ -883,7 +883,7 @@ button.main:active {
     <button class="tab-btn" id="btn-requests" onclick="openTab('requests')">📦 <span class="tab-label">ЗАПРОСЫ</span> <span class="tab-counter" id="count-requests">0</span></button>
     <button class="tab-btn" id="btn-deals" onclick="openTab('deals')">💰 <span class="tab-label">СДЕЛКИ</span> <span class="tab-counter" id="count-deals">0</span></button>
     <button class="tab-btn" id="btn-companies" onclick="openTab('companies')">🏢 <span class="tab-label">КОМПАНИИ</span> <span class="tab-counter" id="count-companies">0</span></button>
-    <button class="tab-btn" id="btn-partners" onclick="openTab('partners')">🤝 <span class="tab-label">ПАРТНЕРЫ</span> <span class="tab-counter" id="count-partners">0</span></button>
+    <button class="tab-btn" id="btn-partners" style="display:none;" onclick="openTab('partners')">🤝 <span class="tab-label">ПАРТНЕРЫ</span> <span class="tab-counter" id="count-partners">0</span></button>
     <button class="tab-btn" id="btn-report" onclick="openTab('report')">📊 <span class="tab-label">ОТЧЕТ</span></button>
     <button class="tab-btn" id="btn-stats" onclick="openTab('stats')">📈 <span class="tab-label">СТАТС</span></button>
     <button class="tab-btn" id="btn-tracking" onclick="openTab('tracking')">🛰️ <span class="tab-label">ТРЕКИНГ</span> <span class="tab-counter" id="count-tracking">0</span></button>
@@ -1440,6 +1440,15 @@ button.main:active {
                 <label>Контактный телефон</label>
                 <input type="text" id="profPhone" placeholder="+380...">
             </div>
+            <div id="admin-access-panel" style="display:none; margin-top:30px; padding-top:20px; border-top:2px solid #eee;">
+                <h3 style="color:var(--primary); margin-bottom:10px;">🛡️ УПРАВЛЕНИЕ ДОСТУПОМ</h3>
+                <p style="font-size:11px; color:#666; margin-bottom:15px;">Выберите сотрудников, которым разрешен доступ к вкладке ПАРТНЕРЫ:</p>
+                <div id="partners-access-list" style="display:flex; flex-direction:column; gap:8px; background:#fdfbff; padding:15px; border-radius:12px; border:1px solid var(--border);">
+                    <!-- Сюда JS вставит список менеджеров с галочками -->
+                </div>
+                
+                <button class="main" style="background:var(--primary); margin-top:10px; width:220px;" onclick="savePartnersAccess()">Сохранить права доступа</button>
+            </div>
             
             <button class="main" style="background:var(--success); margin-top:20px; font-size:13px;" onclick="saveProfile()">Обновить данные профиля</button>
         </div>
@@ -1962,6 +1971,7 @@ async function loadCloudData() {
         console.error("Ошибка загрузки:", e);
         document.getElementById('sync-status').innerText = "Оффлайн";
     } finally { 
+        checkPartnersTabAccess();
         showLoader(false); 
     }
     updateAdminUI();
@@ -2943,13 +2953,84 @@ function renderCompanies() {
     document.getElementById('companiesList').innerHTML = html || '<div style="text-align:center; padding:20px; color:#999;">Компаний не найдено</div>';
     updateCounters();
 }
+    // Функция для проверки и отображения вкладки
+function checkPartnersTabAccess() {
+    const me = sessionStorage.getItem('crm_user');
+    const role = sessionStorage.getItem('crm_role');
+    
+    // Админ видит всегда
+    if (role === 'admin') {
+        document.getElementById('btn-partners').style.display = 'flex';
+        return;
+    }
+
+    // Ищем техническую запись в партнерах
+    const config = partners.find(p => p.id === "CONFIG_ACCESS");
+    if (config && config.desc) {
+        const allowedUsers = config.desc.split(',').map(u => u.trim());
+        if (allowedUsers.includes(me)) {
+            document.getElementById('btn-partners').style.display = 'flex';
+        } else {
+            document.getElementById('btn-partners').style.display = 'none';
+        }
+    }
+}
+
+// Отрисовка списка менеджеров для Админа в Профиле
+function renderAdminAccessUI() {
+    const role = sessionStorage.getItem('crm_role');
+    if (role !== 'admin') return;
+
+    document.getElementById('admin-access-panel').style.display = 'block';
+    
+    const config = partners.find(p => p.id === "CONFIG_ACCESS");
+    const allowedUsers = config ? config.desc.split(',').map(u => u.trim()) : [];
+
+    const html = managers.filter(m => m !== 'admin').map(m => `
+        <label style="display:flex; align-items:center; gap:10px; cursor:pointer; font-weight:bold;">
+            <input type="checkbox" class="access-check" value="${m}" ${allowedUsers.includes(m) ? 'checked' : ''} style="width:auto;"> 
+            ${m}
+        </label>
+    `).join('');
+    
+    document.getElementById('partners-access-list').innerHTML = html || 'Менеджеры не найдены';
+}
+
+// Сохранение прав
+async function savePartnersAccess() {
+    const checks = document.querySelectorAll('.access-check:checked');
+    const allowed = Array.from(checks).map(c => c.value).join(',');
+
+    let configIndex = partners.findIndex(p => p.id === "CONFIG_ACCESS");
+    
+    let configObj;
+    if (configIndex > -1) {
+        configObj = partners[configIndex];
+        configObj.desc = allowed;
+        await sync('partners', configObj, 'update');
+    } else {
+        configObj = {
+            id: "CONFIG_ACCESS",
+            name: "ТЕХНИЧЕСКАЯ ЗАПИСЬ (НЕ УДАЛЯТЬ)",
+            status: "система",
+            desc: allowed,
+            manager: "admin",
+            isDeleted: false
+        };
+        partners.push(configObj);
+        await sync('partners', partners, 'append');
+    }
+    alert("Права доступа обновлены!");
+    location.reload();
+}
+    
     function renderPartners() {
     const searchName = document.getElementById('searchPart').value.toLowerCase();
     const filterCountry = document.getElementById('filterPartCountry').value.toLowerCase();
     const filterStatus = document.getElementById('filterPartStatus').value;
     
     let f = partners.filter(p => {
-        if (p.isDeleted) return false;
+        if (p.isDeleted || p.id === "CONFIG_ACCESS") return false;
         const matchName = p.name.toLowerCase().includes(searchName);
         const matchCountry = String(p.country || "").toLowerCase().includes(filterCountry);
         const matchStatus = (filterStatus === 'all') || (p.status === filterStatus);
@@ -3811,8 +3892,11 @@ function openTab(id) {
     else if (id === 'tracking') renderTracking();
     else if (id === 'logs') renderLogs();
     else if (id === 'trash') renderTrash();
-    else if (id === 'profile') loadProfile();
+    else if (id === 'profile') {
+    loadProfile();
+    renderAdminAccessUI(); // Добавь это
 }
+        }
 
     function renderAll() { 
     renderReminders(); 
@@ -4676,6 +4760,7 @@ function updateStatsManagerList() {
         }
     });
     }
+    
 // 3. Восстановление объекта (изменяем только нужный список)
 async function restoreItem(sh, id) {
     if (!confirm("Восстановить этот объект в общую базу?")) return;
