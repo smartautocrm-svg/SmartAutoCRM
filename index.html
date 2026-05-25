@@ -3095,7 +3095,7 @@ function renderCompanies() {
     const limitedList = f.slice(0, listLimits.companies);
 
     let html = limitedList.map(c => {
-        const isForgotten = !companiesWithWork.has(c.name); // Повторно для отрисовки меток
+        const isForgotten = !companiesWithWork.has(c.name) && c.status !== 'refused';
         const isSelected = selectedIds.has(String(c.id));
 
         return `<div class="list-item ${isForgotten ? 'forgotten' : ''} ${isSelected ? 'selected' : ''}" 
