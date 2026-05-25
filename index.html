@@ -2546,30 +2546,29 @@ function showDealPreview(id) {
 // 2. Обновленная функция просмотра компании
 function showCompanyPreview(n) {
     const c = companies.find(x => x.name === n); 
-    console.log("Данные компании в превью:", c);
     if (!c) return;
     
     const me = sessionStorage.getItem('crm_user');
     const myRole = sessionStorage.getItem('crm_role');
-    const myTeam = sessionStorage.getItem('crm_team');
+    // Берем свою команду и чистим от пробелов и регистра
+    const myTeam = String(sessionStorage.getItem('crm_team') || "").trim().toLowerCase();
 
-    // Настройка мессенджеров
+    // 1. Подготовка мессенджеров
     const phoneDigits = (c.phone || "").replace(/\D/g, "");
     const waUrl = phoneDigits ? `https://wa.me/${phoneDigits}` : "#";
     const tgUrl = phoneDigits ? `https://t.me/+${phoneDigits}` : "#";
     const viberUrl = phoneDigits ? `viber://chat?number=%2B${phoneDigits}` : "#";
 
-    // ОПРЕДЕЛЯЕМ ПРАВА ЛИДЕРА ДЛЯ КНОПОК УПРАВЛЕНИЯ
-    const myTeam = String(sessionStorage.getItem('crm_team') || "").trim().toLowerCase();
+    // 2. Определение прав управления (Лидер/Админ/Владелец)
     const ownerInfo = teamStructure[c.manager];
-    const isTeamLeader = (myRole === 'leader' && ownerInfo && String(ownerInfo.team).toLowerCase().trim() === myTeam);
+    const isTeamLeader = (myRole === 'leader' && ownerInfo && String(ownerInfo.team || "").toLowerCase().trim() === myTeam);
     const hasFullControl = (c.manager === me || myRole === 'admin' || isTeamLeader);
 
     if (c.isDeleted) {
         document.getElementById('preview-companies').innerHTML = `
             <div style="padding:20px; text-align:center; background:#fff5f5; border-radius:12px; border: 1px dashed var(--danger); color: var(--danger);">
-                <h3 style="margin:0 0 5px 0; font-size:14px; color: var(--danger);">🗑️ Компания удалена</h3>
-                <p style="font-size:11px; margin:0; color:#666;">Эта карточка в корзине.</p>
+                <h3 style="margin:0 0 5px 0; font-size:14px;">🗑️ Компания удалена</h3>
+                <p style="font-size:11px; margin:0; color:#666;">Карточка находится в корзине.</p>
             </div>`;
         return;
     }
@@ -2578,11 +2577,10 @@ function showCompanyPreview(n) {
         document.getElementById('preview-companies').innerHTML = `<div style="padding:15px; text-align:center; background:#fff3cd; border-radius:4px;">🔒 ОГРАНИЧЕН</div>`; 
         return; 
     }
-    
-    // Блок шеринга (виден только тем, у кого Full Control)
+
+    // 3. Формирование блоков управления
     let shareHtml = hasFullControl ? `<div style="grid-column:span 2; border-top:1px solid #eee; margin-top:10px; padding-top:5px;"><label style="font-size:8px;">ДОСТУП</label><div style="display:flex; gap:5px; margin-top:5px;"><select id="shMan" style="flex-grow:1; font-size:10px;"><option value="">Поделиться...</option>${managers.filter(m=>m!==me).map(m=>`<option value="${m}">${m}</option>`).join('')}</select><button onclick="toggleAccess('${c.id}', document.getElementById('shMan').value, 'add')" style="padding:2px 8px; font-size:10px;">+</button></div></div>` : "";
 
-    // Блок передачи компании ( Ownership Transfer )
     let transferHtml = hasFullControl ? `
         <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #ffcc80; background: #fff8e1; border-radius: 8px; padding: 10px;">
             <label style="font-size: 9px; font-weight: bold; color: #e67e22; display: block; margin-bottom: 5px;">⚠️ ПЕРЕДАТЬ КОМПАНИЮ:</label>
@@ -2591,13 +2589,51 @@ function showCompanyPreview(n) {
                     <option value="">Выберите владельца...</option>
                     ${managers.filter(m => m !== c.manager).map(m => `<option value="${m}">${m}</option>`).join('')}
                 </select>
-                <button onclick="transferOwnership('${c.id}')" style="background: #e67e22; color: white; border: none; border-radius: 4px; padding: 0 10px; font-size: 10px; cursor: pointer; font-weight: bold;">ОК</button>
+                <button onclick="transferOwnership('${c.id}')" style="background: #e67e22; color: white; border: none; border-radius: 4px; padding: 0 10px; font-size: 10px; cursor: pointer; font-weight: bold; height: 26px;">ОК</button>
             </div>
         </div>` : "";
+
+    let emailButtonsHtml = `
+        <div style="margin-top: 15px; padding-top: 10px; border-top: 1px dashed #ddd;">
+            <label style="font-size: 9px; font-weight: bold; color: var(--primary); display: block; margin-bottom: 8px; text-transform: uppercase;">✉️ Швидкі листи</label>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+               ${getMyTemplates().map(t => `<button class="main" style="width: auto; padding: 5px 12px; font-size: 10px; background: #fff; color: var(--primary); border: 1px solid var(--primary);" onclick="sendQuickEmail('${t.id}', '${c.name.replace(/'/g, "\\'")}')">${t.name}</button>`).join('')}
+            </div>
+        </div>`;
+
+    // 4. ВЫВОД ФИНАЛЬНОГО HTML
+    document.getElementById('preview-companies').innerHTML = `
+    <h3>🏢 ${c.name}</h3>
+    <div class="preview-grid">
+        <div class="preview-box highlight"><label>📊 Статус</label><span>${statusMap[c.status].label}</span></div>
+        <div class="preview-box"><label>👤 Менеджер</label><span>${c.manager}</span></div>
+        <div class="preview-box"><label>🤝 Контакт</label><span>${c.contact || '-'}</span></div>
+        <div class="preview-box">
+            <label>📞 Телефон</label>
+            <span>${c.phone || '-'}</span>
+            ${phoneDigits ? `
+                <div style="display: flex; gap: 4px; margin-top: 5px;">
+                    <a href="${tgUrl}" target="_blank" style="text-decoration:none; background:#0088cc; color:white; padding:2px 6px; border-radius:4px; font-size:9px; font-weight:bold;">TG</a>
+                    <a href="${waUrl}" target="_blank" style="text-decoration:none; background:#25D366; color:white; padding:2px 6px; border-radius:4px; font-size:9px; font-weight:bold;">WA</a>
+                    <a href="${viberUrl}" style="text-decoration:none; background:#7360f2; color:white; padding:2px 6px; border-radius:4px; font-size:9px; font-weight:bold;">VB</a>
+                </div>` : ""}
+        </div>
+        <div class="preview-box" style="grid-column:span 2;"><label>✉️ Email</label><span>${c.email || '-'}</span></div>
+        <div class="preview-box"><label>🌍 Город</label><span>${c.city || '-'}</span></div>
+        <div class="preview-box"><label>📦 Груз</label><span>${c.product || '-'}</span></div>
+        <div class="preview-box"><label>📥 Импорт</label><span>${c.imp || '-'}</span></div>
+        <div class="preview-box"><label>📤 Экспорт</label><span>${c.exp || '-'}</span></div>
+        <div class="preview-box" style="grid-column:span 2;"><label>🔗 Сайт</label><span>${c.website || '-'}</span></div>
+        <div class="preview-box" style="grid-column:span 2; margin-top: 5px; border-top: 1px solid #f0eaf0; padding-top: 10px;">
+            <label>📝 Описание / Примечания</label>
+            <span style="font-weight: normal; white-space: pre-wrap; color: #555; line-height: 1.4;">${c.desc || '—'}</span>
+        </div>
+    </div>
     
     <div style="margin-top: 15px; display: flex; flex-direction: column; gap: 10px;">
-        <button class="main" onclick="showCompanyHistory('${c.name.replace(/'/g, "\\'")}')">📜 Последние активности</button>
+        <button class="main" onclick="showCompanyHistory('${c.name.replace(/'/g, "\\'")}')">📜 История активностей</button>
         ${shareHtml}
+        ${transferHtml}
         ${emailButtonsHtml}
     </div>`;
 }
