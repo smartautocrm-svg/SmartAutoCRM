@@ -2282,23 +2282,29 @@ function deleteFile(dealId, fileId) {
 function checkAccess(companyName) {
     const me = sessionStorage.getItem('crm_user');
     const myRole = sessionStorage.getItem('crm_role');
-    const myTeam = sessionStorage.getItem('crm_team');
+    // Приводим свою команду к нижнему регистру для сравнения
+    const myTeam = String(sessionStorage.getItem('crm_team') || "").trim().toLowerCase();
 
-    // 1. Админ видит всё
     if (myRole === 'admin') return true; 
 
     const c = companies.find(x => x.name === companyName);
-    if (!c) return true; // Для новых записей
+    if (!c) return true;
 
-    // 2. Если я автор или мне открыли доступ (кнопка Поделиться)
+    // 1. Я владелец
     if (c.manager === me) return true;
+
+    // 2. Мне открыли доступ лично
     const sharedList = (c.sharedWith || "").split(',').map(s => s.trim());
     if (sharedList.includes(me)) return true;
 
-    // 3. Лидер видит всё внутри своей команды
-    if (myRole === 'leader') {
+    // 3. Я лидер этой команды
+    if (myRole === 'leader' && myTeam !== "") {
         const ownerInfo = teamStructure[c.manager];
-        if (ownerInfo && ownerInfo.team === myTeam) return true;
+        if (ownerInfo) {
+            const ownerTeam = String(ownerInfo.team || "").trim().toLowerCase();
+            // Сравниваем команды без учета регистра
+            if (ownerTeam === myTeam) return true;
+        }
     }
 
     return false;
@@ -2307,21 +2313,19 @@ function checkAccess(companyName) {
 function checkDealAccess(d) {
     const me = sessionStorage.getItem('crm_user');
     const myRole = sessionStorage.getItem('crm_role');
-    const myTeam = sessionStorage.getItem('crm_team');
+    const myTeam = String(sessionStorage.getItem('crm_team') || "").trim().toLowerCase();
 
     if (myRole === 'admin') return true;
 
-    // Если сделка приватная
     if (d.isPrivateDeal) {
         if (d.manager === me) return true;
-        // Лидер видит приватные сделки своих людей
-        if (myRole === 'leader') {
+        // Лидер видит приватные сделки своей команды
+        if (myRole === 'leader' && myTeam !== "") {
             const ownerInfo = teamStructure[d.manager];
-            if (ownerInfo && ownerInfo.team === myTeam) return true;
+            if (ownerInfo && String(ownerInfo.team || "").trim().toLowerCase() === myTeam) return true;
         }
         return false;
     } else {
-        // Если сделка открытая - проверяем доступ к компании
         return checkAccess(d.company);
     }
 }
@@ -2723,19 +2727,20 @@ function renderReminders() {
        return matchesSearch && matchesDate && matchesAdminMan; // Добавили matchesAdminMan
     });
     
-    if (me !== 'admin') {
+if (me !== 'admin') {
         const myRole = sessionStorage.getItem('crm_role');
-        const myTeam = sessionStorage.getItem('crm_team');
+        const myTeam = String(sessionStorage.getItem('crm_team') || "").trim().toLowerCase();
 
         f = f.filter(r => {
             const isAuthor = r.manager === me;
             const isSharedWithMe = (r.sharedWith || "").split(',').includes(me);
             
-            // Проверка для Лидера
             let isTeamRecord = false;
-            if (myRole === 'leader') {
+            if (myRole === 'leader' && myTeam !== "") {
                 const ownerInfo = teamStructure[r.manager];
-                if (ownerInfo && ownerInfo.team === myTeam) isTeamRecord = true;
+                if (ownerInfo && String(ownerInfo.team || "").trim().toLowerCase() === myTeam) {
+                    isTeamRecord = true;
+                }
             }
 
             return isAuthor || isSharedWithMe || isTeamRecord;
