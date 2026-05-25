@@ -2560,8 +2560,9 @@ function showCompanyPreview(n) {
     const viberUrl = phoneDigits ? `viber://chat?number=%2B${phoneDigits}` : "#";
 
     // ОПРЕДЕЛЯЕМ ПРАВА ЛИДЕРА ДЛЯ КНОПОК УПРАВЛЕНИЯ
+    const myTeam = String(sessionStorage.getItem('crm_team') || "").trim().toLowerCase();
     const ownerInfo = teamStructure[c.manager];
-    const isTeamLeader = (myRole === 'leader' && ownerInfo && ownerInfo.team === myTeam);
+    const isTeamLeader = (myRole === 'leader' && ownerInfo && String(ownerInfo.team).toLowerCase().trim() === myTeam);
     const hasFullControl = (c.manager === me || myRole === 'admin' || isTeamLeader);
 
     if (c.isDeleted) {
@@ -2593,36 +2594,6 @@ function showCompanyPreview(n) {
                 <button onclick="transferOwnership('${c.id}')" style="background: #e67e22; color: white; border: none; border-radius: 4px; padding: 0 10px; font-size: 10px; cursor: pointer; font-weight: bold;">ОК</button>
             </div>
         </div>` : "";
-
-    // Вывод всей карточки (объединяем всё вместе)
-    document.getElementById('preview-companies').innerHTML = `
-    <h3>🏢 ${c.name}</h3>
-    <div class="preview-grid">
-        <div class="preview-box highlight"><label>📊 Статус</label><span>${statusMap[c.status].label}</span></div>
-        <div class="preview-box"><label>👤 Менеджер</label><span>${c.manager}</span></div>
-        <div class="preview-box"><label>🤝 Контактное лицо</label><span>${c.contact || '-'}</span></div>
-        <div class="preview-box">
-            <label>📞 Телефон</label>
-            <span>${c.phone || '-'}</span>
-            ${phoneDigits ? `
-                <div style="display: flex; gap: 8px; margin-top: 5px;">
-                    <a href="${tgUrl}" target="_blank" style="text-decoration:none; background:#0088cc; color:white; padding:3px 8px; border-radius:4px; font-size:9px; font-weight:bold; display:inline-block;">TELEGRAM</a>
-                    <a href="${waUrl}" target="_blank" style="text-decoration:none; background:#25D366; color:white; padding:3px 8px; border-radius:4px; font-size:9px; font-weight:bold; display:inline-block;">WHATSAPP</a>
-                    <a href="${viberUrl}" style="text-decoration:none; background:#7360f2; color:white; padding:3px 8px; border-radius:4px; font-size:9px; font-weight:bold; display:inline-block;">VIBER</a>
-                </div>
-            ` : ""}
-        </div>
-        <div class="preview-box" style="grid-column:span 2;"><label>✉️ Email</label><span>${c.email || '-'}</span></div>
-        <div class="preview-box"><label>🌍 Город</label><span>${c.city || '-'}</span></div>
-        <div class="preview-box"><label>📦 Груз</label><span>${c.product || '-'}</span></div>
-        <div class="preview-box"><label>📥 Импорт</label><span>${c.imp || '-'}</span></div>
-        <div class="preview-box"><label>📤 Экспорт</label><span>${c.exp || '-'}</span></div>
-        <div class="preview-box" style="grid-column:span 2;"><label>🔗 Сайт</label><span>${c.website || '-'}</span></div>
-        <div class="preview-box" style="grid-column:span 2; margin-top: 5px; border-top: 1px solid #f0eaf0; padding-top: 10px;">
-            <label>📝 Описание / Примечания</label>
-            <span style="font-weight: normal; white-space: pre-wrap; color: #555; line-height: 1.4;">${c.desc || '—'}</span>
-        </div>
-    </div>
     
     <div style="margin-top: 15px; display: flex; flex-direction: column; gap: 10px;">
         <button class="main" onclick="showCompanyHistory('${c.name.replace(/'/g, "\\'")}')">📜 Последние активности</button>
