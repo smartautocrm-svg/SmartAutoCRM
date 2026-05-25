@@ -2554,8 +2554,17 @@ function showCompanyPreview(n) {
     const myTeam = String(sessionStorage.getItem('crm_team') || "").trim().toLowerCase();
 
     // 1. Подготовка мессенджеров
-    const phoneDigits = (c.phone || "").replace(/\D/g, "");
-    const waUrl = phoneDigits ? `https://wa.me/${phoneDigits}` : "#";
+    let phoneDigits = (c.phone || "").replace(/\D/g, ""); // Оставляем только цифры
+
+    // Если номер начинается с 0 (например, 067...) и в нем 10 цифр — добавляем 38
+    if (phoneDigits.length === 10 && phoneDigits.startsWith("0")) {
+        phoneDigits = "38" + phoneDigits;
+    } 
+    // Если номер начинается с 80... (старый формат) — превращаем в 380...
+    else if (phoneDigits.length === 11 && phoneDigits.startsWith("80")) {
+        phoneDigits = "3" + phoneDigits;
+    }
+    const waUrl = phoneDigits ? `https://api.whatsapp.com/send?phone=${phoneDigits}` : "#";
     const tgUrl = phoneDigits ? `https://t.me/+${phoneDigits}` : "#";
     const viberUrl = phoneDigits ? `viber://chat?number=%2B${phoneDigits}` : "#";
 
