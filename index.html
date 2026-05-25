@@ -2595,19 +2595,6 @@ function showCompanyPreview(n) {
         </div>
     ` : "";
 
-    // ВЫВОД КАРТОЧКИ (добавьте ${transferHtml} в список кнопок внизу)
-    document.getElementById('preview-companies').innerHTML = `
-    <h3>🏢 ${c.name}</h3>
-    ... (тут ваш большой кусок кода с данными компании) ...
-    
-    <div style="margin-top: 15px; display: flex; flex-direction: column; gap: 10px;">
-        <button class="main" onclick="showCompanyHistory('${c.name.replace(/'/g, "\\'")}')">📜 Последние активности</button>
-        ${shareHtml}
-        ${transferHtml}  <!-- ДОБАВИТЬ ЭТО -->
-        ${emailButtonsHtml}
-    </div>`;
-}
-
     // Вывод всей карточки (объединяем всё вместе)
     document.getElementById('preview-companies').innerHTML = `
     <h3>🏢 ${c.name}</h3>
