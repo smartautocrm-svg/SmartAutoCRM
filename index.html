@@ -2578,6 +2578,35 @@ function showCompanyPreview(n) {
             </div>
         </div>
     `;
+        let transferHtml = (c.manager === me || me === 'admin') ? `
+        <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #ffcc80; background: #fff8e1; border-radius: 8px; padding: 10px;">
+            <label style="font-size: 9px; font-weight: bold; color: #e67e22; display: block; margin-bottom: 5px;">⚠️ ПЕРЕДАТЬ КОМПАНИЮ ДРУГОМУ МЕНЕДЖЕРУ:</label>
+            <div style="display: flex; gap: 5px;">
+                <select id="transferNewManager" style="flex-grow: 1; font-size: 11px; border: 1px solid #ffcc80; height: 26px;">
+                    <option value="">Выберите нового владельца...</option>
+                    ${managers.filter(m => m !== c.manager).map(m => `<option value="${m}">${m}</option>`).join('')}
+                </select>
+                <button onclick="transferOwnership('${c.id}')" 
+                        style="background: #e67e22; color: white; border: none; border-radius: 4px; padding: 0 10px; font-size: 10px; cursor: pointer; font-weight: bold; height: 26px;">
+                    ПЕРЕДАТЬ
+                </button>
+            </div>
+            <p style="font-size: 8px; color: #d35400; margin-top: 5px; margin-bottom: 0;">* После подтверждения вы потеряете доступ к этой карточке.</p>
+        </div>
+    ` : "";
+
+    // ВЫВОД КАРТОЧКИ (добавьте ${transferHtml} в список кнопок внизу)
+    document.getElementById('preview-companies').innerHTML = `
+    <h3>🏢 ${c.name}</h3>
+    ... (тут ваш большой кусок кода с данными компании) ...
+    
+    <div style="margin-top: 15px; display: flex; flex-direction: column; gap: 10px;">
+        <button class="main" onclick="showCompanyHistory('${c.name.replace(/'/g, "\\'")}')">📜 Последние активности</button>
+        ${shareHtml}
+        ${transferHtml}  <!-- ДОБАВИТЬ ЭТО -->
+        ${emailButtonsHtml}
+    </div>`;
+}
 
     // Вывод всей карточки (объединяем всё вместе)
     document.getElementById('preview-companies').innerHTML = `
@@ -3890,6 +3919,62 @@ function getArrayBySheet(sh) {
     showCompanyPreview(companies[i].name); 
     // Обновляем только эту компанию в таблице
     await sync('companies', companies[i], 'update'); 
+}
+    async function transferOwnership(companyId) {
+    const newManager = document.getElementById('transferNewManager').value;
+    const me = sessionStorage.getItem('crm_user');
+    const role = sessionStorage.getItem('crm_role');
+
+    if (!newManager) return alert("Выберите менеджера, которому хотите передать компанию!");
+    
+    const confirmMsg = (role === 'admin') 
+        ? `Вы, как администратор, передаете компанию новому владельцу: ${newManager}. Продолжить?`
+        : `ВНИМАНИЕ! Вы передаете компанию менеджеру ${newManager}. \n\nВы ПОЛНОСТЬЮ потеряете доступ к этой компании. Это действие нельзя отменить самостоятельно. Продолжить?`;
+
+    if (!confirm(confirmMsg)) return;
+
+    showLoader(true);
+    try {
+        // Ищем индекс компании в локальном массиве
+        const idx = companies.findIndex(x => String(x.id) === String(companyId));
+        if (idx === -1) throw new Error("Компания не найдена в базе");
+
+        // Проверяем права еще раз (на всякий случай)
+        if (role !== 'admin' && companies[idx].manager !== me) {
+            throw new Error("У вас нет прав для передачи этой компании");
+        }
+
+        // 1. Меняем владельца (manager)
+        companies[idx].manager = newManager;
+
+        // 2. Очищаем список тех, кому "дали посмотреть" (sharedWith)
+        // Это гарантирует, что старый владелец исчезнет из прав доступа
+        companies[idx].sharedWith = ""; 
+
+        // 3. Сохраняем изменения в Google Таблицу через вашу функцию sync
+        // Используем 'update', чтобы обновить только одну конкретную строку
+        await sync('companies', companies[idx], 'update');
+
+        // 4. Очищаем область предпросмотра, так как доступа больше нет
+        document.getElementById('preview-companies').innerHTML = `
+            <div style="padding:40px; text-align:center; background:#f0f7ff; border-radius:12px; border:1px dashed var(--primary);">
+                <div style="font-size:30px; margin-bottom:10px;">✅</div>
+                <h3 style="color:var(--primary); margin:0;">Компания передана</h3>
+                <p style="color:#666; font-size:11px; margin-top:5px;">Новый владелец: <b>${newManager}</b></p>
+            </div>`;
+
+        // 5. Обновляем список компаний (она исчезнет из списка старого владельца)
+        renderCompanies();
+        updateCounters();
+        
+        alert("Компания успешно передана. Она больше не будет отображаться в вашем списке.");
+
+    } catch (e) {
+        console.error("Ошибка передачи:", e);
+        alert("Ошибка: " + e.message);
+    } finally {
+        showLoader(false);
+    }
 }
     async function toggleRequestAccess(rid, man, act) { 
     if(!man) return;
