@@ -2544,6 +2544,7 @@ function showCompanyPreview(n) {
     const phoneDigits = (c.phone || "").replace(/\D/g, "");
     const waUrl = phoneDigits ? `https://wa.me/${phoneDigits}` : "#";
     const tgUrl = phoneDigits ? `https://t.me/+${phoneDigits}` : "#";
+    const viberUrl = phoneDigits ? `viber://chat?number=%2B${phoneDigits}` : "#";
 
     // Проверка на удаление (твоя логика)
     if (c.isDeleted) {
@@ -2596,6 +2597,7 @@ function showCompanyPreview(n) {
                 <div style="display: flex; gap: 8px; margin-top: 5px;">
                     <a href="${tgUrl}" target="_blank" style="text-decoration:none; background:#0088cc; color:white; padding:3px 8px; border-radius:4px; font-size:9px; font-weight:bold; display:inline-block;">TELEGRAM</a>
                     <a href="${waUrl}" target="_blank" style="text-decoration:none; background:#25D366; color:white; padding:3px 8px; border-radius:4px; font-size:9px; font-weight:bold; display:inline-block;">WHATSAPP</a>
+                    <a href="${viberUrl}" style="text-decoration:none; background:#7360f2; color:white; padding:3px 8px; border-radius:4px; font-size:9px; font-weight:bold; display:inline-block;">VIBER</a>
                 </div>
             ` : ""}
         </div>
