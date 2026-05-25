@@ -329,6 +329,7 @@ button.main:active {
         .list-item p { margin: 0; font-size: 10px; color: #666; }
         
         .list-item.forgotten { background-color: #fff0f0; border-left: 4px solid var(--danger); }
+        .list-item[onclick*="refused"] { opacity: 0.8; border-left: 4px solid var(--refused); }
         .forgotten-tag { background: var(--danger); color: #fff; font-size: 8px; padding: 1px 4px; border-radius: 3px; margin-left: 5px; text-transform: uppercase; vertical-align: middle; }
 
         .item-main { flex-grow: 1; min-width: 0; display: flex; flex-direction: column; }
@@ -2283,27 +2284,24 @@ function checkAccess(companyName) {
     const myRole = sessionStorage.getItem('crm_role');
     const myTeam = sessionStorage.getItem('crm_team');
 
-    // 1. Админ видит абсолютно всё
+    // 1. Админ видит всё
     if (myRole === 'admin') return true; 
 
     const c = companies.find(x => x.name === companyName);
-    if (!c) return true; // Для новых записей разрешаем ввод
+    if (!c) return true; // Для новых записей
 
-    // 2. Если я автор этой компании - доступ есть
+    // 2. Если я автор или мне открыли доступ (кнопка Поделиться)
     if (c.manager === me) return true;
-
-    // 3. Если мне открыли доступ через кнопку "Поделиться"
     const sharedList = (c.sharedWith || "").split(',').map(s => s.trim());
     if (sharedList.includes(me)) return true;
 
-    // 4. ЛОГИКА ИЕРАРХИИ: Я руководитель (leader) и менеджер этой компании в моей команде
+    // 3. Лидер видит всё внутри своей команды
     if (myRole === 'leader') {
-        const itemManagerInfo = teamStructure[c.manager];
-        // Если у менеджера компании такая же команда, как у меня - я его вижу
-        if (itemManagerInfo && itemManagerInfo.team === myTeam) return true;
+        const ownerInfo = teamStructure[c.manager];
+        if (ownerInfo && ownerInfo.team === myTeam) return true;
     }
 
-    return false; // В остальных случаях - закрыто
+    return false;
 }
     
 function checkDealAccess(d) {
@@ -2313,17 +2311,17 @@ function checkDealAccess(d) {
 
     if (myRole === 'admin') return true;
 
+    // Если сделка приватная
     if (d.isPrivateDeal) {
-        // Приватную сделку видит автор
         if (d.manager === me) return true;
-        // И его руководитель (leader)
+        // Лидер видит приватные сделки своих людей
         if (myRole === 'leader') {
-            const itemManagerInfo = teamStructure[d.manager];
-            if (itemManagerInfo && itemManagerInfo.team === myTeam) return true;
+            const ownerInfo = teamStructure[d.manager];
+            if (ownerInfo && ownerInfo.team === myTeam) return true;
         }
         return false;
     } else {
-        // Если сделка открытая - проверяем общий доступ к компании (из Шага 4)
+        // Если сделка открытая - проверяем доступ к компании
         return checkAccess(d.company);
     }
 }
@@ -2546,48 +2544,51 @@ function showCompanyPreview(n) {
     const c = companies.find(x => x.name === n); 
     console.log("Данные компании в превью:", c);
     if (!c) return;
+    
     const me = sessionStorage.getItem('crm_user');
+    const myRole = sessionStorage.getItem('crm_role');
+    const myTeam = sessionStorage.getItem('crm_team');
+
+    // Настройка мессенджеров
     const phoneDigits = (c.phone || "").replace(/\D/g, "");
     const waUrl = phoneDigits ? `https://wa.me/${phoneDigits}` : "#";
     const tgUrl = phoneDigits ? `https://t.me/+${phoneDigits}` : "#";
     const viberUrl = phoneDigits ? `viber://chat?number=%2B${phoneDigits}` : "#";
 
-    // Проверка на удаление (твоя логика)
+    // ОПРЕДЕЛЯЕМ ПРАВА ЛИДЕРА ДЛЯ КНОПОК УПРАВЛЕНИЯ
+    const ownerInfo = teamStructure[c.manager];
+    const isTeamLeader = (myRole === 'leader' && ownerInfo && ownerInfo.team === myTeam);
+    const hasFullControl = (c.manager === me || myRole === 'admin' || isTeamLeader);
+
     if (c.isDeleted) {
         document.getElementById('preview-companies').innerHTML = `
             <div style="padding:20px; text-align:center; background:#fff5f5; border-radius:12px; border: 1px dashed var(--danger); color: var(--danger);">
                 <h3 style="margin:0 0 5px 0; font-size:14px; color: var(--danger);">🗑️ Компания удалена</h3>
-                <p style="font-size:11px; margin:0; color:#666;">Эта карточка была перемещена в корзину и недоступна для работы.</p>
+                <p style="font-size:11px; margin:0; color:#666;">Эта карточка в корзине.</p>
             </div>`;
         return;
     }
     
-    // Проверка доступа (твоя логика)
     if (!checkAccess(c.name)) { 
         document.getElementById('preview-companies').innerHTML = `<div style="padding:15px; text-align:center; background:#fff3cd; border-radius:4px;">🔒 ОГРАНИЧЕН</div>`; 
         return; 
     }
+    
+    // Блок шеринга (виден только тем, у кого Full Control)
+    let shareHtml = hasFullControl ? `<div style="grid-column:span 2; border-top:1px solid #eee; margin-top:10px; padding-top:5px;"><label style="font-size:8px;">ДОСТУП</label><div style="display:flex; gap:5px; margin-top:5px;"><select id="shMan" style="flex-grow:1; font-size:10px;"><option value="">Поделиться...</option>${managers.filter(m=>m!==me).map(m=>`<option value="${m}">${m}</option>`).join('')}</select><button onclick="toggleAccess('${c.id}', document.getElementById('shMan').value, 'add')" style="padding:2px 8px; font-size:10px;">+</button></div></div>` : "";
 
-    // Блок шеринга (твоя логика)
-    let shareHtml = (c.manager === me || me === 'admin') ? `<div style="grid-column:span 2; border-top:1px solid #eee; margin-top:10px; padding-top:5px;"><label style="font-size:8px;">ДОСТУП</label><div style="display:flex; gap:5px; margin-top:5px;"><select id="shMan" style="flex-grow:1; font-size:10px;"><option value="">Поделиться...</option>${managers.filter(m=>m!==me).map(m=>`<option value="${m}">${m}</option>`).join('')}</select><button onclick="toggleAccess('${c.id}', document.getElementById('shMan').value, 'add')" style="padding:2px 8px; font-size:10px;">+</button></div><div style="margin-top:5px;">${(c.sharedWith || "").split(',').filter(s=>s).map(s=>`<span class="share-tag">${s} <span onclick="toggleAccess('${c.id}','${s}','remove')" style="cursor:pointer">×</span></span>`).join('') || '<small>Никому</small>'}</div></div>` : "";
-
-    // Генерация кнопок для писем
-    let emailButtonsHtml = `
-        <div style="margin-top: 15px; padding-top: 10px; border-top: 1px dashed #ddd;">
-            <label style="font-size: 9px; font-weight: bold; color: var(--primary); display: block; margin-bottom: 8px; text-transform: uppercase;">
-                ✉️ Швидкі листи (The Bat!)
-            </label>
-            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-               ${getMyTemplates().map(t => `   
-                    <button class="main" 
-                            style="width: auto; padding: 5px 12px; font-size: 10px; background: #fff; color: var(--primary); border: 1px solid var(--primary);" 
-                            onclick="sendQuickEmail('${t.id}', '${c.name.replace(/'/g, "\\'")}')">
-                        ${t.name}
-                    </button>
-                `).join('')}
+    // Блок передачи компании ( Ownership Transfer )
+    let transferHtml = hasFullControl ? `
+        <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #ffcc80; background: #fff8e1; border-radius: 8px; padding: 10px;">
+            <label style="font-size: 9px; font-weight: bold; color: #e67e22; display: block; margin-bottom: 5px;">⚠️ ПЕРЕДАТЬ КОМПАНИЮ:</label>
+            <div style="display: flex; gap: 5px;">
+                <select id="transferNewManager" style="flex-grow: 1; font-size: 11px; border: 1px solid #ffcc80; height: 26px;">
+                    <option value="">Выберите владельца...</option>
+                    ${managers.filter(m => m !== c.manager).map(m => `<option value="${m}">${m}</option>`).join('')}
+                </select>
+                <button onclick="transferOwnership('${c.id}')" style="background: #e67e22; color: white; border: none; border-radius: 4px; padding: 0 10px; font-size: 10px; cursor: pointer; font-weight: bold;">ОК</button>
             </div>
-        </div>
-    `;
+        </div>` : "";
 
     // Вывод всей карточки (объединяем всё вместе)
     document.getElementById('preview-companies').innerHTML = `
@@ -2723,10 +2724,21 @@ function renderReminders() {
     });
     
     if (me !== 'admin') {
+        const myRole = sessionStorage.getItem('crm_role');
+        const myTeam = sessionStorage.getItem('crm_team');
+
         f = f.filter(r => {
             const isAuthor = r.manager === me;
             const isSharedWithMe = (r.sharedWith || "").split(',').includes(me);
-            return isAuthor || isSharedWithMe;
+            
+            // Проверка для Лидера
+            let isTeamRecord = false;
+            if (myRole === 'leader') {
+                const ownerInfo = teamStructure[r.manager];
+                if (ownerInfo && ownerInfo.team === myTeam) isTeamRecord = true;
+            }
+
+            return isAuthor || isSharedWithMe || isTeamRecord;
         });
     }
     
@@ -3915,6 +3927,44 @@ function getArrayBySheet(sh) {
     showCompanyPreview(companies[i].name); 
     // Обновляем только эту компанию в таблице
     await sync('companies', companies[i], 'update'); 
+}
+    async function transferOwnership(companyId) {
+    const newManager = document.getElementById('transferNewManager').value;
+    const me = sessionStorage.getItem('crm_user');
+    const role = sessionStorage.getItem('crm_role');
+    const myTeam = sessionStorage.getItem('crm_team');
+
+    if (!newManager) return alert("Выберите менеджера, которому хотите передать компанию!");
+    
+    if (!confirm("ВНИМАНИЕ! После передачи вы (или ваш сотрудник) потеряете доступ к этой компании. Продолжить?")) return;
+
+    showLoader(true);
+    try {
+        const idx = companies.findIndex(x => String(x.id) === String(companyId));
+        if (idx === -1) throw new Error("Компания не найдена");
+
+        // Проверка прав для Лидера/Админа/Владельца
+        const ownerInfo = teamStructure[companies[idx].manager];
+        const isTeamManager = (role === 'leader' && ownerInfo && ownerInfo.team === myTeam);
+        
+        if (role !== 'admin' && companies[idx].manager !== me && !isTeamManager) {
+            throw new Error("У вас нет прав для этой операции");
+        }
+
+        companies[idx].manager = newManager;
+        companies[idx].sharedWith = ""; // Очищаем доступы
+
+        await sync('companies', companies[idx], 'update');
+
+        document.getElementById('preview-companies').innerHTML = `<div style="padding:20px; text-align:center;">✅ Передано менеджеру ${newManager}</div>`;
+        renderCompanies();
+        updateCounters();
+        
+    } catch (e) {
+        alert("Ошибка: " + e.message);
+    } finally {
+        showLoader(false);
+    }
 }
     async function toggleRequestAccess(rid, man, act) { 
     if(!man) return;
