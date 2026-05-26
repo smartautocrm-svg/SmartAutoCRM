@@ -3913,16 +3913,6 @@ async function deleteItem(sh, id) {
     alert("Удалено в корзину.");
 }
 
-// Вспомогательная функция для удобства
-function getArrayBySheet(sh) {
-    if(sh==='requests') return requests;
-    if(sh==='deals') return deals;
-    if(sh==='companies') return companies;
-    if(sh==='reminders') return reminders;
-    if(sh==='partners') return partners;
-    if(sh==='tracking') return tracking;
-}
-
     function calcDealProfit() {
     // Получаем значения из полей
     const incVal = document.getElementById('dealInc').value;
@@ -5465,6 +5455,49 @@ const debouncedGlobalSearch = debounce(() => {
     resBox.innerHTML = html;
     resBox.style.display = 'block';
 }, 300);
+
+    function renderTrash() {
+    const type = document.getElementById('trashType').value;
+    const container = document.getElementById('trashList');
+    
+    // Получаем массив данных в зависимости от выбранного типа в корзине
+    let data = [];
+    if(type === 'deals') data = deals;
+    else if(type === 'partners') data = partners;
+    else if(type === 'companies') data = companies;
+    else if(type === 'requests') data = requests;
+    else if(type === 'reminders') data = reminders;
+    else if(type === 'tracking') data = tracking;
+
+    // Фильтруем только удаленные объекты (isDeleted === true)
+    const deletedItems = data.filter(x => x.isDeleted === true);
+
+    let html = deletedItems.map(item => {
+        // Определяем, что выводить в заголовок в зависимости от типа объекта
+        let title = item.name || (item.num ? "Сделка №" + item.num : "") || item.company || "Без названия";
+        let sub = item.topic || item.cargo || (item.manager ? "Менеджер: " + item.manager : "") || "";
+
+        return `
+            <div class="list-item" style="border-left: 4px solid var(--danger); cursor: default;">
+                <div class="item-main">
+                    <h4>${title}</h4>
+                    <p>${sub}</p>
+                </div>
+                <div class="item-actions">
+                    <!-- Кнопка Восстановить -->
+                    <button class="action-btn" title="Восстановить" style="color:var(--success); font-size:18px;" 
+                            onclick="restoreItem('${type}', '${item.id}')">↺</button>
+                    
+                    <!-- Кнопка Удалить Навсегда -->
+                    <button class="action-btn" title="Удалить навсегда" style="color:var(--danger); font-size:18px;" 
+                            onclick="hardDeleteItem('${type}', '${item.id}')">🗑️</button>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    container.innerHTML = html || '<div style="padding:40px; text-align:center; color:#999;">🗑️ Корзина пуста</div>';
+}
 
 // Функция перехода к результату (исправленная)
 function goToResult(tab, idOrName) {
