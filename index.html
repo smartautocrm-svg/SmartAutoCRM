@@ -3012,7 +3012,7 @@ function renderDeals() {
         }
 
         renderDeals(); // Сразу перерисовываем список, чтобы кнопка стала зеленой
-        
+        updateDashboard();
         // Отправляем точечное обновление в Google Таблицу
         await sync('deals', deals[i], 'update'); 
     }
@@ -4315,7 +4315,12 @@ const activeDeals = myDeals.filter(d => {
     // --- ПЛАН НА СЕГОДНЯ ---
     const todayStr = new Date().toLocaleDateString('ru-RU');
     const todayCalls = myReminders.filter(r => r.status !== 'completed' && dFmt(r.date) === todayStr);
-    const pendingPayments = myDeals.filter(d => d.stage === 'unloaded' && !d.isPaid);
+    const pendingPayments = myDeals.filter(d => {
+    const isVisible = (me === 'admin') ? true : (d.manager === me);
+    // Сделка считается ожидающей оплату, если она на этапе "Выгружен" ИЛИ уже "Закрыта/Завершена", но при этом НЕ оплачена
+    const isFinishedButUnpaid = (d.stage === 'unloaded' || d.stage === 'closed' || d.status === 'completed') && !d.isPaid;
+    return isVisible && isFinishedButUnpaid;
+});
 
     let planHtml = `
         <div style="background: #fdfbff; padding: 15px; border-radius: 12px; border: 1px solid #efe6ef; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);">
