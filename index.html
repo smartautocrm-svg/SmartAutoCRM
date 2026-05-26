@@ -2979,10 +2979,12 @@ function renderDeals() {
                 <p>${d.type || '-'} | Прибыль: <b>${d.prof}$</b> | ${d.manager}</p>
             </div>
             <div class="item-actions">
-                <button class="action-btn" style="color:${d.isPaid ? 'var(--success)' : '#ccc'}; font-size:18px; font-weight:bold;" onclick="togglePaidStatus(event, '${d.id}')">$</button>
-                <button class="action-btn" onclick="openEdit('${d.id}','deal')">✎</button>
-                <button class="action-btn btn-delete" onclick="deleteItem('deals', '${d.id}')">×</button>
-            </div>
+    ${d.status !== 'completed' ? `<button class="action-btn" style="color:var(--success)" onclick="finishDeal(event, '${d.id}')">✅</button>` : ''}
+    
+    <button class="action-btn" style="color:${d.isPaid ? 'var(--success)' : '#ccc'}; font-size:18px; font-weight:bold;" onclick="togglePaidStatus(event, '${d.id}')">$</button>
+    <button class="action-btn" onclick="openEdit('${d.id}','deal')">✎</button>
+    <button class="action-btn btn-delete" onclick="deleteItem('deals', '${d.id}')">×</button>
+</div>
         </div>`;
     }).join('');
     
@@ -3020,7 +3022,8 @@ function renderDeals() {
     const i = deals.findIndex(x=>x.id==id); 
     if(i>-1) { 
         deals[i].status = 'completed'; 
-        renderDeals(); 
+        renderDeals();
+        updateDashboard();
         await sync('deals', deals[i], 'update'); 
     } 
 }
