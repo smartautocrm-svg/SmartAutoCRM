@@ -97,6 +97,11 @@
 }
         .bottom-section { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; }
 
+        /* Специальный класс для скрытия полей в режиме финансов */
+.finance-layout-active .hide-finance {
+    display: none !important;
+}
+
         /* Стили для галереи документов */
 .file-gallery {
     display: flex;
@@ -1098,57 +1103,71 @@ button.main:active {
         <!-- ЛЕВАЯ КАРТОЧКА: ФОРМА -->
         <div class="card">
             <h3>Новая сделка</h3>
-            <div class="input-row" style="grid-template-columns: 1fr 1fr 1fr;">
-                <input type="text" id="dealNum" placeholder="№ Сделки *">
-                <input type="text" id="dealComp" list="allEntitiesData" placeholder="Клиент *">
-                <input type="text" id="dealCargo" placeholder="Груз *">
-                
-                <select id="dealType">
-                    <option value="">Тип сделки *</option>
-                    <option value="финансы">💰 Финансы </option>
-                    <option value="карго из Китая">📦 Карго из Китая</option>
-                    <option value="карго из Кореи">📦 Карго из Кореи</option>
-                    <option value="фрахт">🚢 Фрахт</option>
-                    <option value="карго Европа">🇪🇺 Карго Европа</option>
-                    <option value="контейнера - очистка">🧾 Контейнера - очистка</option>
-                    <option value="LCL">📦 LCL</option>
-                    <option value="экспорт">📤 Экспорт</option>
-                    <option value="trucking">🚛 Trucking</option>
-                </select>
+            <div class="card" id="deal-form-container"> <!-- Добавили ID здесь -->
+    <h3>Новая сделка</h3>
+    <div class="input-row" style="grid-template-columns: 1fr 1fr 1fr;">
+        <input type="text" id="dealNum" placeholder="№ Сделки *">
+        <input type="text" id="dealComp" list="allEntitiesData" placeholder="Клиент *">
+        <input type="text" id="dealCargo" placeholder="Груз *">
+        
+        <!-- Добавили onchange -->
+        <select id="dealType" onchange="toggleDealFinanceFields()">
+            <option value="">Тип сделки *</option>
+            <option value="финансы">💰 Финансы</option>
+            <option value="карго из Китая">📦 Карго из Китая</option>
+            <option value="карго из Кореи">📦 Карго из Кореи</option>
+            <option value="фрахт">🚢 Фрахт</option>
+            <option value="карго Европа">🇪🇺 Карго Европа</option>
+            <option value="контейнера - очистка">🧾 Контейнера - очистка</option>
+            <option value="LCL">📦 LCL</option>
+            <option value="экспорт">📤 Экспорт</option>
+            <option value="trucking">🚛 Trucking</option>
+        </select>
 
-                <select id="dealStage">
-                    <option value="docs">📝 Оформление</option>
-                    <option value="transit">🚛 В пути</option>
-                    <option value="customs">🛃 Таможня</option>
-                    <option value="unloaded">🏁 Выгружен/Оплата</option>
-                    <option value="closed">✅ Закрыта</option>
-                </select>
+        <select id="dealStage" class="hide-finance"> <!-- Класс hide-finance -->
+            <option value="docs">📝 Оформление</option>
+            <option value="transit">🚛 В пути</option>
+            <option value="customs">🛃 Таможня</option>
+            <option value="unloaded">🏁 Выгружен/Оплата</option>
+            <option value="closed">✅ Закрыта</option>
+        </select>
 
-                <select id="dealTransport" onchange="checkTransportFields('deal')">
-                    <option value="авто">🚛 Авто</option>
-                    <option value="море">🚢 Море</option>
-                    <option value="авиа">✈️ Авиа</option>
-                    <option value="ж/д">🚂 Ж/Д</option>
-                </select>
+        <select id="dealTransport" class="hide-finance" onchange="checkTransportFields('deal')">
+            <option value="авто">🚛 Авто</option>
+            <option value="море">🚢 Море</option>
+            <option value="авиа">✈️ Авиа</option>
+            <option value="ж/д">🚂 Ж/Д</option>
+        </select>
 
-                <select id="dealContainer" style="display:none;"></select>
-                <input type="number" id="dealContQty" style="display:none;" placeholder="Кол-во конт.">
-                <input type="text" id="dealBL" style="display:none;" placeholder="№ Коносамента">
-                <input type="text" id="dealAWB" style="display:none;" placeholder="№ Авианакладной">
-                
-                <input type="number" id="dealWeight" placeholder="Вес">
-                <input type="number" id="dealVol" placeholder="Объем">
-                <input type="number" id="dealVal" placeholder="Инвойс">
-                
-                <input type="number" id="dealExp" placeholder="Расходы" oninput="calcDealProfit()">
-                <input type="number" id="dealInc" placeholder="Доходы" oninput="calcDealProfit()">
-                <input type="number" id="dealProf" placeholder="Прибыль" readonly style="background:#f0f7ff; color:var(--success); font-weight:bold;">
-                
-                <input type="text" id="dealMargin" placeholder="Маржа %" readonly style="background:#fff3e0; color:var(--warning); font-weight:bold;">
-                <input type="text" id="dealLoad" placeholder="Погрузка" style="grid-column: span 2;">
-                <input type="text" id="dealUnload" placeholder="Выгрузка" style="grid-column: span 3;">
-                <textarea id="dealInfo" style="grid-column: span 3; height: 40px;" placeholder="Инфо..."></textarea>
-            </div>
+        <select id="dealContainer" style="display:none;" class="hide-finance"></select>
+        <input type="number" id="dealContQty" style="display:none;" placeholder="Кол-во конт." class="hide-finance">
+        <input type="text" id="dealBL" style="display:none;" placeholder="№ Коносамента" class="hide-finance">
+        <input type="text" id="dealAWB" style="display:none;" placeholder="№ Авианакладной" class="hide-finance">
+        
+        <input type="number" id="dealWeight" placeholder="Вес" class="hide-finance">
+        <input type="number" id="dealVol" placeholder="Объем" class="hide-finance">
+        <input type="number" id="dealVal" placeholder="Инвойс" class="hide-finance">
+        
+        <input type="number" id="dealExp" placeholder="Расходы" oninput="calcDealProfit()">
+        <input type="number" id="dealInc" placeholder="Доходы" oninput="calcDealProfit()">
+        <input type="number" id="dealProf" placeholder="Прибыль" readonly style="background:#f0f7ff; color:var(--success); font-weight:bold;">
+        
+        <input type="text" id="dealMargin" placeholder="Маржа %" readonly style="background:#fff3e0; color:var(--warning); font-weight:bold;" class="hide-finance">
+        <input type="text" id="dealLoad" placeholder="Погрузка" style="grid-column: span 2;" class="hide-finance">
+        <input type="text" id="dealUnload" placeholder="Выгрузка" style="grid-column: span 3;" class="hide-finance">
+        <textarea id="dealInfo" style="grid-column: span 3; height: 40px;" placeholder="Инфо..."></textarea>
+    </div>
+    
+    <div style="margin-top: 5px;" class="hide-finance">
+        <label style="font-size: 9px; color: var(--danger); font-weight: bold; display: block; margin-bottom: 2px;">ДОСТУП К ДАННОЙ СДЕЛКЕ:</label>
+        <select id="dealPrivacy" style="background: #fff3e0; font-weight: bold; border: 1px solid #ffcc80; height: 26px; padding: 0 5px;">
+            <option value="false">🔓 ОТКРЫТАЯ</option>
+            <option value="true">🔒 ЗАКРЫТАЯ</option>
+        </select>
+    </div>
+
+    <button class="main" style="background:var(--primary); margin-top:10px;" onclick="addDeal()">Создать сделку</button>
+</div>
 
             <!-- БЛОК ПРИБЫЛИ -->
             <div style="margin-top: 5px;">
@@ -3941,49 +3960,17 @@ async function deleteItem(sh, id) {
     document.getElementById('dealMargin').value = margin.toFixed(1) + '%';
 }
 function toggleDealFinanceFields() {
-    const typeEl = document.getElementById('dealType');
-    if (!typeEl) return;
+    const container = document.getElementById('deal-form-container');
+    const type = document.getElementById('dealType').value;
     
-    const type = typeEl.value.trim();
-    const isFinance = (type === 'финансы');
-
-    // Список полей для скрытия
-    const fieldsToHide = [
-        'dealStage', 'dealTransport', 'dealWeight', 'dealVol', 
-        'dealVal', 'dealMargin', 'dealLoad', 'dealUnload',
-        'dealContainer', 'dealContQty', 'dealBL', 'dealAWB'
-    ];
-
-    fieldsToHide.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) {
-            if (isFinance) {
-                el.style.setProperty('display', 'none', 'important');
-            } else {
-                el.style.display = 'block';
-            }
-        }
-    });
-
-    // Описание (dealInfo) при финансах должно занимать всю ширину, 
-    // чтобы не было дырок в сетке
-    const infoField = document.getElementById('dealInfo');
-    if (infoField) {
-        infoField.style.gridColumn = isFinance ? 'span 3' : 'span 3';
+    if (type === 'финансы') {
+        // Просто добавляем класс родителю, и CSS сам всё спрячет (даже если транспорт захочет включить)
+        container.classList.add('finance-layout-active');
+    } else {
+        // Убираем класс и возвращаем обычную логику
+        container.classList.remove('finance-layout-active');
+        checkTransportFields('deal'); 
     }
-
-    // Скрываем блок приватности
-    const privacyBlock = document.getElementById('dealPrivacy')?.parentElement;
-    if (privacyBlock) {
-        privacyBlock.style.setProperty('display', isFinance ? 'none' : 'block', isFinance ? 'important' : '');
-    }
-
-    // Если переключились на обычную сделку - возвращаем логику транспорта
-    if (!isFinance) {
-        checkTransportFields('deal');
-    }
-    
-    console.log("Finance mode:", isFinance); // Для проверки в консоли (F12)
 }
     
     async function toggleAccess(cid, man, act) { 
