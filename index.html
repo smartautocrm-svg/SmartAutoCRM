@@ -97,7 +97,7 @@
 }
         .bottom-section { flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; }
 
-        /* --- ПРОДВИНУТЫЙ РЕЖИМ ФИНАНСОВ --- */
+/* --- РЕЖИМ ФИНАНСОВ: УПОРЯДОЧЕННЫЙ ВИД --- */
 
 /* 1. Прячем лишние поля */
 .finance-active .hide-finance {
@@ -106,7 +106,7 @@
 
 /* 2. Перестраиваем сетку: делаем оставшиеся поля крупнее */
 .finance-active .input-row {
-    grid-template-columns: 1fr 1fr !important; /* В финансах делаем 2 колонки вместо 3 */
+    grid-template-columns: 1fr 1fr !important; 
     gap: 12px;
 }
 
@@ -118,25 +118,22 @@
     grid-column: span 2 !important;
 }
 
-/* 4. Особый стиль для финансовых полей, чтобы их было сразу видно */
+/* 4. Убираем специфические цвета и рамки, возвращаем стандартный вид */
 .finance-active #dealExp, 
-.finance-active #dealInc {
-    border: 2px solid #e1bee7; /* Светло-фиолетовый бортик */
-    background: #fdfbff;
-}
-
-/* 5. Визуальный индикатор: меняем фон карточки, чтобы менеджер понимал, что он в режиме "Деньги" */
-#deal-form-card.finance-active {
-    border-top: 5px solid #9c27b0; /* Яркий фиолетовый верх */
-    background-color: #fafafa;
-    transition: all 0.3s ease;
-}
-
-/* 6. Поле "Прибыль" в финансах делаем еще заметнее */
+.finance-active #dealInc,
 .finance-active #dealProf {
-    font-size: 16px !important;
-    background: #e8f5e9 !important;
-    border: 2px solid var(--success) !important;
+    border: 1.5px solid var(--border) !important;
+    background: #fdfbff !important;
+    color: #3c4043 !important;
+    font-size: 12px !important;
+    font-weight: normal !important;
+}
+
+/* 5. Визуальный индикатор сверху карточки оставляем (тонкая полоска), 
+   но фон делаем стандартным белым */
+#deal-form-card.finance-active {
+    border-top: 5px solid var(--primary);
+    background-color: #ffffff;
 }
 
         /* Стили для галереи документов */
@@ -1189,7 +1186,7 @@ button.main:active {
                 <!-- Ряд 5 -->
                 <input type="number" id="dealExp" placeholder="Расходы (USD)" oninput="calcDealProfit()">
                 <input type="number" id="dealInc" placeholder="Доходы (USD)" oninput="calcDealProfit()">
-                <input type="number" id="dealProf" placeholder="Прибыль" readonly style="background:#f0f7ff; color:var(--success); font-weight:bold;">
+                <input type="number" id="dealProf" placeholder="Прибыль" readonly>
                 
                 <!-- Ряд 6 -->
                 <input type="text" id="dealMargin" placeholder="Маржа %" readonly style="background:#fff3e0; color:var(--warning); font-weight:bold;" class="hide-finance">
