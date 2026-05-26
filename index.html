@@ -1105,7 +1105,7 @@ button.main:active {
                 
                 <select id="dealType">
                     <option value="">Тип сделки *</option>
-                    <option value="финансы">💰 Финансы (только приход/расход)</option>
+                    <option value="финансы">💰 Финансы </option>
                     <option value="карго из Китая">📦 Карго из Китая</option>
                     <option value="карго из Кореи">📦 Карго из Кореи</option>
                     <option value="фрахт">🚢 Фрахт</option>
@@ -2328,18 +2328,20 @@ function checkDealAccess(d) {
 }
     
     function checkTransportFields(p) {
-        const currentType = document.getElementById(p + 'Type')?.value;
-        if (currentType === 'финансы') return;
-        const v = document.getElementById(p+'Transport')?.value || document.getElementById(p+'Trans')?.value;
-        const cont = document.getElementById(p+'Container') || document.getElementById(p+'Cont');
-        const contQty = document.getElementById(p+'ContQty');
-        const bl = document.getElementById(p+'BL');
-        const awb = document.getElementById(p+'AWB');
-        if (cont) cont.style.display = (v === 'море' ? 'block' : 'none');
-        if (contQty) contQty.style.display = (v === 'море' ? 'block' : 'none');
-        if (bl) bl.style.display = (v === 'море' ? 'block' : 'none');
-        if (awb) awb.style.display = (v === 'авиа' ? 'block' : 'none');
-    }
+    // ЕСЛИ выбраны финансы — блокируем работу этой функции, чтобы она не включала поля
+    const currentType = document.getElementById(p + 'Type')?.value;
+    if (currentType === 'финансы') return; 
+
+    const v = document.getElementById(p+'Transport')?.value || document.getElementById(p+'Trans')?.value;
+    const cont = document.getElementById(p+'Container') || document.getElementById(p+'Cont');
+    const contQty = document.getElementById(p+'ContQty');
+    const bl = document.getElementById(p+'BL');
+    const awb = document.getElementById(p+'AWB');
+    if (cont) cont.style.display = (v === 'море' ? 'block' : 'none');
+    if (contQty) contQty.style.display = (v === 'море' ? 'block' : 'none');
+    if (bl) bl.style.display = (v === 'море' ? 'block' : 'none');
+    if (awb) awb.style.display = (v === 'авиа' ? 'block' : 'none');
+}
 
     async function generateInvoicePDF(id) {
         const item = deals.find(x => x.id == id);
@@ -3938,27 +3940,28 @@ async function deleteItem(sh, id) {
     const type = document.getElementById('dealType').value;
     const isFinance = (type === 'финансы');
 
-    // Список ID полей, которые нужно СКРЫТЬ для финансов
-    const fieldsToToggle = [
+    // Список всех полей, которые НЕ нужны в финансах
+    const fieldsToHide = [
         'dealStage', 'dealTransport', 'dealContainer', 'dealContQty', 
         'dealBL', 'dealAWB', 'dealWeight', 'dealVol', 'dealVal', 
         'dealMargin', 'dealLoad', 'dealUnload'
     ];
 
-    fieldsToToggle.forEach(id => {
+    fieldsToHide.forEach(id => {
         const el = document.getElementById(id);
         if (el) {
-            el.style.display = isFinance ? 'none' : 'block';
+            // Если финансы - скрываем, если нет - показываем
+            el.style.setProperty('display', isFinance ? 'none' : 'block', isFinance ? 'important' : '');
         }
     });
 
-    // Дополнительно прячем блок приватности (т.к. у него нет ID, найдем по родителю)
-    const privacyBlock = document.getElementById('dealPrivacy').parentElement;
+    // Скрываем блок "Доступ к сделке" (Приватность), так как в финансах он обычно не нужен
+    const privacyBlock = document.getElementById('dealPrivacy')?.parentElement;
     if (privacyBlock) {
         privacyBlock.style.display = isFinance ? 'none' : 'block';
     }
 
-    // Если мы выключили финансы, нужно вернуть логику показа полей для Моря/Авиа
+    // Если это НЕ финансы, вызываем проверку транспорта, чтобы поля моря/авиа работали как обычно
     if (!isFinance) {
         checkTransportFields('deal');
     }
