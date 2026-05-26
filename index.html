@@ -1216,11 +1216,7 @@ button.main:active {
     </div>
     <div class="bottom-section">
         <div class="controls-bar">
-            <input type="text" id="searchComp" placeholder="Название..." oninput="debouncedRenderCompanies()">
-            <input type="text" id="filterProduct" placeholder="Груз..." oninput="debouncedRenderCompanies()">
-            <input type="text" id="filterCity" placeholder="Город..." oninput="debouncedRenderCompanies()">
-            <input type="text" id="filterImport" placeholder="Импорт..." oninput="debouncedRenderCompanies()">
-            <input type="text" id="filterExport" placeholder="Экспорт..." oninput="debouncedRenderCompanies()">
+            <input type="text" id="searchCompGlobal" placeholder="🔍 Поиск по названию, грузу, городу, импорту или экспорту..." oninput="debouncedRenderCompanies()" style="max-width: 450px;">
             <select id="sortComp" onchange="updateSecondaryFilter()"><option value="">Фильтр</option><option value="manager">Менеджер</option><option value="status">Статус</option></select>
             <select id="secondarySelect" style="display:none;" onchange="renderCompanies()"></select>
             <label style="font-size: 10px; display: flex; align-items: center; gap: 4px; white-space: nowrap; background: #fff0f0; padding: 4px 8px; border-radius: 4px; border: 1px solid #ffcccc; cursor: pointer;">
@@ -3085,43 +3081,41 @@ function renderDeals() {
     document.getElementById('historyModal').style.display = 'block';
 }
 function renderCompanies() {
-    const s = document.getElementById('searchComp').value.toLowerCase(), 
-          fProd = document.getElementById('filterProduct').value.toLowerCase(), 
-          fCity = document.getElementById('filterCity').value.toLowerCase(), 
-          fImp = document.getElementById('filterImport').value.toLowerCase(), 
-          fExp = document.getElementById('filterExport').value.toLowerCase(), 
-          cat = document.getElementById('sortComp').value, 
-          valSel = document.getElementById('secondarySelect').value,
-          onlyForgotten = document.getElementById('hideActiveComp').checked; // Получаем состояние галочки
+    // Получаем значение из нашего нового единого поля
+    const s = document.getElementById('searchCompGlobal').value.toLowerCase();
+    
+    // Остальные фильтры оставляем как были
+    const cat = document.getElementById('sortComp').value; 
+    const valSel = document.getElementById('secondarySelect').value;
+    const onlyForgotten = document.getElementById('hideActiveComp').checked;
           
-    // 1. Собираем названия компаний с активностью
     const companiesWithWork = new Set([
         ...reminders.filter(r => !r.isDeleted).map(r => r.name),
         ...requests.filter(r => !r.isDeleted).map(r => r.company),
         ...deals.filter(d => !d.isDeleted).map(d => d.company)
     ]);
 
-    // 2. Фильтруем основной массив
     let f = companies.filter(c => {
         if (c.isDeleted) return false;
 
-        // Считаем, забыта ли компания ТУТ, чтобы использовать это в фильтре
         const isForgotten = !companiesWithWork.has(c.name) && c.status !== 'refused';
-
-        // Если включена галочка "Только забытые", а компания НЕ забыта — скрываем её
         if (onlyForgotten && !isForgotten) return false;
 
-        const matchN = String(c.name).toLowerCase().includes(s);
-        const matchProd = String(c.product || "").toLowerCase().includes(fProd);
-        const matchCity = String(c.city || "").toLowerCase().includes(fCity);
-        const matchImp = String(c.imp || "").toLowerCase().includes(fImp);
-        const matchExp = String(c.exp || "").toLowerCase().includes(fExp);
+        // --- НОВАЯ ЛОГИКА УМНОГО ПОИСКА ---
+        // Проверяем, есть ли поисковая фраза хотя бы в одном из полей
+        const matchGlobal = 
+            String(c.name || "").toLowerCase().includes(s) ||
+            String(c.product || "").toLowerCase().includes(s) ||
+            String(c.city || "").toLowerCase().includes(s) ||
+            String(c.imp || "").toLowerCase().includes(s) ||
+            String(c.exp || "").toLowerCase().includes(s);
+        // ---------------------------------
         
         let matchT = true; 
         if (cat === 'manager' && valSel) matchT = (c.manager === valSel); 
         if (cat === 'status' && valSel) matchT = (c.status === valSel);
         
-        return matchN && matchProd && matchCity && matchImp && matchExp && matchT;
+        return matchGlobal && matchT; // Используем matchGlobal вместо 5 разных проверок
     });
 
     const totalFound = f.length;
