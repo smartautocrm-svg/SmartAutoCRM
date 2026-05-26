@@ -2327,16 +2327,20 @@ function checkDealAccess(d) {
     }
 }
     
-    function checkTransportFields(p) {
-    // ЕСЛИ выбраны финансы — блокируем работу этой функции, чтобы она не включала поля
-    const currentType = document.getElementById(p + 'Type')?.value;
-    if (currentType === 'финансы') return; 
+function checkTransportFields(p) {
+    // ВАЖНО: Если это вкладка сделок и выбраны Финансы — ничего не делаем
+    if (p === 'deal') {
+        const dealType = document.getElementById('dealType')?.value;
+        if (dealType === 'финансы') return; 
+    }
 
     const v = document.getElementById(p+'Transport')?.value || document.getElementById(p+'Trans')?.value;
     const cont = document.getElementById(p+'Container') || document.getElementById(p+'Cont');
     const contQty = document.getElementById(p+'ContQty');
     const bl = document.getElementById(p+'BL');
     const awb = document.getElementById(p+'AWB');
+
+    // Скрываем/показываем поля в зависимости от транспорта
     if (cont) cont.style.display = (v === 'море' ? 'block' : 'none');
     if (contQty) contQty.style.display = (v === 'море' ? 'block' : 'none');
     if (bl) bl.style.display = (v === 'море' ? 'block' : 'none');
@@ -3936,32 +3940,38 @@ async function deleteItem(sh, id) {
     const margin = inc > 0 ? (prof / inc * 100) : 0;
     document.getElementById('dealMargin').value = margin.toFixed(1) + '%';
 }
-    function toggleDealFinanceFields() {
+function toggleDealFinanceFields() {
     const type = document.getElementById('dealType').value;
     const isFinance = (type === 'финансы');
 
-    // Список всех полей, которые НЕ нужны в финансах
+    // Все ID полей, которые нужно УБРАТЬ при финансах
     const fieldsToHide = [
-        'dealStage', 'dealTransport', 'dealContainer', 'dealContQty', 
-        'dealBL', 'dealAWB', 'dealWeight', 'dealVol', 'dealVal', 
-        'dealMargin', 'dealLoad', 'dealUnload'
+        'dealStage', 'dealTransport', 'dealWeight', 'dealVol', 
+        'dealVal', 'dealMargin', 'dealLoad', 'dealUnload',
+        'dealContainer', 'dealContQty', 'dealBL', 'dealAWB'
     ];
 
     fieldsToHide.forEach(id => {
         const el = document.getElementById(id);
         if (el) {
-            // Если финансы - скрываем, если нет - показываем
-            el.style.setProperty('display', isFinance ? 'none' : 'block', isFinance ? 'important' : '');
+            if (isFinance) {
+                el.style.display = 'none'; // Скрываем
+                el.setAttribute('data-finance-hidden', 'true'); // Метка для системы
+            } else {
+                el.style.display = 'block'; // Возвращаем
+                el.removeAttribute('data-finance-hidden');
+            }
         }
     });
 
-    // Скрываем блок "Доступ к сделке" (Приватность), так как в финансах он обычно не нужен
-    const privacyBlock = document.getElementById('dealPrivacy')?.parentElement;
-    if (privacyBlock) {
-        privacyBlock.style.display = isFinance ? 'none' : 'block';
+    // Прячем или показываем блок приватности и заголовок
+    const priv = document.getElementById('dealPrivacy');
+    if (priv && priv.parentElement) {
+        priv.parentElement.style.display = isFinance ? 'none' : 'block';
     }
 
-    // Если это НЕ финансы, вызываем проверку транспорта, чтобы поля моря/авиа работали как обычно
+    // Если мы переключились С финансов на обычную сделку — 
+    // запускаем стандартную проверку транспорта, чтобы скрыть лишнее для АВТО
     if (!isFinance) {
         checkTransportFields('deal');
     }
