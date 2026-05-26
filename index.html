@@ -2590,11 +2590,11 @@ function showCompanyPreview(n) {
         <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #ffcc80; background: #fff8e1; border-radius: 8px; padding: 10px;">
             <label style="font-size: 9px; font-weight: bold; color: #e67e22; display: block; margin-bottom: 5px;">⚠️ ПЕРЕДАТЬ КОМПАНИЮ:</label>
             <div style="display: flex; gap: 5px;">
-                <select id="transferNewManager" style="flex-grow: 1; font-size: 11px; border: 1px solid #ffcc80; height: 26px;">
-                    <option value="">Выберите владельца...</option>
-                    ${managers.filter(m => m !== c.manager).map(m => `<option value="${m}">${m}</option>`).join('')}
-                </select>
-                <button onclick="transferOwnership('${c.id}')" style="background: #e67e22; color: white; border: none; border-radius: 4px; padding: 0 10px; font-size: 10px; cursor: pointer; font-weight: bold; height: 26px;">ОК</button>
+                <select id="transferNewManager" style="flex-grow: 1; font-size: 12px; border: 1px solid #ffcc80; height: 32px; padding: 0 10px; line-height: 30px;">
+    <option value="">Выберите владельца...</option>
+    ${managers.filter(m => m !== c.manager).map(m => `<option value="${m}">${m}</option>`).join('')}
+</select>
+<button onclick="transferOwnership('${c.id}')" style="background: #e67e22; color: white; border: none; border-radius: 4px; padding: 0 15px; font-size: 11px; cursor: pointer; font-weight: bold; height: 32px; display: flex; align-items: center;">ОК</button>
             </div>
         </div>` : "";
 
