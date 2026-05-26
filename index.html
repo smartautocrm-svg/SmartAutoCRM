@@ -2722,21 +2722,26 @@ function renderReminders() {
 
     const now = new Date();
     
-    let f = reminders.filter(r => {
+let f = reminders.filter(r => {
         if (r.isDeleted) return false;
+        
+        const myRole = sessionStorage.getItem('crm_role');
         const selMan = document.getElementById('adminCallManagerFilter').value || 'all';
-        const matchesAdminMan = (me === 'admin' && selMan !== 'all') ? (r.manager === selMan) : true;
+        
+        // Логика фильтрации по человеку (для тех, у кого есть кнопка фильтра - Админ и Лидер)
+        let matchesManFilter = true;
+        if ((myRole === 'admin' || myRole === 'leader') && selMan !== 'all') {
+            matchesManFilter = (r.manager === selMan);
+        }
+
         const companyName = String(r.name || "").toLowerCase();
         const matchesSearch = companyName.includes(s);
         const matchesDate = !d || dFmt(r.date) === dFmt(d);
-        
-        // Логика просрочки: статус не завершен и дата меньше текущей
         const isOverdue = r.status !== 'completed' && r.date && new Date(r.date) < now;
 
-        // Если включена галочка "Только просроченные", а задача НЕ просрочена — скрываем её
         if (onlyOverdue && !isOverdue) return false;
 
-       return matchesSearch && matchesDate && matchesAdminMan; // Добавили matchesAdminMan
+        return matchesSearch && matchesDate && matchesManFilter; 
     });
     
 if (me !== 'admin') {
@@ -2831,22 +2836,25 @@ function renderRequests() {
     let f = requests.filter(r => {
         if (r.isDeleted) return false;
 
-        // ЛОГИКА АДМИНА: фильтр по выбранному менеджеру
-        const matchesAdminFilter = (me === 'admin' && selectedManager !== 'all') ? (r.manager === selectedManager) : true;
+        const myRole = sessionStorage.getItem('crm_role');
+        const adminFilterEl = document.getElementById('adminRequestManagerFilter');
+        const selectedManager = adminFilterEl ? adminFilterEl.value : 'all';
 
-        // ЛОГИКА ДОСТУПА: кто что может видеть
+        // 1. Проверка фильтра менеджера (для Админов и Лидеров)
+        let matchesManFilter = true;
+        if ((myRole === 'admin' || myRole === 'leader') && selectedManager !== 'all') {
+            matchesManFilter = (r.manager === selectedManager);
+        }
+
+        // 2. Проверка прав доступа (кто вообще имеет право видеть этот запрос)
         const isRequestShared = (r.sharedWith || "").split(',').map(s => s.trim()).includes(me);
         const hasAccess = (me === 'admin') || (r.manager === me) || isRequestShared || checkAccess(r.company);
 
-        // Если нет доступа ИЛИ не совпадает менеджер в фильтре админа — скрываем
-        if (!hasAccess || !matchesAdminFilter) return false;
+        if (!hasAccess || !matchesManFilter) return false;
 
-        // Поиск по названию и грузу
         const companyText = String(r.company || "").toLowerCase();
         const cargoText = String(r.cargo || "").toLowerCase();
         const matchesSearch = companyText.includes(s) || cargoText.includes(s);
-        
-        // Фильтр завершенных
         const matchesStatus = hideDone ? r.status !== 'completed' : true;
         
         return matchesSearch && matchesStatus;
@@ -5077,14 +5085,15 @@ function updateAdminUI() {
     const role = sessionStorage.getItem('crm_role');
     const myTeam = sessionStorage.getItem('crm_team');
 
+    // 1. Кнопки корзины и логов — только для Админа
     const trashBtn = document.getElementById('btn-trash');
     const logsBtn = document.getElementById('btn-logs');
-    
     if (role === 'admin') {
         if (trashBtn) trashBtn.style.display = 'flex';
         if (logsBtn) logsBtn.style.display = 'flex';
     }
 
+    // 2. Блоки отчетов и статистики — для Админа и Лидера
     const reportControls = document.getElementById('admin-report-selector');
     const statsControls = document.getElementById('admin-stats-selector');
 
@@ -5092,83 +5101,86 @@ function updateAdminUI() {
         if (reportControls) reportControls.style.display = 'flex';
         if (statsControls) statsControls.style.display = 'flex';
 
+        // 3. Настройка фильтра ГРУПП (Команд)
         const teamFilter = document.getElementById('statsTeamFilter');
         if (teamFilter) {
-            const currentSelectedTeam = teamFilter.value; // 1. Сохраняем текущий выбор
             if (role === 'admin') {
-                const allTeams = [...new Set(Object.values(teamStructure).map(x => x.team))].filter(t => t && t !== 'none' && t !== 'all');
+                // Админ: собираем все уникальные названия команд из структуры
+                const allTeams = [...new Set(Object.values(teamStructure).map(x => x.team))].filter(t => t && t !== 'none');
+                const currentSel = teamFilter.value;
                 teamFilter.innerHTML = '<option value="all">🌐 Все группы</option>' + 
                     allTeams.map(t => `<option value="${t}">${t.toUpperCase()}</option>`).join('');
-                teamFilter.value = currentSelectedTeam || "all"; // 2. Возвращаем выбор на место
+                if (currentSel) teamFilter.value = currentSel;
                 teamFilter.disabled = false;
             } else {
+                // Лидер: видит только свою группу без возможности переключить
                 teamFilter.innerHTML = `<option value="${myTeam}">${myTeam.toUpperCase()}</option>`;
                 teamFilter.value = myTeam;
-                teamFilter.disabled = true; // Добавь эту строку
+                teamFilter.disabled = true;
             }
         }
+
+        // 4. Показываем выпадающие списки менеджеров в звонках, запросах и сделках
+        const tabFilters = ['adminCallManagerFilter', 'adminRequestManagerFilter', 'adminDealManagerFilter'];
+        tabFilters.forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = 'inline-block';
+        });
+
+        // 5. Запускаем обновление списков менеджеров
         updateStatsManagerList();
-    } else {
-        if (reportControls) reportControls.style.display = 'none';
-        if (statsControls) statsControls.style.display = 'none';
     }
 }
 // Вспомогательная функция для обновления списка менеджеров в зависимости от выбранной команды
 function updateStatsManagerList() {
-    
     const role = sessionStorage.getItem('crm_role');
     const myName = sessionStorage.getItem('crm_user');
     const myTeam = String(sessionStorage.getItem('crm_team') || "none").trim().toLowerCase();
     
-    // Получаем выбранную в фильтре группу (только для админа)
+    // Получаем текущее выбранное значение в фильтре команд (для админа)
     const selTeamEl = document.getElementById('statsTeamFilter');
     const selTeam = String(selTeamEl?.value || "all").trim().toLowerCase();
     
-    // Определяем, по какой группе фильтровать менеджеров
-    // Админ смотрит то, что выбрал в селекторе. Лидер - только свою группу.
+    // Определяем целевую команду для фильтрации людей
     let targetTeam = (role === 'admin') ? selTeam : myTeam;
     
-   let filteredNames = [];
+    let filteredNames = [];
 
+    // Если есть структура команд
     if (teamStructure && Object.keys(teamStructure).length > 0) {
         if (targetTeam === "all") {
             filteredNames = Object.keys(teamStructure);
         } else {
             filteredNames = Object.keys(teamStructure).filter(name => {
                 const info = teamStructure[name];
-                // Сравниваем максимально безопасно
                 return info && String(info.team || "").trim().toLowerCase() === targetTeam;
             });
         }
+    } else {
+        filteredNames = managers; // Fallback
     }
 
-    // Если по фильтру команды никого не нашли, принудительно берем общий список managers
-    // Это гарантирует, что список не будет пустым, пока данные грузятся
-    if (!filteredNames || filteredNames.length === 0) {
-        filteredNames = managers; 
-    }
-
-    // Собираем HTML (используем Set, чтобы убрать дубликаты имен)
+    // Формируем HTML опций. Админ и Лидер видят "Все сотрудники" (в рамках своей доступности)
     let optionsHtml = (role === 'admin' || role === 'leader') ? '<option value="all">👤 Все сотрудники</option>' : '';
     optionsHtml += [...new Set(filteredNames)].sort().map(m => `<option value="${m}">${m}</option>`).join('');
 
-    // Рассылаем во все фильтры
+    // Рассылаем обновленные списки во все фильтры на всех вкладках
     const filters = ['statsManagerFilter', 'reportManagerFilter', 'adminCallManagerFilter', 'adminRequestManagerFilter', 'adminDealManagerFilter'];
     filters.forEach(id => {
         const el = document.getElementById(id);
         if (el) {
-            const savedValue = el.value; // 1. Запоминаем, кто был выбран
-            el.innerHTML = optionsHtml;  // 2. Обновляем список (тут выбор обычно слетает)
+            const savedValue = el.value;
+            el.innerHTML = optionsHtml;
             
-            // 3. Возвращаем выбор назад
+            // Если это обычный менеджер - всегда ставим его имя. Лидеру/Админу возвращаем выбор или ставим 'all'
             if (role !== 'admin' && role !== 'leader') {
-                el.value = myName; // Рядовым всегда ставим их имя
-            } else if (savedValue) {
-                el.value = savedValue; // Админу и Лидеру возвращаем то, что они выбрали сами
+                el.value = myName;
+            } else if (savedValue && optionsHtml.includes(`value="${savedValue}"`)) {
+                el.value = savedValue;
             }
         }
     });
-    }
+}
     
 // 3. Восстановление объекта (изменяем только нужный список)
 async function restoreItem(sh, id) {
