@@ -1105,6 +1105,7 @@ button.main:active {
                 
                 <select id="dealType">
                     <option value="">Тип сделки *</option>
+                    <option value="финансы">💰 Финансы (только приход/расход)</option>
                     <option value="карго из Китая">📦 Карго из Китая</option>
                     <option value="карго из Кореи">📦 Карго из Кореи</option>
                     <option value="фрахт">🚢 Фрахт</option>
@@ -2327,6 +2328,8 @@ function checkDealAccess(d) {
 }
     
     function checkTransportFields(p) {
+        const currentType = document.getElementById(p + 'Type')?.value;
+        if (currentType === 'финансы') return;
         const v = document.getElementById(p+'Transport')?.value || document.getElementById(p+'Trans')?.value;
         const cont = document.getElementById(p+'Container') || document.getElementById(p+'Cont');
         const contQty = document.getElementById(p+'ContQty');
@@ -3930,6 +3933,35 @@ async function deleteItem(sh, id) {
     // Расчет маржи %
     const margin = inc > 0 ? (prof / inc * 100) : 0;
     document.getElementById('dealMargin').value = margin.toFixed(1) + '%';
+}
+    function toggleDealFinanceFields() {
+    const type = document.getElementById('dealType').value;
+    const isFinance = (type === 'финансы');
+
+    // Список ID полей, которые нужно СКРЫТЬ для финансов
+    const fieldsToToggle = [
+        'dealStage', 'dealTransport', 'dealContainer', 'dealContQty', 
+        'dealBL', 'dealAWB', 'dealWeight', 'dealVol', 'dealVal', 
+        'dealMargin', 'dealLoad', 'dealUnload'
+    ];
+
+    fieldsToToggle.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.style.display = isFinance ? 'none' : 'block';
+        }
+    });
+
+    // Дополнительно прячем блок приватности (т.к. у него нет ID, найдем по родителю)
+    const privacyBlock = document.getElementById('dealPrivacy').parentElement;
+    if (privacyBlock) {
+        privacyBlock.style.display = isFinance ? 'none' : 'block';
+    }
+
+    // Если мы выключили финансы, нужно вернуть логику показа полей для Моря/Авиа
+    if (!isFinance) {
+        checkTransportFields('deal');
+    }
 }
     
     async function toggleAccess(cid, man, act) { 
