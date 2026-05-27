@@ -2042,7 +2042,7 @@ const parsers = {
         createdAt: x[10], activatedAt: x[11], manager: String(x[12]||""), 
         isPrivate: String(x[13]) === "true", sharedWith: String(x[14]||""), 
         website: String(x[15]||""), isDeleted: x[16] === true || x[16] === 'true',
-        desc: String(x[17]||"")
+        desc: String(x[17]||""), createdBy: String(x[19] || "")
     }),
     requests: x => ({ 
         id: x[0], company: String(x[1]||""), cargo: String(x[2]||""), transport: String(x[3]||""), 
@@ -2195,7 +2195,7 @@ function exportCurrentData() {
     };
 }
     function formatRow(sh, o) {
-        if (sh === 'companies') return [o.id, o.name, o.contact, o.phone, o.product || "", o.city || "", o.email || "", o.imp || "", o.exp || "", o.status, o.createdAt, o.activatedAt || "", o.manager, o.isPrivate, o.sharedWith || "", o.website || "", o.isDeleted || false, o.desc || ""];
+if (sh === 'companies') return [o.id, o.name, o.contact, o.phone, o.product || "", o.city || "", o.email || "", o.imp || "", o.exp || "", o.status, o.createdAt, o.activatedAt || "", o.manager, o.isPrivate, o.sharedWith || "", o.website || "", o.isDeleted || false, o.desc || "", "", o.createdBy || ""];
 if (sh === 'requests') return [o.id, o.company, o.cargo, o.transport, o.weight, o.vol, o.value, o.currency, o.load, o.unload, o.desc, o.createdAt, o.status, o.comment, o.container, o.zip, o.manager, o.contQty || "", o.type || "", o.sharedWith || "", o.isDeleted || false, o.lossReason || ""];
 
 if (sh === 'deals') return [
@@ -3901,7 +3901,8 @@ async function addDeal() {
         exp: document.getElementById('compExp').value,
         desc: document.getElementById('compDesc').value,
         createdAt: new Date().toISOString(), 
-        activatedAt: (st === 'active' ? new Date().toISOString() : ""), 
+        activatedAt: (st === 'active' ? new Date().toISOString() : ""),
+        createdBy: sessionStorage.getItem('crm_user'),
         sharedWith: "" 
     };
 
@@ -4868,6 +4869,40 @@ function renderManagerStats() {
     }); 
 
     document.getElementById('reportData').innerHTML = h + '</tbody></table>'; 
+// Впрыск KPI для помощника
+if (teamStructure[selMan] && teamStructure[selMan].role === 'assistant') {
+    const kpiCompanies = companies.filter(c => {
+        if (c.isDeleted || c.createdBy !== selMan) return false;
+        const d = new Date(c.createdAt);
+        if (selYear !== 'all' && d.getFullYear().toString() !== selYear) return false;
+        if (selMonth !== 'all' && d.getMonth().toString() !== selMonth) return false;
+        return true;
+    });
+
+    let validCount = 0;
+    kpiCompanies.forEach(comp => {
+        const acts = reminders.filter(r => r.name === comp.name && !r.isDeleted).length;
+        const reqs = requests.filter(r => r.company === comp.name && !r.isDeleted).length;
+        if ((acts + reqs) >= 2) validCount++;
+    });
+
+    const kpiHtml = `
+        <div id="pdf-kpi-area" style="background:#fdfbff; border:2px solid #511f54; padding:15px; border-radius:10px; margin-bottom:20px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h3 style="margin:0; color:#511f54;">📈 Отчет помощника: ${selMan}</h3>
+                <button class="btn-pdf" onclick="exportKpiToPdf()" style="width:150px; background:#511f54;">Выгрузить PDF</button>
+            </div>
+            <div style="display:flex; gap:20px; margin-top:10px;">
+                <div style="flex:1; background:white; padding:10px; border-radius:5px; border:1px solid #eee;">
+                    <small>ПЕРЕДАНО КОНТАКТОВ:</small><br><b style="font-size:20px;">${kpiCompanies.length}</b>
+                </div>
+                <div style="flex:1; background:white; padding:10px; border-radius:5px; border:1px solid #eee;">
+                    <small>ВАЛИДНЫХ (2+ действия):</small><br><b style="font-size:20px; color:green;">${validCount}</b>
+                </div>
+            </div>
+        </div>
+    `;
+    document.getElementById('reportData').insertAdjacentHTML('afterbegin', kpiHtml);
 }
 
     // --- ЛОГИКА ТРЕКИНГА ---
@@ -5209,6 +5244,24 @@ function updateAdminUI() {
 
         // 5. Запускаем обновление списков менеджеров
         updateStatsManagerList();
+    }
+    const userRole = sessionStorage.getItem('crm_role');
+    const userName = sessionStorage.getItem('crm_user');
+
+    if (userRole === 'assistant') {
+        // Вкладки, которые будут скрыты, если админ не дал доступ
+        const restrictedTabs = ['btn-deals', 'btn-report', 'btn-stats', 'btn-logs'];
+        
+        // Проверка через конфиг в Партнерах (о котором мы говорили ранее)
+        const config = partners.find(p => p.id === "CONFIG_ACCESS");
+        const hasFullAccess = config && config.desc.split(',').map(u => u.trim()).includes(userName);
+
+        if (!hasFullAccess) {
+            restrictedTabs.forEach(tabId => {
+                const el = document.getElementById(tabId);
+                if (el) el.style.display = 'none';
+            });
+        }
     }
 }
 // Вспомогательная функция для обновления списка менеджеров в зависимости от выбранной команды
@@ -5724,6 +5777,17 @@ document.addEventListener('keydown', function(e) {
         searchPublicTracking();
     }
 });
+        function exportKpiToPdf() {
+    const element = document.getElementById('reportData');
+    const name = document.getElementById('reportManagerFilter')?.value || "Report";
+    const opt = {
+        margin: 10,
+        filename: `KPI_${name}.pdf`,
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+    html2pdf().set(opt).from(element).save();
+}
     
 </script>
     <div id="notification-container"></div>
