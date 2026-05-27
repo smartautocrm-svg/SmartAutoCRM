@@ -4777,7 +4777,7 @@ function renderManagerStats() {
     document.getElementById('statsDetailModal').style.display = 'block';
 }
 
-   function generateReport() {
+function generateReport() {
     const me = sessionStorage.getItem('crm_user');
     const role = sessionStorage.getItem('crm_role');
     const myTeam = String(sessionStorage.getItem('crm_team') || "none").trim().toLowerCase();
@@ -4789,24 +4789,20 @@ function renderManagerStats() {
     const ms = ["Янв", "Фев", "Мар", "Апр", "Май", "Июн", "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек"];
     const ap = new Map(); 
 
-    // --- ЕДИНЫЙ ФИЛЬТР ДОСТУПА ---
+    // Фильтр доступа (используется для всех подсчетов)
     const filterByAccess = (itemManager, itemDate) => {
         if (!itemDate) return false;
         const d = new Date(itemDate);
         if (isNaN(d.getTime())) return false;
-
-        // Фильтр по дате (Год и Месяц)
         if (selYear !== 'all' && d.getFullYear().toString() !== selYear) return false;
         if (selMonth !== 'all' && d.getMonth().toString() !== selMonth) return false;
 
         const mName = String(itemManager || "").trim();
-        
         if (role === 'admin') {
             return (selMan === 'all' || mName === selMan);
         } else if (role === 'leader') {
             const mInfo = (teamStructure && teamStructure[mName]) ? teamStructure[mName] : { team: 'none' };
             const itemTeam = String(mInfo.team || "none").trim().toLowerCase();
-            // Лидер видит свою команду или свои личные записи
             if (itemTeam === myTeam || mName === me) {
                 return (selMan === 'all' || mName === selMan);
             }
@@ -4821,7 +4817,7 @@ function renderManagerStats() {
         ap.set(k, {y:d.getFullYear(), m:d.getMonth()}); 
     }; 
 
-    // Собираем периоды для таблицы
+    // Сбор всех уникальных месяцев
     reminders.forEach(r => { if(filterByAccess(r.manager, r.date)) mk(r.date); });
     requests.forEach(r => { if(filterByAccess(r.manager, r.createdAt)) mk(r.createdAt); });
     companies.forEach(c => { if(c.status === 'active' && filterByAccess(c.manager, c.activatedAt)) mk(c.activatedAt); });
@@ -4829,33 +4825,28 @@ function renderManagerStats() {
     let h = `<h3>📊 Активность: ${selMan === 'all' ? (role === 'leader' ? 'Моя группа' : 'Все') : selMan}</h3>
              <table class="report-table"><thead><tr><th>Период</th><th>Звонки</th><th>Запросы</th><th>Новые клиенты</th></tr></thead><tbody>`; 
 
-    // Строим строки таблицы
+    // Генерация строк таблицы
     Array.from(ap.keys()).sort().reverse().forEach(k => { 
         const {y, m} = ap.get(k); 
-        
-        const cCount = (reminders || []).filter(r => {
+        const cC = (reminders || []).filter(r => {
             const d = new Date(r.date);
             return d.getMonth() === m && d.getFullYear() === y && filterByAccess(r.manager, r.date);
         }).length;
-
-        const rCount = (requests || []).filter(r => {
+        const rC = (requests || []).filter(r => {
             const d = new Date(r.createdAt);
             return d.getMonth() === m && d.getFullYear() === y && filterByAccess(r.manager, r.createdAt);
         }).length;
-
-        const clCount = (companies || []).filter(c => {
+        const clC = (companies || []).filter(c => {
             if (c.status !== 'active' || !c.activatedAt) return false;
             const d = new Date(c.activatedAt);
             return d.getMonth() === m && d.getFullYear() === y && filterByAccess(c.manager, c.activatedAt);
         }).length;
-
-        h += `<tr><td>${ms[m]} ${y}</td><td>${cCount}</td><td>${rCount}</td><td style="color:var(--success); font-weight:bold;">${clCount}</td></tr>`; 
+        h += `<tr><td>${ms[m]} ${y}</td><td>${cC}</td><td>${rC}</td><td style="color:var(--success); font-weight:bold;">${clC}</td></tr>`; 
     }); 
 
     document.getElementById('reportData').innerHTML = h + '</tbody></table>'; 
 
-    // --- БЛОК KPI АССИСТЕНТА ---
-    // --- ОБНОВЛЕННЫЙ БЛОК KPI АССИСТЕНТА С ДЕТАЛИЗАЦИЕЙ ПО МЕНЕДЖЕРАМ ---
+    // 4. БЛОК KPI ПОМОЩНИКА
     if (selMan !== 'all' && teamStructure && teamStructure[selMan] && teamStructure[selMan].role === 'assistant') {
         const kpiCompanies = companies.filter(c => {
             if (c.isDeleted || c.createdBy !== selMan) return false;
@@ -4865,34 +4856,27 @@ function renderManagerStats() {
             return matchY && matchM;
         });
 
-        // Считаем распределение по менеджерам
         let managerDist = {}; 
         let validCount = 0;
-    let managerDist = {}; // ОБЯЗАТЕЛЬНО: создаем пустой объект для сбора данных
 
-    kpiCompanies.forEach(comp => {
-        // Логика сбора данных по менеджерам
-        const mName = comp.manager || "Не назначен";
-        if (!managerDist[mName]) managerDist[mName] = { total: 0, valid: 0 };
-        managerDist[mName].total++;
+        kpiCompanies.forEach(comp => {
+            const mName = comp.manager || "Не назначен";
+            if (!managerDist[mName]) managerDist[mName] = { total: 0, valid: 0 };
+            managerDist[mName].total++;
+            const acts = (reminders || []).filter(r => r.name === comp.name && !r.isDeleted).length;
+            const reqs = (requests || []).filter(r => r.company === comp.name && !r.isDeleted).length;
+            if ((acts + reqs) >= 2) {
+                validCount++;
+                managerDist[mName].valid++;
+            }
+        });
 
-        const actsCount = (reminders || []).filter(r => r.name === comp.name && !r.isDeleted).length;
-        const reqsCount = (requests || []).filter(r => r.company === comp.name && !r.isDeleted).length;
-        
-        if ((actsCount + reqsCount) >= 2) {
-            validCount++;
-            managerDist[mName].valid++; // Считаем валидные для конкретного менеджера
-        }
-    });
-
-        // Формируем строки таблицы распределения
         let distRows = Object.keys(managerDist).map(m => `
             <tr>
                 <td style="text-align:left; padding:5px 10px;">👤 ${m}</td>
                 <td>${managerDist[m].total}</td>
                 <td style="color:green; font-weight:bold;">${managerDist[m].valid}</td>
-            </tr>
-        `).join('');
+            </tr>`).join('');
 
         const kpiHtml = `
             <div id="pdf-kpi-area" style="background:#fdfbff; border:2px solid #511f54; padding:15px; border-radius:10px; margin-bottom:20px;">
@@ -4900,7 +4884,6 @@ function renderManagerStats() {
                     <h3 style="margin:0; color:#511f54;">📈 Отчет помощника: ${selMan}</h3>
                     <button class="btn-pdf" onclick="exportKpiToPdf()" style="width:150px; background:#511f54;">Выгрузить PDF</button>
                 </div>
-                
                 <div style="display:flex; gap:20px; margin-top:10px;">
                     <div style="flex:1; background:white; padding:10px; border-radius:5px; border:1px solid #eee; text-align:center;">
                         <small>ОБЩЕЕ КОЛ-ВО ПЕРЕДАННЫХ:</small><br><b style="font-size:20px;">${kpiCompanies.length}</b>
@@ -4909,25 +4892,17 @@ function renderManagerStats() {
                         <small>ВАЛИДНЫХ (2+ действия):</small><br><b style="font-size:20px; color:green;">${validCount}</b>
                     </div>
                 </div>
-
                 <div style="margin-top:15px; background:white; padding:10px; border-radius:5px; border:1px solid #eee;">
-                    <small style="font-weight:bold; color:#666; text-transform:uppercase;">Распределение по менеджерам:</small>
+                    <small style="font-weight:bold; color:#666; text-transform:uppercase;">Кому переданы контакты:</small>
                     <table style="width:100%; font-size:11px; margin-top:5px; border-collapse:collapse;" border="1" bordercolor="#eee">
-                        <thead style="background:#f8f9fa;">
-                            <tr>
-                                <th style="padding:5px;">Менеджер</th>
-                                <th>Передано</th>
-                                <th>Валидных</th>
-                            </tr>
-                        </thead>
-                        <tbody style="text-align:center;">
-                            ${distRows || '<tr><td colspan="3" style="padding:10px; color:#999;">Данных о передаче нет</td></tr>'}
-                        </tbody>
+                        <thead><tr style="background:#f8f9fa;"><th>Менеджер</th><th>Передано</th><th>Валидных</th></tr></thead>
+                        <tbody style="text-align:center;">${distRows || '<tr><td colspan="3">Нет данных</td></tr>'}</tbody>
                     </table>
                 </div>
             </div>`;
         document.getElementById('reportData').insertAdjacentHTML('afterbegin', kpiHtml);
     }
+}
 
     // --- ЛОГИКА ТРЕКИНГА ---
     function checkTrackingAccess(item) {
@@ -5223,6 +5198,8 @@ async function deleteNews(id) {
 function updateAdminUI() {
     const role = sessionStorage.getItem('crm_role');
     const myTeam = sessionStorage.getItem('crm_team');
+    const userRole = sessionStorage.getItem('crm_role');
+    const userName = sessionStorage.getItem('crm_user');
 
     // 1. Кнопки корзины и логов — только для Админа
     const trashBtn = document.getElementById('btn-trash');
@@ -5240,11 +5217,10 @@ function updateAdminUI() {
         if (reportControls) reportControls.style.display = 'flex';
         if (statsControls) statsControls.style.display = 'flex';
 
-        // 3. Настройка фильтра ГРУПП (Команд)
+        // Групповой фильтр
         const teamFilter = document.getElementById('statsTeamFilter');
         if (teamFilter) {
             if (role === 'admin') {
-                // Админ: собираем все уникальные названия команд из структуры
                 const allTeams = [...new Set(Object.values(teamStructure || {}).map(x => x.team))].filter(t => t && t !== 'none');
                 const currentSel = teamFilter.value;
                 teamFilter.innerHTML = '<option value="all">🌐 Все группы</option>' + 
@@ -5252,33 +5228,29 @@ function updateAdminUI() {
                 if (currentSel) teamFilter.value = currentSel;
                 teamFilter.disabled = false;
             } else {
-    // Лидер: видит только свою группу без возможности переключить
-    const teamName = myTeam || "БЕЗ ГРУППЫ";
-    teamFilter.innerHTML = `<option value="${teamName}">${teamName.toUpperCase()}</option>`;
-    teamFilter.value = teamName;
-    teamFilter.disabled = true;
-}
+                const teamName = myTeam || "БЕЗ ГРУППЫ";
+                teamFilter.innerHTML = `<option value="${teamName}">${teamName.toUpperCase()}</option>`;
+                teamFilter.value = teamName;
+                teamFilter.disabled = true;
+            }
         }
 
-        // 4. Показываем выпадающие списки менеджеров в звонках, запросах и сделках
-        const tabFilters = ['adminCallManagerFilter', 'adminRequestManagerFilter', 'adminDealManagerFilter'];
-        tabFilters.forEach(id => {
+        // Показ фильтров менеджеров во вкладках
+        ['adminCallManagerFilter', 'adminRequestManagerFilter', 'adminDealManagerFilter'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.style.display = 'inline-block';
         });
 
-        // 5. Запускаем обновление списков менеджеров
         updateStatsManagerList();
     }
-    const userRole = sessionStorage.getItem('crm_role');
-const userName = sessionStorage.getItem('crm_user');
 
-if (userRole === 'assistant') {
-    const restrictedTabs = ['btn-deals', 'btn-report', 'btn-stats', 'btn-logs'];
-    // Проверка: есть ли вообще массив партнеров и не пуст ли он
-    const config = (partners && partners.length > 0) ? partners.find(p => p.id === "CONFIG_ACCESS") : null;
-    const allowedList = config?.desc ? config.desc.split(',').map(u => u.trim()) : [];
-    const hasFullAccess = userName ? allowedList.includes(userName) : false;
+    // 3. Ограничение доступа для Помощника (Assistant)
+    if (userRole === 'assistant') {
+        const restrictedTabs = ['btn-deals', 'btn-report', 'btn-stats', 'btn-logs'];
+        // Проверка спец-доступа от админа
+        const config = (partners && partners.length > 0) ? partners.find(p => p.id === "CONFIG_ACCESS") : null;
+        const allowedList = config?.desc ? config.desc.split(',').map(u => u.trim()) : [];
+        const hasFullAccess = userName ? allowedList.includes(userName) : false;
 
         if (!hasFullAccess) {
             restrictedTabs.forEach(tabId => {
