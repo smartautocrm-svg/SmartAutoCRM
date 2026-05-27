@@ -4900,40 +4900,32 @@ function generateReport() {
                     <h3 style="margin:0; color:#511f54;">📈 Отчет помощника: ${selMan}</h3>
                     <button class="btn-pdf" onclick="exportKpiToPdf()" style="width:150px; background:#511f54;">Выгрузить PDF</button>
                 </div>
-                
                 <div style="display:flex; gap:20px; margin-top:10px;">
                     <div style="flex:1; background:white; padding:10px; border-radius:5px; border:1px solid #eee; text-align:center;">
-                        <small>ОБЩЕЕ КОЛ-ВО ПЕРЕДАННЫХ:</small><br><b style="font-size:20px;">${kpiCompanies.length}</b>
+                        <small>ВСЕГО ПЕРЕДАНО:</small><br><b style="font-size:20px;">${kpiCompanies.length}</b>
                     </div>
                     <div style="flex:1; background:white; padding:10px; border-radius:5px; border:1px solid #eee; text-align:center;">
                         <small>ВАЛИДНЫХ (2+ действия):</small><br><b style="font-size:20px; color:green;">${validCount}</b>
                     </div>
                 </div>
-
                 <div style="margin-top:15px; background:white; padding:10px; border-radius:5px; border:1px solid #eee;">
                     <small style="font-weight:bold; color:#666; text-transform:uppercase;">Распределение по менеджерам:</small>
-                    <table style="width:100%; font-size:10px; margin-top:5px; border-collapse:collapse;" border="1" bordercolor="#eee">
+                    <table style="width:100%; font-size:11px; margin-top:5px; border-collapse:collapse;" border="1" bordercolor="#eee">
                         <thead><tr style="background:#f8f9fa;"><th>Менеджер</th><th>Передано</th><th>Валидных</th></tr></thead>
                         <tbody style="text-align:center;">${distRows || '<tr><td colspan="3">Нет данных</td></tr>'}</tbody>
                     </table>
                 </div>
 
-                <div style="margin-top:15px; background:white; padding:10px; border-radius:5px; border:1px solid #eee;">
+                <!-- ЭТА ЧАСТЬ ТЕПЕРЬ СКРЫТА НА ЭКРАНЕ, НО ЕСТЬ В КОДЕ -->
+                <div id="assistant-detailed-table" style="display:none; margin-top:15px; background:white; padding:10px; border-radius:5px; border:1px solid #eee;">
                     <small style="font-weight:bold; color:#666; text-transform:uppercase;">Детальный список переданных компаний:</small>
                     <table style="width:100%; font-size:9px; margin-top:5px; border-collapse:collapse;" border="1" bordercolor="#eee">
                         <thead>
                             <tr style="background:#f8f9fa;">
-                                <th>Название</th>
-                                <th>Груз</th>
-                                <th>Контакт</th>
-                                <th>Телефон</th>
-                                <th>Валид.</th>
-                                <th>Дата передачи</th>
+                                <th>Название</th><th>Груз</th><th>Контакт</th><th>Телефон</th><th>Валид.</th><th>Дата</th>
                             </tr>
                         </thead>
-                        <tbody style="text-align:center;">
-                            ${detailedRows || '<tr><td colspan="6">Список пуст</td></tr>'}
-                        </tbody>
+                        <tbody style="text-align:center;">${detailedRows || '<tr><td colspan="6">Список пуст</td></tr>'}</tbody>
                     </table>
                 </div>
             </div>`;
@@ -5812,14 +5804,24 @@ document.addEventListener('keydown', function(e) {
 });
         function exportKpiToPdf() {
     const element = document.getElementById('reportData');
+    const detailedTable = document.getElementById('assistant-detailed-table');
+    
+    // 1. Включаем видимость таблицы для PDF
+    if (detailedTable) detailedTable.style.display = 'block';
+
     const name = document.getElementById('reportManagerFilter')?.value || "Report";
     const opt = {
         margin: 10,
-        filename: `KPI_${name}.pdf`,
+        filename: `KPI_${name}_${new Date().toLocaleDateString()}.pdf`,
         html2canvas: { scale: 2 },
         jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     };
-    html2pdf().set(opt).from(element).save();
+    
+    // 2. Генерируем PDF
+    html2pdf().set(opt).from(element).save().then(() => {
+        // 3. Прячем таблицу обратно после того, как PDF создался
+        if (detailedTable) detailedTable.style.display = 'none';
+    });
 }
     
 </script>
