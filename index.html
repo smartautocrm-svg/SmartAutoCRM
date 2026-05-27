@@ -4855,6 +4855,7 @@ function renderManagerStats() {
     document.getElementById('reportData').innerHTML = h + '</tbody></table>'; 
 
     // --- БЛОК KPI АССИСТЕНТА ---
+    // --- ОБНОВЛЕННЫЙ БЛОК KPI АССИСТЕНТА С ДЕТАЛИЗАЦИЕЙ ПО МЕНЕДЖЕРАМ ---
     if (selMan !== 'all' && teamStructure && teamStructure[selMan] && teamStructure[selMan].role === 'assistant') {
         const kpiCompanies = companies.filter(c => {
             if (c.isDeleted || c.createdBy !== selMan) return false;
@@ -4864,12 +4865,32 @@ function renderManagerStats() {
             return matchY && matchM;
         });
 
+        // Считаем распределение по менеджерам
+        let managerDist = {}; 
         let validCount = 0;
+
         kpiCompanies.forEach(comp => {
+            const mName = comp.manager || "Не назначен";
+            if (!managerDist[mName]) managerDist[mName] = { total: 0, valid: 0 };
+            managerDist[mName].total++;
+
             const acts = (reminders || []).filter(r => r.name === comp.name && !r.isDeleted).length;
             const reqs = (requests || []).filter(r => r.company === comp.name && !r.isDeleted).length;
-            if ((acts + reqs) >= 2) validCount++;
+            
+            if ((acts + reqs) >= 2) {
+                validCount++;
+                managerDist[mName].valid++;
+            }
         });
+
+        // Формируем строки таблицы распределения
+        let distRows = Object.keys(managerDist).map(m => `
+            <tr>
+                <td style="text-align:left; padding:5px 10px;">👤 ${m}</td>
+                <td>${managerDist[m].total}</td>
+                <td style="color:green; font-weight:bold;">${managerDist[m].valid}</td>
+            </tr>
+        `).join('');
 
         const kpiHtml = `
             <div id="pdf-kpi-area" style="background:#fdfbff; border:2px solid #511f54; padding:15px; border-radius:10px; margin-bottom:20px;">
@@ -4877,18 +4898,34 @@ function renderManagerStats() {
                     <h3 style="margin:0; color:#511f54;">📈 Отчет помощника: ${selMan}</h3>
                     <button class="btn-pdf" onclick="exportKpiToPdf()" style="width:150px; background:#511f54;">Выгрузить PDF</button>
                 </div>
+                
                 <div style="display:flex; gap:20px; margin-top:10px;">
-                    <div style="flex:1; background:white; padding:10px; border-radius:5px; border:1px solid #eee;">
-                        <small>ПЕРЕДАНО КОНТАКТОВ:</small><br><b style="font-size:20px;">${kpiCompanies.length}</b>
+                    <div style="flex:1; background:white; padding:10px; border-radius:5px; border:1px solid #eee; text-align:center;">
+                        <small>ОБЩЕЕ КОЛ-ВО ПЕРЕДАННЫХ:</small><br><b style="font-size:20px;">${kpiCompanies.length}</b>
                     </div>
-                    <div style="flex:1; background:white; padding:10px; border-radius:5px; border:1px solid #eee;">
+                    <div style="flex:1; background:white; padding:10px; border-radius:5px; border:1px solid #eee; text-align:center;">
                         <small>ВАЛИДНЫХ (2+ действия):</small><br><b style="font-size:20px; color:green;">${validCount}</b>
                     </div>
+                </div>
+
+                <div style="margin-top:15px; background:white; padding:10px; border-radius:5px; border:1px solid #eee;">
+                    <small style="font-weight:bold; color:#666; text-transform:uppercase;">Распределение по менеджерам:</small>
+                    <table style="width:100%; font-size:11px; margin-top:5px; border-collapse:collapse;" border="1" bordercolor="#eee">
+                        <thead style="background:#f8f9fa;">
+                            <tr>
+                                <th style="padding:5px;">Менеджер</th>
+                                <th>Передано</th>
+                                <th>Валидных</th>
+                            </tr>
+                        </thead>
+                        <tbody style="text-align:center;">
+                            ${distRows || '<tr><td colspan="3" style="padding:10px; color:#999;">Данных о передаче нет</td></tr>'}
+                        </tbody>
+                    </table>
                 </div>
             </div>`;
         document.getElementById('reportData').insertAdjacentHTML('afterbegin', kpiHtml);
     }
-}
 
     // --- ЛОГИКА ТРЕКИНГА ---
     function checkTrackingAccess(item) {
