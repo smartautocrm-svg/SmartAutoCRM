@@ -4904,6 +4904,7 @@ if (selMan !== 'all' && teamStructure && teamStructure[selMan] && teamStructure[
     `;
     document.getElementById('reportData').insertAdjacentHTML('afterbegin', kpiHtml);
 }
+        }
 
     // --- ЛОГИКА ТРЕКИНГА ---
     function checkTrackingAccess(item) {
@@ -5228,11 +5229,12 @@ function updateAdminUI() {
                 if (currentSel) teamFilter.value = currentSel;
                 teamFilter.disabled = false;
             } else {
-                // Лидер: видит только свою группу без возможности переключить
-                teamFilter.innerHTML = `<option value="${myTeam}">${myTeam.toUpperCase()}</option>`;
-                teamFilter.value = myTeam;
-                teamFilter.disabled = true;
-            }
+    // Лидер: видит только свою группу без возможности переключить
+    const teamName = myTeam || "БЕЗ ГРУППЫ";
+    teamFilter.innerHTML = `<option value="${teamName}">${teamName.toUpperCase()}</option>`;
+    teamFilter.value = teamName;
+    teamFilter.disabled = true;
+}
         }
 
         // 4. Показываем выпадающие списки менеджеров в звонках, запросах и сделках
@@ -5246,13 +5248,14 @@ function updateAdminUI() {
         updateStatsManagerList();
     }
     const userRole = sessionStorage.getItem('crm_role');
-    const userName = sessionStorage.getItem('crm_user');
+const userName = sessionStorage.getItem('crm_user');
 
-    if (userRole === 'assistant') {
-        const restrictedTabs = ['btn-deals', 'btn-report', 'btn-stats', 'btn-logs'];
-        const config = (typeof partners !== 'undefined' && partners) ? partners.find(p => p.id === "CONFIG_ACCESS") : null;
-        const allowedList = config?.desc ? config.desc.split(',').map(u => u.trim()) : [];
-        const hasFullAccess = allowedList.includes(userName);
+if (userRole === 'assistant') {
+    const restrictedTabs = ['btn-deals', 'btn-report', 'btn-stats', 'btn-logs'];
+    // Проверка: есть ли вообще массив партнеров и не пуст ли он
+    const config = (partners && partners.length > 0) ? partners.find(p => p.id === "CONFIG_ACCESS") : null;
+    const allowedList = config?.desc ? config.desc.split(',').map(u => u.trim()) : [];
+    const hasFullAccess = userName ? allowedList.includes(userName) : false;
 
         if (!hasFullAccess) {
             restrictedTabs.forEach(tabId => {
