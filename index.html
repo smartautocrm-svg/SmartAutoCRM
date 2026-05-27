@@ -4870,7 +4870,7 @@ function renderManagerStats() {
 
     document.getElementById('reportData').innerHTML = h + '</tbody></table>'; 
 // Впрыск KPI для помощника
-if (teamStructure[selMan] && teamStructure[selMan].role === 'assistant') {
+if (selMan !== 'all' && teamStructure && teamStructure[selMan] && teamStructure[selMan].role === 'assistant') {
     const kpiCompanies = companies.filter(c => {
         if (c.isDeleted || c.createdBy !== selMan) return false;
         const d = new Date(c.createdAt);
@@ -4881,9 +4881,9 @@ if (teamStructure[selMan] && teamStructure[selMan].role === 'assistant') {
 
     let validCount = 0;
     kpiCompanies.forEach(comp => {
-        const acts = reminders.filter(r => r.name === comp.name && !r.isDeleted).length;
-        const reqs = requests.filter(r => r.company === comp.name && !r.isDeleted).length;
-        if ((acts + reqs) >= 2) validCount++;
+        const actsCount = (reminders || []).filter(r => r.name === comp.name && !r.isDeleted).length;
+        const reqsCount = (requests || []).filter(r => r.company === comp.name && !r.isDeleted).length;
+        if ((actsCount + reqsCount) >= 2) validCount++;
     });
 
     const kpiHtml = `
@@ -5221,7 +5221,7 @@ function updateAdminUI() {
         if (teamFilter) {
             if (role === 'admin') {
                 // Админ: собираем все уникальные названия команд из структуры
-                const allTeams = [...new Set(Object.values(teamStructure).map(x => x.team))].filter(t => t && t !== 'none');
+                const allTeams = [...new Set(Object.values(teamStructure || {}).map(x => x.team))].filter(t => t && t !== 'none');
                 const currentSel = teamFilter.value;
                 teamFilter.innerHTML = '<option value="all">🌐 Все группы</option>' + 
                     allTeams.map(t => `<option value="${t}">${t.toUpperCase()}</option>`).join('');
@@ -5249,12 +5249,10 @@ function updateAdminUI() {
     const userName = sessionStorage.getItem('crm_user');
 
     if (userRole === 'assistant') {
-        // Вкладки, которые будут скрыты, если админ не дал доступ
         const restrictedTabs = ['btn-deals', 'btn-report', 'btn-stats', 'btn-logs'];
-        
-        // Проверка через конфиг в Партнерах (о котором мы говорили ранее)
-        const config = partners.find(p => p.id === "CONFIG_ACCESS");
-        const hasFullAccess = config && config.desc.split(',').map(u => u.trim()).includes(userName);
+        const config = (typeof partners !== 'undefined' && partners) ? partners.find(p => p.id === "CONFIG_ACCESS") : null;
+        const allowedList = config?.desc ? config.desc.split(',').map(u => u.trim()) : [];
+        const hasFullAccess = allowedList.includes(userName);
 
         if (!hasFullAccess) {
             restrictedTabs.forEach(tabId => {
