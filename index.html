@@ -4777,134 +4777,118 @@ function renderManagerStats() {
     document.getElementById('statsDetailModal').style.display = 'block';
 }
 
-    function generateReport() {
+   function generateReport() {
     const me = sessionStorage.getItem('crm_user');
     const role = sessionStorage.getItem('crm_role');
-    const myTeam = sessionStorage.getItem('crm_team');
+    const myTeam = String(sessionStorage.getItem('crm_team') || "none").trim().toLowerCase();
     
-    // Определяем выбранного менеджера
     let selMan = (role === 'admin' || role === 'leader') ? (document.getElementById('reportManagerFilter').value || 'all') : me;
-    
     const selYear = document.getElementById('reportYearFilter').value;
     const selMonth = document.getElementById('reportMonthFilter').value;
     
     const ms = ["Янв", "Фев", "Мар", "Апр", "Май", "Июн", "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек"];
     const ap = new Map(); 
 
-    // Фильтруем данные один раз
-    const filterByAccess = (item) => {
-        if (!item) return false;
-        const date = new Date(item.date || item.createdAt);
-        if (isNaN(date)) return false;
+    // --- ЕДИНЫЙ ФИЛЬТР ДОСТУПА ---
+    const filterByAccess = (itemManager, itemDate) => {
+        if (!itemDate) return false;
+        const d = new Date(itemDate);
+        if (isNaN(d.getTime())) return false;
 
-        // Фильтр по дате
-        if (selYear !== 'all' && date.getFullYear().toString() !== selYear) return false;
-        if (selMonth !== 'all' && date.getMonth().toString() !== selMonth) return false;
+        // Фильтр по дате (Год и Месяц)
+        if (selYear !== 'all' && d.getFullYear().toString() !== selYear) return false;
+        if (selMonth !== 'all' && d.getMonth().toString() !== selMonth) return false;
 
-        const mInfo = teamStructure[item.manager] || {};
+        const mName = String(itemManager || "").trim();
         
-        // ЛОГИКА ДОСТУПА: 
-        // 1. Если админ - видит всё.
-        // 2. Если лидер - видит только свою группу.
-        // 3. Если менеджер - только себя.
         if (role === 'admin') {
-            if (selMan !== 'all' && item.manager !== selMan) return false;
+            return (selMan === 'all' || mName === selMan);
         } else if (role === 'leader') {
-        // Проверяем: совпадает ли команда сотрудника (item.manager) с вашей командой (myTeam)
-        // mInfo мы получили выше на строке 4355 через teamStructure
-        if (mInfo.team !== myTeam) {
-            return false; // Если команда не ваша — отсекаем данные
+            const mInfo = (teamStructure && teamStructure[mName]) ? teamStructure[mName] : { team: 'none' };
+            const itemTeam = String(mInfo.team || "none").trim().toLowerCase();
+            // Лидер видит свою команду или свои личные записи
+            if (itemTeam === myTeam || mName === me) {
+                return (selMan === 'all' || mName === selMan);
+            }
+            return false;
         }
+        return mName === me;
+    };
 
-        // Если команда ваша, проверяем фильтр по конкретному человеку
-        // Если в фильтре выбрано "Все сотрудники" (selMan === 'all'), 
-        // то сюда попадут и ваши Sales, и ваш Operations.
-        if (selMan !== 'all' && item.manager !== selMan) {
-            return false; // Если выбран конкретный человек, а запись принадлежит не ему — отсекаем
-        }
-        
-        // Если сотрудник из вашей команды и прошел фильтр по имени — разрешаем показ
-        return true;
-
-    } else {
-        // Блок для обычного менеджера: видит только свои записи
-        if (item.manager !== me) return false;
-    }
-    return true; // Разрешаем показ, если ни одно из условий false не сработало
-};
-
-    const mk = (ds) => { 
-        const d = new Date(ds);
+    const mk = (dateStr) => { 
+        const d = new Date(dateStr);
         const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
         ap.set(k, {y:d.getFullYear(), m:d.getMonth()}); 
     }; 
 
-    // Собираем периоды
-    reminders.filter(filterByAccess).forEach(r => mk(r.date)); 
-    requests.filter(filterByAccess).forEach(r => mk(r.createdAt)); 
-    companies.filter(c => c.status === 'active' && filterByAccess({manager: c.manager, createdAt: c.activatedAt})).forEach(c => mk(c.activatedAt));
+    // Собираем периоды для таблицы
+    reminders.forEach(r => { if(filterByAccess(r.manager, r.date)) mk(r.date); });
+    requests.forEach(r => { if(filterByAccess(r.manager, r.createdAt)) mk(r.createdAt); });
+    companies.forEach(c => { if(c.status === 'active' && filterByAccess(c.manager, c.activatedAt)) mk(c.activatedAt); });
 
-    let h = `<h3>📊 Активность: ${selMan==='all' ? (role==='leader'?'Моя группа': 'Все') : selMan}</h3>
+    let h = `<h3>📊 Активность: ${selMan === 'all' ? (role === 'leader' ? 'Моя группа' : 'Все') : selMan}</h3>
              <table class="report-table"><thead><tr><th>Период</th><th>Звонки</th><th>Запросы</th><th>Новые клиенты</th></tr></thead><tbody>`; 
 
+    // Строим строки таблицы
     Array.from(ap.keys()).sort().reverse().forEach(k => { 
         const {y, m} = ap.get(k); 
         
-        const c = reminders.filter(filterByAccess).filter(r => { 
-            const d = new Date(r.date); 
-            return d.getMonth() === m && d.getFullYear() === y; 
+        const cCount = (reminders || []).filter(r => {
+            const d = new Date(r.date);
+            return d.getMonth() === m && d.getFullYear() === y && filterByAccess(r.manager, r.date);
         }).length;
 
-        const rq = requests.filter(filterByAccess).filter(r => { 
-            const d = new Date(r.createdAt); 
-            return d.getMonth() === m && d.getFullYear() === y; 
+        const rCount = (requests || []).filter(r => {
+            const d = new Date(r.createdAt);
+            return d.getMonth() === m && d.getFullYear() === y && filterByAccess(r.manager, r.createdAt);
         }).length;
 
-        const nc = companies.filter(co => co.status === 'active' && filterByAccess({manager: co.manager, createdAt: co.activatedAt})).filter(co => { 
-            const d = new Date(co.activatedAt); 
-            return d.getMonth() === m && d.getFullYear() === y; 
+        const clCount = (companies || []).filter(c => {
+            if (c.status !== 'active' || !c.activatedAt) return false;
+            const d = new Date(c.activatedAt);
+            return d.getMonth() === m && d.getFullYear() === y && filterByAccess(c.manager, c.activatedAt);
         }).length;
 
-        h += `<tr><td>${ms[m]} ${y}</td><td>${c}</td><td>${rq}</td><td style="color:var(--success); font-weight:bold;">${nc}</td></tr>`; 
+        h += `<tr><td>${ms[m]} ${y}</td><td>${cCount}</td><td>${rCount}</td><td style="color:var(--success); font-weight:bold;">${clCount}</td></tr>`; 
     }); 
 
     document.getElementById('reportData').innerHTML = h + '</tbody></table>'; 
-// Впрыск KPI для помощника
-if (selMan !== 'all' && teamStructure && teamStructure[selMan] && teamStructure[selMan].role === 'assistant') {
-    const kpiCompanies = companies.filter(c => {
-        if (c.isDeleted || c.createdBy !== selMan) return false;
-        const d = new Date(c.createdAt);
-        if (selYear !== 'all' && d.getFullYear().toString() !== selYear) return false;
-        if (selMonth !== 'all' && d.getMonth().toString() !== selMonth) return false;
-        return true;
-    });
 
-    let validCount = 0;
-    kpiCompanies.forEach(comp => {
-        const actsCount = (reminders || []).filter(r => r.name === comp.name && !r.isDeleted).length;
-        const reqsCount = (requests || []).filter(r => r.company === comp.name && !r.isDeleted).length;
-        if ((actsCount + reqsCount) >= 2) validCount++;
-    });
+    // --- БЛОК KPI АССИСТЕНТА ---
+    if (selMan !== 'all' && teamStructure && teamStructure[selMan] && teamStructure[selMan].role === 'assistant') {
+        const kpiCompanies = companies.filter(c => {
+            if (c.isDeleted || c.createdBy !== selMan) return false;
+            const d = new Date(c.createdAt);
+            const matchY = (selYear === 'all' || d.getFullYear().toString() === selYear);
+            const matchM = (selMonth === 'all' || d.getMonth().toString() === selMonth);
+            return matchY && matchM;
+        });
 
-    const kpiHtml = `
-        <div id="pdf-kpi-area" style="background:#fdfbff; border:2px solid #511f54; padding:15px; border-radius:10px; margin-bottom:20px;">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-                <h3 style="margin:0; color:#511f54;">📈 Отчет помощника: ${selMan}</h3>
-                <button class="btn-pdf" onclick="exportKpiToPdf()" style="width:150px; background:#511f54;">Выгрузить PDF</button>
-            </div>
-            <div style="display:flex; gap:20px; margin-top:10px;">
-                <div style="flex:1; background:white; padding:10px; border-radius:5px; border:1px solid #eee;">
-                    <small>ПЕРЕДАНО КОНТАКТОВ:</small><br><b style="font-size:20px;">${kpiCompanies.length}</b>
+        let validCount = 0;
+        kpiCompanies.forEach(comp => {
+            const acts = (reminders || []).filter(r => r.name === comp.name && !r.isDeleted).length;
+            const reqs = (requests || []).filter(r => r.company === comp.name && !r.isDeleted).length;
+            if ((acts + reqs) >= 2) validCount++;
+        });
+
+        const kpiHtml = `
+            <div id="pdf-kpi-area" style="background:#fdfbff; border:2px solid #511f54; padding:15px; border-radius:10px; margin-bottom:20px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <h3 style="margin:0; color:#511f54;">📈 Отчет помощника: ${selMan}</h3>
+                    <button class="btn-pdf" onclick="exportKpiToPdf()" style="width:150px; background:#511f54;">Выгрузить PDF</button>
                 </div>
-                <div style="flex:1; background:white; padding:10px; border-radius:5px; border:1px solid #eee;">
-                    <small>ВАЛИДНЫХ (2+ действия):</small><br><b style="font-size:20px; color:green;">${validCount}</b>
+                <div style="display:flex; gap:20px; margin-top:10px;">
+                    <div style="flex:1; background:white; padding:10px; border-radius:5px; border:1px solid #eee;">
+                        <small>ПЕРЕДАНО КОНТАКТОВ:</small><br><b style="font-size:20px;">${kpiCompanies.length}</b>
+                    </div>
+                    <div style="flex:1; background:white; padding:10px; border-radius:5px; border:1px solid #eee;">
+                        <small>ВАЛИДНЫХ (2+ действия):</small><br><b style="font-size:20px; color:green;">${validCount}</b>
+                    </div>
                 </div>
-            </div>
-        </div>
-    `;
-    document.getElementById('reportData').insertAdjacentHTML('afterbegin', kpiHtml);
+            </div>`;
+        document.getElementById('reportData').insertAdjacentHTML('afterbegin', kpiHtml);
+    }
 }
-        }
 
     // --- ЛОГИКА ТРЕКИНГА ---
     function checkTrackingAccess(item) {
