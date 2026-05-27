@@ -4868,20 +4868,22 @@ function renderManagerStats() {
         // Считаем распределение по менеджерам
         let managerDist = {}; 
         let validCount = 0;
+    let managerDist = {}; // ОБЯЗАТЕЛЬНО: создаем пустой объект для сбора данных
 
-        kpiCompanies.forEach(comp => {
-            const mName = comp.manager || "Не назначен";
-            if (!managerDist[mName]) managerDist[mName] = { total: 0, valid: 0 };
-            managerDist[mName].total++;
+    kpiCompanies.forEach(comp => {
+        // Логика сбора данных по менеджерам
+        const mName = comp.manager || "Не назначен";
+        if (!managerDist[mName]) managerDist[mName] = { total: 0, valid: 0 };
+        managerDist[mName].total++;
 
-            const acts = (reminders || []).filter(r => r.name === comp.name && !r.isDeleted).length;
-            const reqs = (requests || []).filter(r => r.company === comp.name && !r.isDeleted).length;
-            
-            if ((acts + reqs) >= 2) {
-                validCount++;
-                managerDist[mName].valid++;
-            }
-        });
+        const actsCount = (reminders || []).filter(r => r.name === comp.name && !r.isDeleted).length;
+        const reqsCount = (requests || []).filter(r => r.company === comp.name && !r.isDeleted).length;
+        
+        if ((actsCount + reqsCount) >= 2) {
+            validCount++;
+            managerDist[mName].valid++; // Считаем валидные для конкретного менеджера
+        }
+    });
 
         // Формируем строки таблицы распределения
         let distRows = Object.keys(managerDist).map(m => `
