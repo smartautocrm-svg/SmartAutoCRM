@@ -4846,7 +4846,7 @@ function generateReport() {
 
     document.getElementById('reportData').innerHTML = h + '</tbody></table>'; 
 
-    // 4. БЛОК KPI ПОМОЩНИКА
+    // --- ОБНОВЛЕННЫЙ БЛОК KPI АССИСТЕНТА С ДЕТАЛЬНЫМ СПИСКОМ КОНТАКТОВ ---
     if (selMan !== 'all' && teamStructure && teamStructure[selMan] && teamStructure[selMan].role === 'assistant') {
         const kpiCompanies = companies.filter(c => {
             if (c.isDeleted || c.createdBy !== selMan) return false;
@@ -4858,19 +4858,35 @@ function generateReport() {
 
         let managerDist = {}; 
         let validCount = 0;
+        
+        // 1. Собираем статистику по менеджерам и готовим строки для детального списка
+        let detailedRows = kpiCompanies.map(c => {
+            // Считаем активности для определения валидности
+            const acts = (reminders || []).filter(r => r.name === c.name && !r.isDeleted).length;
+            const reqs = (requests || []).filter(r => r.company === c.name && !r.isDeleted).length;
+            const isValid = (acts + reqs) >= 2;
 
-        kpiCompanies.forEach(comp => {
-            const mName = comp.manager || "Не назначен";
+            if (isValid) validCount++;
+
+            // Распределение по менеджерам
+            const mName = c.manager || "Не назначен";
             if (!managerDist[mName]) managerDist[mName] = { total: 0, valid: 0 };
             managerDist[mName].total++;
-            const acts = (reminders || []).filter(r => r.name === comp.name && !r.isDeleted).length;
-            const reqs = (requests || []).filter(r => r.company === comp.name && !r.isDeleted).length;
-            if ((acts + reqs) >= 2) {
-                validCount++;
-                managerDist[mName].valid++;
-            }
-        });
+            if (isValid) managerDist[mName].valid++;
 
+            // Возвращаем строку для таблицы списка компаний
+            return `
+                <tr>
+                    <td style="text-align:left; padding:5px;">${c.name}</td>
+                    <td>${c.product || '---'}</td>
+                    <td>${c.contact || '---'}</td>
+                    <td>${c.phone || '---'}</td>
+                    <td>${isValid ? '<span style="color:green; font-weight:bold;">✅ Да</span>' : '<span style="color:#ccc;">Нет</span>'}</td>
+                    <td>${dFmt(c.createdAt)}</td>
+                </tr>`;
+        }).join('');
+
+        // 2. Формируем строки для таблицы распределения по менеджерам
         let distRows = Object.keys(managerDist).map(m => `
             <tr>
                 <td style="text-align:left; padding:5px 10px;">👤 ${m}</td>
@@ -4884,6 +4900,7 @@ function generateReport() {
                     <h3 style="margin:0; color:#511f54;">📈 Отчет помощника: ${selMan}</h3>
                     <button class="btn-pdf" onclick="exportKpiToPdf()" style="width:150px; background:#511f54;">Выгрузить PDF</button>
                 </div>
+                
                 <div style="display:flex; gap:20px; margin-top:10px;">
                     <div style="flex:1; background:white; padding:10px; border-radius:5px; border:1px solid #eee; text-align:center;">
                         <small>ОБЩЕЕ КОЛ-ВО ПЕРЕДАННЫХ:</small><br><b style="font-size:20px;">${kpiCompanies.length}</b>
@@ -4892,17 +4909,36 @@ function generateReport() {
                         <small>ВАЛИДНЫХ (2+ действия):</small><br><b style="font-size:20px; color:green;">${validCount}</b>
                     </div>
                 </div>
+
                 <div style="margin-top:15px; background:white; padding:10px; border-radius:5px; border:1px solid #eee;">
-                    <small style="font-weight:bold; color:#666; text-transform:uppercase;">Кому переданы контакты:</small>
-                    <table style="width:100%; font-size:11px; margin-top:5px; border-collapse:collapse;" border="1" bordercolor="#eee">
+                    <small style="font-weight:bold; color:#666; text-transform:uppercase;">Распределение по менеджерам:</small>
+                    <table style="width:100%; font-size:10px; margin-top:5px; border-collapse:collapse;" border="1" bordercolor="#eee">
                         <thead><tr style="background:#f8f9fa;"><th>Менеджер</th><th>Передано</th><th>Валидных</th></tr></thead>
                         <tbody style="text-align:center;">${distRows || '<tr><td colspan="3">Нет данных</td></tr>'}</tbody>
+                    </table>
+                </div>
+
+                <div style="margin-top:15px; background:white; padding:10px; border-radius:5px; border:1px solid #eee;">
+                    <small style="font-weight:bold; color:#666; text-transform:uppercase;">Детальный список переданных компаний:</small>
+                    <table style="width:100%; font-size:9px; margin-top:5px; border-collapse:collapse;" border="1" bordercolor="#eee">
+                        <thead>
+                            <tr style="background:#f8f9fa;">
+                                <th>Название</th>
+                                <th>Груз</th>
+                                <th>Контакт</th>
+                                <th>Телефон</th>
+                                <th>Валид.</th>
+                                <th>Дата передачи</th>
+                            </tr>
+                        </thead>
+                        <tbody style="text-align:center;">
+                            ${detailedRows || '<tr><td colspan="6">Список пуст</td></tr>'}
+                        </tbody>
                     </table>
                 </div>
             </div>`;
         document.getElementById('reportData').insertAdjacentHTML('afterbegin', kpiHtml);
     }
-}
 
     // --- ЛОГИКА ТРЕКИНГА ---
     function checkTrackingAccess(item) {
