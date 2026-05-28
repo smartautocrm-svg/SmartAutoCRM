@@ -2692,7 +2692,19 @@ function showCompanyPreview(n) {
         <div class="preview-box"><label>📦 Груз</label><span>${c.product || '-'}</span></div>
         <div class="preview-box"><label>📥 Импорт</label><span>${c.imp || '-'}</span></div>
         <div class="preview-box"><label>📤 Экспорт</label><span>${c.exp || '-'}</span></div>
-        <div class="preview-box" style="grid-column:span 2;"><label>🔗 Сайт</label><span>${c.website || '-'}</span></div>
+        <div class="preview-box" style="grid-column:span 2;">
+            <label>🔗 Сайт</label>
+            <span>
+                ${c.website && c.website !== '-' ? 
+                    `<a href="${c.website.startsWith('http') ? c.website : 'https://' + c.website}" 
+                        target="_blank" 
+                        style="color: var(--primary); text-decoration: underline; font-weight: bold;">
+                        ${c.website}
+                    </a>` 
+                    : '-'
+                }
+            </span>
+        </div>
         <div class="preview-box" style="grid-column:span 2; margin-top: 5px; border-top: 1px solid #f0eaf0; padding-top: 10px;">
             <label>📝 Описание / Примечания</label>
             <span style="font-weight: normal; white-space: pre-wrap; color: #555; line-height: 1.4;">${c.desc || '—'}</span>
