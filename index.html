@@ -1268,6 +1268,7 @@ button.main:active {
             <input type="text" id="searchCompGlobal" placeholder="🔍 Поиск по названию, грузу, городу, импорту или экспорту..." oninput="debouncedRenderCompanies()" style="max-width: 450px;">
             <select id="sortComp" onchange="updateSecondaryFilter()"><option value="">Фильтр</option><option value="manager">Менеджер</option><option value="status">Статус</option></select>
             <select id="secondarySelect" style="display:none;" onchange="renderCompanies()"></select>
+            <input type="date" id="searchCompDate" onchange="renderCompanies()" style="max-width: 130px;" title="Фильтр по дате добавления">
             <label style="font-size: 10px; display: flex; align-items: center; gap: 4px; white-space: nowrap; background: #fff0f0; padding: 4px 8px; border-radius: 4px; border: 1px solid #ffcccc; cursor: pointer;">
     <input type="checkbox" id="hideActiveComp" onchange="renderCompanies()" style="width: auto;"> 
     <span style="color: var(--danger); font-weight: bold;">⚠️ ТОЛЬКО ЗАБЫТЫЕ</span>
@@ -3183,6 +3184,7 @@ function renderCompanies() {
     const cat = document.getElementById('sortComp').value; 
     const valSel = document.getElementById('secondarySelect').value;
     const onlyForgotten = document.getElementById('hideActiveComp').checked;
+    const selDate = document.getElementById('searchCompDate').value;
           
     const companiesWithWork = new Set([
         ...reminders.filter(r => !r.isDeleted).map(r => r.name),
@@ -3209,8 +3211,9 @@ function renderCompanies() {
         let matchT = true; 
         if (cat === 'manager' && valSel) matchT = (c.manager === valSel); 
         if (cat === 'status' && valSel) matchT = (c.status === valSel);
-        
-        return matchGlobal && matchT; // Используем matchGlobal вместо 5 разных проверок
+        const matchesDate = !selDate || dFmt(c.createdAt) === dFmt(selDate); // Наша новая проверка
+
+        return matchGlobal && matchT && matchesDate;
     });
 
     const totalFound = f.length;
