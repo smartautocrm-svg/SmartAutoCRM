@@ -1666,6 +1666,14 @@ const defaultTemplates = [
         body: "Вітаємо!\n\nНадсилаємо реквізити нашої компанії для оформлення договору та оплати.\n\nЗ повагою, {{manager}}\nSmartAuto Ltd"
     }
 ];
+    
+    // Превращает строку "27.05.2026" в объект даты для сравнения
+function parsePayDate(str) {
+    if (!str || typeof str !== 'string') return null;
+    const p = str.split('.');
+    if (p.length !== 3) return null;
+    return new Date(p[2], p[1] - 1, p[0]);
+}
 
 // Функция получения текущих шаблонов (личных или стандартных)
 function getMyTemplates() {
@@ -4353,24 +4361,24 @@ function updateDashboard() {
 
     // --- РАСЧЕТ ПРИБЫЛИ ТЕКУЩЕГО МЕСЯЦА ---
     const profitThisMonth = myDeals
-       .filter(d => {
-    const date = new Date(d.createdAt);
-    const isFinished = (d.stage === 'closed' || d.status === 'completed' || d.isPaid === true);
-    // Админ видит всех, менеджер — только себя:
-    const isVisible = (me === 'admin') ? true : (d.manager === me);
-    return isFinished && date.getMonth() === currentMonth && date.getFullYear() === currentYear && isVisible;
-})
+        .filter(d => {
+            if (!d.isPaid || !d.payDate) return false; // Считаем только оплаченные
+            const pDate = parsePayDate(d.payDate);
+            if (!pDate) return false;
+            const isVisible = (me === 'admin') ? true : (d.manager === me);
+            return pDate.getMonth() === currentMonth && pDate.getFullYear() === currentYear && isVisible;
+        })
         .reduce((sum, d) => sum + parseFloat(d.prof || 0), 0);
     // --- РАСЧЕТ ПРОШЛОГО МЕСЯЦА (ДЛЯ ТРЕНДА) ---
     const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
     const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
    const profitLastMonth = myDeals
         .filter(d => {
-            const date = new Date(d.createdAt);
-            const isFinished = (d.stage === 'closed' || d.status === 'completed' || d.isPaid === true);
-            // ТА ЖЕ ПРОВЕРКА
+            if (!d.isPaid || !d.payDate) return false;
+            const pDate = parsePayDate(d.payDate);
+            if (!pDate) return false;
             const isMine = (me === 'admin') ? true : (d.manager === me);
-            return isFinished && date.getMonth() === lastMonth && date.getFullYear() === lastMonthYear && isMine;
+            return pDate.getMonth() === lastMonth && pDate.getFullYear() === lastMonthYear && isMine;
         })
         .reduce((sum, d) => sum + parseFloat(d.prof || 0), 0);
 
@@ -4469,11 +4477,11 @@ function updateDashChart(myDeals) {
 last6Months.forEach(m => {
         m.profit = myDeals
             .filter(d => {
-                const dd = new Date(d.createdAt);
-                const isFinished = (d.stage === 'closed' || d.status === 'completed' || d.isPaid === true);
-                // ПРОВЕРКА АВТОРСТВА
+                if (!d.isPaid || !d.payDate) return false; // Важно: на графике теперь только реальные деньги
+                const pDate = parsePayDate(d.payDate);
+                if (!pDate) return false;
                 const isMine = (me === 'admin') ? true : (d.manager === me);
-                return isFinished && dd.getMonth() === m.month && dd.getFullYear() === m.year && isMine;
+                return pDate.getMonth() === m.month && pDate.getFullYear() === m.year && isMine;
             })
             .reduce((sum, d) => sum + parseFloat(d.prof || 0), 0);
     });
