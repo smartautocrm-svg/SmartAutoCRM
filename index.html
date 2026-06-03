@@ -4885,7 +4885,7 @@ function generateReport() {
     // --- ОБНОВЛЕННЫЙ БЛОК KPI АССИСТЕНТА С ДЕТАЛЬНЫМ СПИСКОМ КОНТАКТОВ ---
     if (selMan !== 'all' && teamStructure && teamStructure[selMan] && teamStructure[selMan].role === 'assistant') {
         const kpiCompanies = companies.filter(c => {
-            if (c.isDeleted || c.createdBy !== selMan) return false;
+            if (c.isDeleted || c.createdBy !== selMan || c.manager === selMan || !c.manager) return false;
             const d = new Date(c.createdAt);
             const matchY = (selYear === 'all' || d.getFullYear().toString() === selYear);
             const matchM = (selMonth === 'all' || d.getMonth().toString() === selMonth);
