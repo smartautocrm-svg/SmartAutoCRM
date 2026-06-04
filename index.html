@@ -3177,51 +3177,71 @@ function renderDeals() {
     document.getElementById('historyModal').style.display = 'block';
 }
 function renderCompanies() {
-    // Получаем значение из нашего нового единого поля
+    // 1. Получаем значения фильтров и данные пользователя
     const s = document.getElementById('searchCompGlobal').value.toLowerCase();
-    
-    // Остальные фильтры оставляем как были
     const cat = document.getElementById('sortComp').value; 
     const valSel = document.getElementById('secondarySelect').value;
     const onlyForgotten = document.getElementById('hideActiveComp').checked;
     const selDate = document.getElementById('searchCompDate').value;
+
+    const me = sessionStorage.getItem('crm_user');
+    const myRole = sessionStorage.getItem('crm_role');
+    const myTeam = String(sessionStorage.getItem('crm_team') || "").trim().toLowerCase();
           
+    // 2. Определяем список компаний, по которым ведется работа (для тега "ЗАБЫТА")
     const companiesWithWork = new Set([
         ...reminders.filter(r => !r.isDeleted).map(r => r.name),
         ...requests.filter(r => !r.isDeleted).map(r => r.company),
         ...deals.filter(d => !d.isDeleted).map(d => d.company)
     ]);
 
+    // 3. Фильтруем массив компаний
     let f = companies.filter(c => {
         if (c.isDeleted) return false;
 
+        // Фильтр: Только забытые
         const isForgotten = !companiesWithWork.has(c.name) && c.status !== 'refused';
         if (onlyForgotten && !isForgotten) return false;
 
-        // --- НОВАЯ ЛОГИКА УМНОГО ПОИСКА ---
-        // Проверяем, есть ли поисковая фраза хотя бы в одном из полей
+        // Фильтр: Умный глобальный поиск (Название, Груз, Город, Импорт, Экспорт)
         const matchGlobal = 
             String(c.name || "").toLowerCase().includes(s) ||
             String(c.product || "").toLowerCase().includes(s) ||
             String(c.city || "").toLowerCase().includes(s) ||
             String(c.imp || "").toLowerCase().includes(s) ||
             String(c.exp || "").toLowerCase().includes(s);
-        // ---------------------------------
         
-        let matchT = true; 
-        if (cat === 'manager' && valSel) matchT = (c.manager === valSel); 
-        if (cat === 'status' && valSel) matchT = (c.status === valSel);
-        const matchesDate = !selDate || dFmt(c.createdAt) === dFmt(selDate); // Наша новая проверка
+        if (!matchGlobal) return false;
 
-        return matchGlobal && matchT && matchesDate;
+        // Фильтр: Категории (Менеджер или Статус)
+        let matchCat = true; 
+        if (cat === 'manager' && valSel) matchCat = (c.manager === valSel); 
+        if (cat === 'status' && valSel) matchCat = (c.status === valSel);
+        if (!matchCat) return false;
+
+        // Фильтр: Дата добавления
+        const matchesDate = !selDate || dFmt(c.createdAt) === dFmt(selDate);
+        if (!matchesDate) return false;
+
+        return true;
     });
 
+    // 4. Пагинация (ограничение списка)
     const totalFound = f.length;
     const limitedList = f.slice(0, listLimits.companies);
 
+    // 5. Формируем HTML список
     let html = limitedList.map(c => {
         const isForgotten = !companiesWithWork.has(c.name) && c.status !== 'refused';
         const isSelected = selectedIds.has(String(c.id));
+        const hasBasicAccess = checkAccess(c.name);
+
+        // --- ЛОГИКА БЕЗОПАСНОСТИ РЕДАКТИРОВАНИЯ ---
+        const ownerInfo = teamStructure ? teamStructure[c.manager] : null;
+        const isTeamRecord = (myRole === 'leader' && ownerInfo && String(ownerInfo.team || "").toLowerCase().trim() === myTeam);
+        
+        // Права на управление (✎ и ×) есть у: Админа, Владельца, Лидера группы или тех, кому открыли доступ
+        const hasControlRights = (myRole === 'admin' || c.manager === me || (c.sharedWith || "").split(',').includes(me) || isTeamRecord);
 
         return `<div class="list-item ${isForgotten ? 'forgotten' : ''} ${isSelected ? 'selected' : ''}" 
                      onclick="showCompanyPreview('${c.name.replace(/'/g, "\\'")}')">
@@ -3232,17 +3252,27 @@ function renderCompanies() {
 
             <div class="item-main">
                 <h4>${c.isPrivate ? '🔒 ' : ''}${c.name} ${isForgotten ? '<span class="forgotten-tag">⚠️ ЗАБЫТА</span>' : ''}</h4>
-                <p>${checkAccess(c.name) ? statusMap[c.status].label : '🔒 Ограничен'} | ${c.manager} | 📅 ${dFmt(c.createdAt)}</p>
+                <p>${hasBasicAccess ? statusMap[c.status].label : '🔒 Ограничен'} | ${c.manager} | 📅 ${dFmt(c.createdAt)}</p>
             </div>
+
             <div class="item-actions">
-                <button class="action-btn" onclick="openEdit('${c.id}','company')">✎</button>
-                <button class="action-btn btn-delete" onclick="deleteItem('companies', '${c.id}')">×</button>
+                ${hasControlRights ? `
+                    <button class="action-btn" title="Редактировать" onclick="openEdit('${c.id}','company')">✎</button>
+                    <button class="action-btn btn-delete" title="Удалить" onclick="deleteItem('companies', '${c.id}')">×</button>
+                ` : `
+                    <span title="Только для чтения (Владелец: ${c.manager})" style="opacity:0.3; cursor:help; font-size:14px;">🔒</span>
+                `}
             </div>
         </div>`;
     }).join('');
 
+    // 6. Кнопка "Загрузить еще"
     if (totalFound > listLimits.companies) {
-        html += `<div class="load-more-container"><button class="btn-load-more" onclick="loadMore('companies')">Загрузить еще (показано ${limitedList.length} из ${totalFound})</button></div>`;
+        html += `<div class="load-more-container">
+            <button class="btn-load-more" onclick="loadMore('companies')">
+                Загрузить еще (показано ${limitedList.length} из ${totalFound})
+            </button>
+        </div>`;
     }
 
     document.getElementById('companiesList').innerHTML = html || '<div style="text-align:center; padding:20px; color:#999;">Компаний не найдено</div>';
