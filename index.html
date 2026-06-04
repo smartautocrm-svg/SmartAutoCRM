@@ -3573,17 +3573,10 @@ async function savePartnersAccess() {
     }
 
 async function saveEdit() {
-    const btn = event.target;
-    const originalText = btn.innerText;
     const id = document.getElementById('editId').value;
     const type = document.getElementById('editType').value;
     let updatedItem = null;
     let sheetName = '';
-
-    btn.disabled = true;
-    btn.innerText = "СОХРАНЕНИЕ...";
-
-    try {
 
     if (type === 'reminder') {
         sheetName = 'reminders';
@@ -3727,8 +3720,6 @@ async function saveEdit() {
     document.getElementById('editModal').style.display = 'none';
 }
 async function submitFollowUp() {
-    const btn = event.target;
-    const originalText = btn.innerText;
     const oldId = document.getElementById('activeRemId').value;
     const currentResult = document.getElementById('currentCallResult').value;
     const nextTime = document.getElementById('nextCallTime').value;
@@ -3737,20 +3728,19 @@ async function submitFollowUp() {
     const i = reminders.findIndex(x => String(x.id) === String(oldId));
     if (i === -1) return;
 
-    btn.disabled = true;
-    btn.innerText = "СОХРАНЕНИЕ...";
-
+    showLoader(true);
     try {
-        // 1. Завершаем текущий
         const oldRem = reminders[i];
         oldRem.status = 'completed';
         oldRem.topic = currentResult; 
+        
+        // 1. Обновляем текущую задачу
         await sync('reminders', oldRem, 'update');
 
-        // 2. Создаем новый (если заполнено)
+        // 2. Если запланирован следующий шаг
         if (nextTime && nextTopic) {
             const newRem = {
-                id: Date.now() + 1,
+                id: Date.now(),
                 name: oldRem.name, 
                 date: nextTime,
                 topic: nextTopic,
@@ -3760,45 +3750,31 @@ async function submitFollowUp() {
                 sharedWith: oldRem.sharedWith || ""
             };
             reminders.push(newRem);
+            // ПЕРЕДАЕМ ВЕСЬ МАССИВ reminders, чтобы sync корректно взял последний элемент
             await sync('reminders', reminders, 'append');
+            alert("Задача завершена. Новая создана.");
+        } else {
+            alert("Задача завершена.");
         }
 
         document.getElementById('followUpModal').style.display = 'none';
         renderReminders();
-        alert("Данные сохранены");
-    } catch(e) {
-        alert("Проблема с сохранением звонка");
+    } catch (e) {
+        console.error("Ошибка при сохранении:", e);
+        alert("Произошла ошибка при сохранении данных.");
     } finally {
-        btn.disabled = false;
-        btn.innerText = originalText;
+        showLoader(false);
     }
 }
     
 
     // --- ФУНКЦИИ ДОБАВЛЕНИЯ ---
-    async function addReminder() { 
-    const btn = event.target;
-    const originalText = btn.innerText;
-    const n = document.getElementById('callName').value; 
-    if(!n) return alert("Имя?"); 
-    
-    btn.disabled = true;
-    btn.innerText = "СОХРАНЕНИЕ...";
-
-    try {
-        const newItem = { id: Date.now(), name: n, date: document.getElementById('callTime').value, topic: document.getElementById('callTopic').value, manager: sessionStorage.getItem('crm_user'), status: "active" }; reminders.push(newItem); renderReminders();  updateCounters(); await sync('reminders', reminders, 'append'); ['callName', 'callTime', 'callTopic'].forEach(i=>document.getElementById(i).value=''); }
-    
-        async function addRequest() { 
-    const btn = event.target;
-    const originalText = btn.innerText;
+    async function addReminder() { const n = document.getElementById('callName').value; if(!n)return alert("Имя?"); const newItem = { id: Date.now(), name: n, date: document.getElementById('callTime').value, topic: document.getElementById('callTopic').value, manager: sessionStorage.getItem('crm_user'), status: "active" }; reminders.push(newItem); renderReminders();  updateCounters(); await sync('reminders', reminders, 'append'); ['callName', 'callTime', 'callTopic'].forEach(i=>document.getElementById(i).value=''); }
+    async function addRequest() { 
     const c = document.getElementById('reqComp').value; 
-    const t = document.getElementById('reqType').value; 
+    const t = document.getElementById('reqType').value; // Получаем тип
     if(!c || !t) return alert("Выберите клиента и тип запроса!"); 
 
-    btn.disabled = true;
-    btn.innerText = "СОХРАНЕНИЕ...";
-
-    try {
     const newItem = { 
         id: Date.now(), 
         company: c, 
@@ -3850,16 +3826,13 @@ function convertToDeal(reqId) {
     alert("Данные запроса перенесены в форму сделки. Запрос помечен как выполненный.");
 }
 async function addDeal() { 
-    const btn = event.target;
-    const originalText = btn.innerText;
+    // 1. Получаем основные обязательные значения
     const n = document.getElementById('dealNum').value;
     const t = document.getElementById('dealType').value; 
+    
     if(!n || !t) return alert("Заполните Номер и Тип сделки!"); 
 
-    btn.disabled = true;
-    btn.innerText = "СОХРАНЕНИЕ...";
-
-    try {
+    // 2. Создаем объект новой сделки
     const newItem = { 
         id: Date.now(), 
         num: n, 
@@ -3927,9 +3900,6 @@ async function addDeal() {
     toggleDealFinanceFields();
 }
    async function addCompany() {
-    const btn = event.target;
-    const originalText = btn.innerText;
-    
     const n = document.getElementById('compName').value.trim();
     const p = document.getElementById('compProduct').value.trim();
     const m = document.getElementById('compManager').value;
@@ -3938,58 +3908,78 @@ async function addDeal() {
 
     if (!n || !p || !m) return alert("Поля Название, Груз и Менеджер обязательны!");
 
-    // --- БЛОК ПРОВЕРКИ ДУБЛИКАТОВ (СОХРАНЕНО) ---
+    // --- УСИЛЕННЫЙ БЛОК ПРОВЕРКИ ДУБЛИКАТОВ ---
+
+    // 1. Нормализация названия (удаляем пробелы, спецсимволы, в нижний регистр)
     const normalizeName = (str) => str.toLowerCase().replace(/[^a-zа-я0-9]/gi, '');
     const newNameNormalized = normalizeName(n);
+
+    // 2. Нормализация телефона (только последние 9 цифр)
     const normalizePhoneTail = (num) => {
-        const digits = num.replace(/\D/g, '');
+        const digits = num.replace(/\D/g, ''); // оставляем только цифры
         return digits.length >= 9 ? digits.slice(-9) : (digits.length > 0 ? digits : null);
     };
     const newPhoneTail = normalizePhoneTail(phone);
 
+    // Ищем дубликаты
     const duplicate = companies.find(c => {
         if (c.isDeleted) return false;
-        if (newNameNormalized === normalizeName(c.name)) return true;
-        if (newPhoneTail && normalizePhoneTail(c.phone || "") === newPhoneTail) return true;
+
+        // Проверка по названию
+        const existNameNormalized = normalizeName(c.name);
+        if (newNameNormalized === existNameNormalized) return true;
+
+        // Проверка по телефону (если введен)
+        if (newPhoneTail) {
+            const existPhoneTail = normalizePhoneTail(c.phone || "");
+            if (existPhoneTail && newPhoneTail === existPhoneTail) return true;
+        }
+
         return false;
     });
 
-    if (duplicate) return alert(`❌ ОШИБКА: Такая компания или телефон уже есть у менеджера ${duplicate.manager}`);
-    // --------------------------------------------
-
-    btn.disabled = true;
-    btn.innerText = "СОХРАНЕНИЕ...";
-
-    try {
-        const newItem = { 
-            id: Date.now() + Math.floor(Math.random() * 1000), // Защита от коллизий для 50 чел
-            name: n, product: p, manager: m, status: st, 
-            isPrivate: document.getElementById('compPrivate').checked, 
-            city: document.getElementById('compCity').value, 
-            contact: document.getElementById('compContact').value, 
-            phone: phone, email: document.getElementById('compEmail').value, 
-            website: document.getElementById('compWebsite').value, 
-            imp: document.getElementById('compImp').value, 
-            exp: document.getElementById('compExp').value,
-            desc: document.getElementById('compDesc').value,
-            createdAt: new Date().toISOString(), 
-            activatedAt: (st === 'active' ? new Date().toISOString() : ""),
-            createdBy: sessionStorage.getItem('crm_user'),
-            sharedWith: "" 
-        };
-
-        companies.push(newItem); 
-        renderCompanies();
-        updateCounters();
-        updateDatalists();
-        await sync('companies', companies, 'append'); 
-        ['compName', 'compProduct', 'compCity', 'compContact', 'compPhone', 'compEmail', 'compWebsite', 'compImp', 'compExp','compDesc'].forEach(i => document.getElementById(i).value = '');
-    } catch(e) {
-        alert("Ошибка сети при сохранении");
-    } finally {
-        btn.disabled = false;
-        btn.innerText = originalText;
+    if (duplicate) {
+        return alert(
+            `❌ ОШИБКА: Похожая компания уже есть в базе!\n\n` +
+            `Найден совпавшний объект: "${duplicate.name}"\n` +
+            `Менеджер: ${duplicate.manager}\n` +
+            `Статус: ${statusMap[duplicate.status].label}\n` +
+            `Телефон в базе: ${duplicate.phone}\n\n` +
+            `Создание дубликата заблокировано.`
+        );
     }
+
+    // --- КОНЕЦ БЛОКА ПРОВЕРКИ ---
+
+    const newItem = { 
+        id: Date.now(), 
+        name: n, 
+        product: p, 
+        manager: m, 
+        status: st, 
+        isPrivate: document.getElementById('compPrivate').checked, 
+        city: document.getElementById('compCity').value, 
+        contact: document.getElementById('compContact').value, 
+        phone: phone, 
+        email: document.getElementById('compEmail').value, 
+        website: document.getElementById('compWebsite').value, 
+        imp: document.getElementById('compImp').value, 
+        exp: document.getElementById('compExp').value,
+        desc: document.getElementById('compDesc').value,
+        createdAt: new Date().toISOString(), 
+        activatedAt: (st === 'active' ? new Date().toISOString() : ""),
+        createdBy: sessionStorage.getItem('crm_user'),
+        sharedWith: "" 
+    };
+
+    companies.push(newItem); 
+    renderCompanies();
+    updateCounters();
+    updateDatalists();
+    await sync('companies', companies, 'append'); 
+    
+    // Очистка полей
+    ['compName', 'compProduct', 'compCity', 'compContact', 'compPhone', 'compEmail', 'compWebsite', 'compImp', 'compExp','compDesc'].forEach(i => document.getElementById(i).value = '');
 }
    async function addPartner() {
     const n = document.getElementById('partName').value;
@@ -5258,38 +5248,50 @@ async function deleteNews(id) {
     `;
 }
 
-async function submitRequestClose() {
-    const btn = event.target;
-    const originalText = btn.innerText;
+   async function submitRequestClose() {
     const id = document.getElementById('reqCloseId').value;
-    const reason = document.getElementById('reqLossReason').value;
-    const comment = document.getElementById('reqCloseComment').value.trim();
+    const reason = document.getElementById('reqLossReason').value; // Список
+    const comment = document.getElementById('reqCloseComment').value.trim(); // Ручной текст
 
-    if (!reason) return alert("Пожалуйста, выберите причину закрытия!");
-    if (reason.includes("Другое") && comment.length < 5) return alert("Опишите причину подробнее (мин. 5 символов)");
+    // --- БЛОК ВАЛИДАЦИИ (Твои оригинальные правила) ---
+    
+    // 1. Проверяем, выбрана ли причина из списка (Обязательно)
+    if (!reason) {
+        alert("Пожалуйста, выберите основную причину закрытия из списка!");
+        return;
+    }
 
-    btn.disabled = true;
-    btn.innerText = "СОХРАНЕНИЕ...";
+    // 2. Если выбрано "Другое", текст обязателен (минимум 5 символов)
+    if (reason.includes("Другое") && comment.length < 5) {
+        alert("Для причины 'Другое' пожалуйста, укажите подробности в комментарии (минимум 5 символов).");
+        return;
+    }
+    
+    // --------------------------------------------
 
-    try {
-        const i = requests.findIndex(x => String(x.id) === String(id));
-        if (i > -1) {
-            requests[i].status = 'completed';
-            requests[i].lossReason = reason;
-            requests[i].comment = comment;
-            
-            renderRequests();
-            document.getElementById('requestCloseModal').style.display = 'none';
-            await sync('requests', requests[i], 'update'); 
-            alert("Запрос закрыт");
-        }
-    } catch(e) {
-        alert("Ошибка при закрытии запроса");
-    } finally {
-        btn.disabled = false;
-        btn.innerText = originalText;
+    const i = requests.findIndex(x => String(x.id) === String(id));
+    if (i > -1) {
+        // Устанавливаем статус
+        requests[i].status = 'completed';
+        
+        // РАСПРЕДЕЛЯЕМ ПО КОЛОНКАМ:
+        requests[i].lossReason = reason; // Идет в новую колонку V (для графиков)
+        requests[i].comment = comment;    // Идет в колонку N (твой ручной текст)
+        
+        // Обновляем интерфейс
+        renderRequests();
+        
+        // Закрываем модалку
+        document.getElementById('requestCloseModal').style.display = 'none';
+
+        // Отправляем в Google Таблицу (через режим update)
+        await sync('requests', requests[i], 'update'); 
+        
+        alert("Запрос успешно закрыт и данные распределены по колонкам.");
     }
 }
+    // --- ФУНКЦИИ КОРЗИНЫ (ADMIN ONLY) ---
+
 // 1. Проверяем, админ ли зашел, и показываем кнопку
 function updateAdminUI() {
     const role = sessionStorage.getItem('crm_role');
