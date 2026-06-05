@@ -4023,18 +4023,31 @@ async function addDeal() {
     // --- СИСТЕМНЫЕ ФУНКЦИИ ---
 async function deleteItem(sh, id) { 
     const me = sessionStorage.getItem('crm_user'); 
+    const myRole = sessionStorage.getItem('crm_role');
+    const myTeam = String(sessionStorage.getItem('crm_team') || "").trim().toLowerCase();
+    
     let arr = getArrayBySheet(sh); 
     const itm = arr.find(x => String(x.id) === String(id));
 
     if(!itm) return; 
-    if(me !== 'admin' && itm.manager !== me) return alert("Нельзя удалять чужое!");
+
+    // --- НОВАЯ ЛОГИКА ДОСТУПА НА УДАЛЕНИЕ ---
+    const sharedList = (itm.sharedWith || "").split(',').map(s => s.trim());
+    const ownerInfo = teamStructure ? teamStructure[itm.manager] : null;
+    const isTeamLeader = (myRole === 'leader' && ownerInfo && String(ownerInfo.team || "").toLowerCase().trim() === myTeam);
+    
+    // Разрешаем удаление если: Админ, Владелец, в списке "Поделились" или Лидер команды
+    const hasRightToDelete = (me === 'admin' || itm.manager === me || sharedList.includes(me) || isTeamLeader);
+
+    if(!hasRightToDelete) return alert("У вас нет прав на удаление этого объекта!");
+    // ------------------------------------------
 
     if(!confirm("Переместить в корзину?")) return; 
 
     itm.isDeleted = true; 
     
-    // --- УМНАЯ ОТРИСОВКА ВМЕСТО renderAll ---
-    if (sh === 'reminders') renderReminders();
+    // Умная отрисовка вкладок
+    if (sh === 'reminders' || sh === 'calls') renderReminders();
     else if (sh === 'requests') renderRequests();
     else if (sh === 'deals') { renderDeals(); updateDashboard(); }
     else if (sh === 'companies') renderCompanies();
