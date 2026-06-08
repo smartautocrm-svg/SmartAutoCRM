@@ -5450,26 +5450,29 @@ async function restoreItem(sh, id) {
 
 // 4. Окончательное удаление (Hard Delete) — Удаляет строку из таблицы навсегда
 async function hardDeleteItem(sh, id) {
-    if (!confirm("ВНИМАНИЕ! Вы удаляете данные навсегда из Google Таблицы. Продолжить?")) return;
+    if (!confirm("ВНИМАНИЕ! Вы удаляете данные навсегда из базы. Это действие нельзя отменить через CRM. Продолжить?")) return;
     
-    let arr = getArrayBySheet(sh);
-    // Физически удаляем из массива в памяти браузера
-    const filteredData = arr.filter(x => String(x.id) !== String(id));
+    // 1. Получаем ВЕСЬ массив данных (включая активные и удаленные)
+    let fullArray = getArrayBySheet(sh);
+    
+    // 2. Оставляем всё, КРОМЕ того объекта, который мы стираем окончательно
+    const updatedFullData = fullArray.filter(x => String(x.id) !== String(id));
 
-    // Обновляем глобальные массивы
-    if(sh==='requests') requests = filteredData;
-    else if(sh==='deals') deals = filteredData;
-    else if(sh==='companies') companies = filteredData;
-    else if(sh==='reminders') reminders = filteredData;
-    else if(sh==='partners') partners = filteredData;
-    else if(sh==='tracking') tracking = filteredData;
+    // 3. Обновляем глобальные переменные в памяти CRM
+    if(sh==='requests') requests = updatedFullData;
+    else if(sh==='deals') deals = updatedFullData;
+    else if(sh==='companies') companies = updatedFullData;
+    else if(sh==='reminders' || sh==='calls') reminders = updatedFullData;
+    else if(sh==='partners') partners = updatedFullData;
+    else if(sh==='tracking') tracking = updatedFullData;
 
-    renderTrash(); // Перерисовываем корзину
-    updateCounters(); // Обновляем счетчики
+    renderTrash(); // Обновляем вид корзины
+    updateCounters(); 
 
-    // Перезаписываем весь лист в таблице (режим saveAll)
-    await sync(sh, filteredData, 'saveAll');
-    alert("Данные стерты окончательно.");
+    // 4. Сохраняем в таблицу только ПОЛНЫЙ массив данных
+    // Это гарантирует, что мы не затрем активные записи пустым списком
+    await sync(sh, updatedFullData, 'saveAll');
+    alert("Объект стерт из базы данных.");
 }
 
 // Вспомогательная функция (чтобы код понимал, с каким массивом работать)
