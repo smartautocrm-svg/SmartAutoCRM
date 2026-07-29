@@ -2121,19 +2121,36 @@ function mergeDelta(delta) {
     const listNames = ['companies', 'requests', 'reminders', 'partners', 'deals', 'tracking', 'news'];
     listNames.forEach(name => {
         if (!delta[name] || delta[name].length === 0) return;
+
         let currentArray = getArrayBySheet(name === 'reminders' ? 'calls' : name);
         let newItems = delta[name].map(parsers[name]);
+        const me = sessionStorage.getItem('crm_user'); // Получаем имя текущего юзера
+
         newItems.forEach(newItem => {
             let idx = currentArray.findIndex(item => String(item.id) === String(newItem.id));
+
             if (idx > -1) {
-        currentArray[idx] = newItem;
-        // Добавь эти строки для обновления глобального состояния:
-        if (name === 'companies') companies[idx] = newItem;
-        if (name === 'deals') deals[idx] = newItem;
-        if (name === 'requests') requests[idx] = newItem;
-    }
-            else currentArray.push(newItem);
+                // --- ЛОГИКА УВЕДОМЛЕНИЯ ПРИ ПЕРЕДАЧЕ ---
+                // Если это компания, новый владелец — Я, а в моей памяти владелец был ДРУГОЙ
+                if (name === 'companies' && newItem.manager === me && currentArray[idx].manager !== me) {
+                    createNotification("🏢 Новая компания!", `Менеджер ${currentArray[idx].manager} передал вам: ${newItem.name}`, newItem.id);
+                }
+
+                currentArray[idx] = newItem;
+                // Принудительное обновление глобальных состояний
+                if (name === 'companies') companies[idx] = newItem;
+                if (name === 'deals') deals[idx] = newItem;
+                if (name === 'requests') requests[idx] = newItem;
+            } else {
+                // --- ЛОГИКА УВЕДОМЛЕНИЯ ПРИ ДИСТАНЦИОННОМ СОЗДАНИИ ---
+                // Если компания новая в базе, владелец — Я, но создал её НЕ Я
+                if (name === 'companies' && newItem.manager === me && newItem.createdBy !== me) {
+                    createNotification("🏢 Новая компания!", `Для вас создана карточка: ${newItem.name}`, newItem.id);
+                }
+                currentArray.push(newItem);
+            }
         });
+
         // Обновляем глобальные переменные
         if (name === 'companies') companies = currentArray;
         else if (name === 'deals') deals = currentArray;
@@ -5582,18 +5599,17 @@ function getArrayBySheet(sh) {
 
     // 1. Функция создания всплывашки на экране
     function createNotification(title, message, id) {
-        const container = document.getElementById('notification-container');
-        const toast = document.createElement('div');
-        toast.className = 'toast';
-        toast.id = `toast-${id}`;
-        
-        toast.innerHTML = `
-            <span class="toast-close" onclick="this.parentElement.remove()">×</span>
-            <h4>🔔 Напоминание!</h4>
-            <p><strong>${title}</strong></p>
-            <p>${message}</p>
-            <button class="main" style="margin-top:5px; padding:3px; font-size:9px;" onclick="openReminderFromToast(${id})">Открыть</button>
-        `;
+    const container = document.getElementById('notification-container');
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.id = `toast-${id}`;
+    
+    toast.innerHTML = `
+        <span class="toast-close" onclick="this.parentElement.remove()">×</span>
+        <h4>${title}</h4> <!-- ИЗМЕНЕНО: теперь заголовок берется из параметров -->
+        <p>${message}</p>
+        <button class="main" style="margin-top:5px; padding:3px; font-size:9px;" onclick="openNotificationSource('${id}', '${title}')">Открыть</button>
+    `;
         
         container.appendChild(toast);
         
@@ -5617,7 +5633,19 @@ function getArrayBySheet(sh) {
         const toast = document.getElementById(`toast-${id}`);
         if(toast) toast.remove();
     }
-
+function openNotificationSource(id, title) {
+    if (title.includes("компания")) {
+        const c = companies.find(x => String(x.id) === String(id));
+        if (c) {
+            openTab('companies');
+            showCompanyPreview(c.name);
+        }
+    } else {
+        openReminderFromToast(id);
+    }
+    const toast = document.getElementById(`toast-${id}`);
+    if(toast) toast.remove();
+}
     // 3. Функция сканирования напоминаний
     function checkRemindersForNotifications() {
         const me = sessionStorage.getItem('crm_user');
