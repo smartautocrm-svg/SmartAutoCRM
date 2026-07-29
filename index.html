@@ -2051,7 +2051,7 @@ const parsers = {
         createdAt: x[10], activatedAt: x[11], manager: String(x[12]||""), 
         isPrivate: String(x[13]) === "true", sharedWith: String(x[14]||""), 
         website: String(x[15]||""), isDeleted: x[16] === true || x[16] === 'true',
-        desc: String(x[17]||""), createdBy: String(x[19] || "")
+        desc: String(x[17]||""),refuseReason: String(x[18]||""), createdBy: String(x[19] || "")
     }),
     requests: x => ({ 
         id: x[0], company: String(x[1]||""), cargo: String(x[2]||""), transport: String(x[3]||""), 
@@ -2211,7 +2211,7 @@ function exportCurrentData() {
 }
     function formatRow(sh, o) {
 let row = []; 
-    if (sh === 'companies') row = [o.id, o.name, o.contact, o.phone, o.product || "", o.city || "", o.email || "", o.imp || "", o.exp || "", o.status, o.createdAt, o.activatedAt || "", o.manager, o.isPrivate, o.sharedWith || "", o.website || "", o.isDeleted || false, o.desc || "", "", o.createdBy || ""];
+    if (sh === 'companies') row = [o.id, o.name, o.contact, o.phone, o.product || "", o.city || "", o.email || "", o.imp || "", o.exp || "", o.status, o.createdAt, o.activatedAt || "", o.manager, o.isPrivate, o.sharedWith || "", o.website || "", o.isDeleted || false, o.desc || "", o.refuseReason || "", o.createdBy || ""];
 if (sh === 'requests') row = [o.id, o.company, o.cargo, o.transport, o.weight, o.vol, o.value, o.currency, o.load, o.unload, o.desc, o.createdAt, o.status, o.comment, o.container, o.zip, o.manager, o.contQty || "", o.type || "", o.sharedWith || "", o.isDeleted || false, o.lossReason || ""];
 
 if (sh === 'deals') row = [
@@ -2695,7 +2695,14 @@ function showCompanyPreview(n) {
     document.getElementById('preview-companies').innerHTML = `
     <h3>🏢 ${c.name}</h3>
     <div class="preview-grid">
-        <div class="preview-box highlight"><label>📊 Статус</label><span>${statusMap[c.status].label}</span></div>
+        <div class="preview-box highlight" style="position: relative;">
+            <label>📊 Статус</label>
+            <span>${statusMap[c.status].label}</span>
+            ${c.status === 'refused' && c.refuseReason ? 
+                `<div style="position: absolute; top: 5px; right: 8px; background: var(--danger); color: white; font-size: 8px; padding: 2px 6px; border-radius: 4px; font-weight: bold; text-transform: uppercase;">${c.refuseReason}</div>` 
+                : ''
+            }
+        </div>
         <div class="preview-box"><label>👤 Менеджер</label><span>${c.manager}</span></div>
         <div class="preview-box"><label>🤝 Контакт</label><span>${c.contact || '-'}</span></div>
         <div class="preview-box">
@@ -3620,6 +3627,12 @@ async function saveEdit() {
         companies[i].status = newSt;
         companies[i].isPrivate = document.getElementById('eCompPriv').checked;
         companies[i].desc = document.getElementById('eCompDesc').value;
+        if (newSt !== 'refused') companies[i].refuseReason = ""; 
+        if (newSt === 'refused' && !companies[i].refuseReason) {
+            document.getElementById('compRefuseReason').value = "";
+            document.getElementById('companyRefuseModal').style.display = 'block';
+            return; // Прерываем сохранение, пока не выберут причину
+        }
         
         updatedItem = companies[i];
         renderCompanies();
@@ -3730,6 +3743,26 @@ async function saveEdit() {
         await sync(sheetName, updatedItem, 'update');
     }
     document.getElementById('editModal').style.display = 'none';
+}
+
+    async function submitCompanyRefuse() {
+    const reason = document.getElementById('compRefuseReason').value;
+    if (!reason) return alert("Выберите причину!");
+
+    const id = document.getElementById('editId').value;
+    const i = companies.findIndex(x => String(x.id) === String(id));
+    
+    if (i > -1) {
+        companies[i].refuseReason = reason;
+        document.getElementById('companyRefuseModal').style.display = 'none';
+        document.getElementById('editModal').style.display = 'none';
+        
+        renderCompanies();
+        await sync('companies', companies[i], 'update');
+        lastSyncTimestamp = 0;
+        loadCloudData();
+        alert("Статус обновлен");
+    }
 }
 async function submitFollowUp() {
     const oldId = document.getElementById('activeRemId').value;
@@ -5966,6 +5999,23 @@ document.addEventListener('keydown', function(e) {
     <!-- Контейнер ДЛЯ КОНТЕНТА (вместо старого <img>) -->
     <div id="fileViewerContent" onclick="event.stopPropagation()">
         <!-- Сюда JavaScript вставит iframe с файлом -->
+    </div>
+</div>
+    <!-- МОДАЛКА ПРИЧИНЫ ОТКАЗА КОМПАНИИ -->
+<div id="companyRefuseModal" class="modal-overlay" onclick="if(event.target===this) this.style.display='none'">
+    <div class="modal-content" style="width: 350px; border-top: 5px solid var(--refused);">
+        <h3>Укажите причину отказа</h3>
+        <select id="compRefuseReason" style="width: 100%; margin-bottom: 15px; font-weight: bold;">
+            <option value="">-- Выберите причину --</option>
+            <option value="Не возят">🚫 Не возят</option>
+            <option value="Не могу добиться результата">📉 Не могу добиться результата</option>
+            <option value="Не берут трубки">📞 Не берут трубки</option>
+            <option value="Заблокировали">⛔ Заблокировали</option>
+        </select>
+        <div style="display: flex; gap: 10px;">
+            <button class="main" style="background: var(--refused);" onclick="submitCompanyRefuse()">Подтвердить</button>
+            <button class="main" style="background: var(--cold); width: 100px;" onclick="document.getElementById('companyRefuseModal').style.display='none'">Отмена</button>
+        </div>
     </div>
 </div>
 </body>
