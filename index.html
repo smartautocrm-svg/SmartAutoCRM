@@ -2125,7 +2125,13 @@ function mergeDelta(delta) {
         let newItems = delta[name].map(parsers[name]);
         newItems.forEach(newItem => {
             let idx = currentArray.findIndex(item => String(item.id) === String(newItem.id));
-            if (idx > -1) currentArray[idx] = newItem;
+            if (idx > -1) {
+        currentArray[idx] = newItem;
+        // Добавь эти строки для обновления глобального состояния:
+        if (name === 'companies') companies[idx] = newItem;
+        if (name === 'deals') deals[idx] = newItem;
+        if (name === 'requests') requests[idx] = newItem;
+    }
             else currentArray.push(newItem);
         });
         // Обновляем глобальные переменные
@@ -2204,21 +2210,27 @@ function exportCurrentData() {
     };
 }
     function formatRow(sh, o) {
-if (sh === 'companies') return [o.id, o.name, o.contact, o.phone, o.product || "", o.city || "", o.email || "", o.imp || "", o.exp || "", o.status, o.createdAt, o.activatedAt || "", o.manager, o.isPrivate, o.sharedWith || "", o.website || "", o.isDeleted || false, o.desc || "", "", o.createdBy || ""];
-if (sh === 'requests') return [o.id, o.company, o.cargo, o.transport, o.weight, o.vol, o.value, o.currency, o.load, o.unload, o.desc, o.createdAt, o.status, o.comment, o.container, o.zip, o.manager, o.contQty || "", o.type || "", o.sharedWith || "", o.isDeleted || false, o.lossReason || ""];
+let row = []; 
+    if (sh === 'companies') row = [o.id, o.name, o.contact, o.phone, o.product || "", o.city || "", o.email || "", o.imp || "", o.exp || "", o.status, o.createdAt, o.activatedAt || "", o.manager, o.isPrivate, o.sharedWith || "", o.website || "", o.isDeleted || false, o.desc || "", "", o.createdBy || ""];
+if (sh === 'requests') row = [o.id, o.company, o.cargo, o.transport, o.weight, o.vol, o.value, o.currency, o.load, o.unload, o.desc, o.createdAt, o.status, o.comment, o.container, o.zip, o.manager, o.contQty || "", o.type || "", o.sharedWith || "", o.isDeleted || false, o.lossReason || ""];
 
-if (sh === 'deals') return [
+if (sh === 'deals') row = [
     o.id, o.num, o.company, o.cargo, o.trans, o.weight, o.vol, o.value, o.curr, 
     o.load, o.zip, o.unload, o.info, o.manager, o.createdAt, o.exp, o.inc, 
     o.prof, o.container, o.sharedWith || "", o.status, o.type, o.contQty || "", 
     o.blNum || "", o.awbNum || "", JSON.stringify(o.files || []), o.margin, 
     o.stage || "docs", o.isPaid || false, o.payDate || "", o.isPrivateDeal || false, o.isDeleted || false
 ];
-        if (sh === 'reminders') return [o.id, o.name, o.date, o.topic, o.manager, o.status, o.isDeleted || false, o.sharedWith || ""];
-        if (sh === 'partners') return [o.id, o.name, o.status, o.country, o.contact, o.phone, o.email, o.website, o.desc, o.isDeleted || false];
-        if (sh === 'tracking') return [o.id, o.num, o.cargo, o.weight, o.vol, o.qty, o.pack, o.trans, o.status, o.manager, o.sharedWith || "", o.isDeleted || false];
-        if (sh === 'news') return [o.id, o.date, o.author, o.title, o.text, o.isDeleted || false];
-        return [];
+        if (sh === 'reminders') row = [o.id, o.name, o.date, o.topic, o.manager, o.status, o.isDeleted || false, o.sharedWith || ""];
+        if (sh === 'partners') row = [o.id, o.name, o.status, o.country, o.contact, o.phone, o.email, o.website, o.desc, o.isDeleted || false];
+        if (sh === 'tracking') row = [o.id, o.num, o.cargo, o.weight, o.vol, o.qty, o.pack, o.trans, o.status, o.manager, o.sharedWith || "", o.isDeleted || false];
+        if (sh === 'news') row = [o.id, o.date, o.author, o.title, o.text, o.isDeleted || false];
+        if (row.length === 0) row = []; // Если ни одно условие не подошло
+        
+        // Добиваем пустые колонки до 24-й
+        while(row.length < 24) row.push("");
+        
+        return row;
     }
 
   // Обновленная функция синхронизации
@@ -4105,6 +4117,8 @@ function toggleDealFinanceFields() {
     showCompanyPreview(companies[i].name); 
     // Обновляем только эту компанию в таблице
     await sync('companies', companies[i], 'update'); 
+         lastSyncTimestamp = 0;
+    loadCloudData();
 }
     async function transferOwnership(companyId) {
     const newManager = document.getElementById('transferNewManager').value;
@@ -4133,6 +4147,8 @@ function toggleDealFinanceFields() {
         companies[idx].sharedWith = ""; // Очищаем доступы
 
         await sync('companies', companies[idx], 'update');
+        lastSyncTimestamp = 0; 
+    loadCloudData();
 
         document.getElementById('preview-companies').innerHTML = `<div style="padding:20px; text-align:center;">✅ Передано менеджеру ${newManager}</div>`;
         renderCompanies();
@@ -4159,6 +4175,8 @@ function toggleDealFinanceFields() {
     showRequestPreview(rid); 
     // Обновляем в таблице
     await sync('requests', requests[i], 'update'); 
+        lastSyncTimestamp = 0;
+    loadCloudData();
 }
 // Переключение выбора элемента
 function toggleSelect(e, id) {
