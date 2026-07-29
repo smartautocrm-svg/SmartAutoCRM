@@ -3814,7 +3814,9 @@ async function submitFollowUp() {
     
 
     // --- ФУНКЦИИ ДОБАВЛЕНИЯ ---
-    async function addReminder() { const n = document.getElementById('callName').value; if(!n)return alert("Имя?"); const newItem = { id: Date.now(), name: n, date: document.getElementById('callTime').value, topic: document.getElementById('callTopic').value, manager: sessionStorage.getItem('crm_user'), status: "active" }; reminders.push(newItem); renderReminders();  updateCounters(); await sync('reminders', reminders, 'append'); ['callName', 'callTime', 'callTopic'].forEach(i=>document.getElementById(i).value=''); }
+    async function addReminder() { const n = document.getElementById('callName').value; if(!n)return alert("Имя?");if (!checkAccess(n)) {
+        return alert("🚫 Ошибка доступа: Вы не можете ставить задачи по этой компании, так как не являетесь её владельцем и не имеете прав доступа.");
+    } const newItem = { id: Date.now(), name: n, date: document.getElementById('callTime').value, topic: document.getElementById('callTopic').value, manager: sessionStorage.getItem('crm_user'), status: "active" }; reminders.push(newItem); renderReminders();  updateCounters(); await sync('reminders', reminders, 'append'); ['callName', 'callTime', 'callTopic'].forEach(i=>document.getElementById(i).value=''); }
     async function addRequest() { 
     const c = document.getElementById('reqComp').value; 
     const t = document.getElementById('reqType').value; // Получаем тип
