@@ -1057,6 +1057,11 @@ button.main:active {
             <div class="input-row">
                 <input type="text" id="callName" list="allEntitiesData" placeholder="Компания">
                 <input type="datetime-local" id="callTime">
+                <select id="callPriority"> <!-- ДОБАВЛЕНО -->
+    <option value="medium">⚡ Средний приоритет</option>
+    <option value="high">🔥 ВЫСОКИЙ (Срочно)</option>
+    <option value="low">☁️ Низкий приоритет</option>
+</select>
                 <textarea id="callTopic" style="grid-column: span 2;" placeholder="Результат..."></textarea>
             </div>
             <button class="main" onclick="addReminder()">Добавить запись</button>
@@ -2079,7 +2084,9 @@ const parsers = {
     },
     reminders: x => ({ 
         id: x[0], name: String(x[1]||""), date: x[2], topic: String(x[3]||""), 
-        manager: String(x[4]||""), status: x[5], isDeleted: x[6] === true || x[6] === 'true', sharedWith: String(x[7] || "") 
+        manager: String(x[4]||""), status: x[5], isDeleted: x[6] === true || x[6] === 'true', 
+        sharedWith: String(x[7] || ""), 
+        priority: String(x[9] || "medium") // ДОБАВЛЕНО (Колонка I)
     }),
     partners: x => ({ 
         id: x[0], name: String(x[1]||""), status: x[2], country: x[3], contact: x[4], 
@@ -2238,7 +2245,7 @@ if (sh === 'deals') row = [
     o.blNum || "", o.awbNum || "", JSON.stringify(o.files || []), o.margin, 
     o.stage || "docs", o.isPaid || false, o.payDate || "", o.isPrivateDeal || false, o.isDeleted || false
 ];
-        if (sh === 'reminders') row = [o.id, o.name, o.date, o.topic, o.manager, o.status, o.isDeleted || false, o.sharedWith || ""];
+        if (sh === 'reminders') row = [o.id, o.name, o.date, o.topic, o.manager, o.status, o.isDeleted || false, o.sharedWith || "", "", o.priority || "medium"];
         if (sh === 'partners') row = [o.id, o.name, o.status, o.country, o.contact, o.phone, o.email, o.website, o.desc, o.isDeleted || false];
         if (sh === 'tracking') row = [o.id, o.num, o.cargo, o.weight, o.vol, o.qty, o.pack, o.trans, o.status, o.manager, o.sharedWith || "", o.isDeleted || false];
         if (sh === 'news') row = [o.id, o.date, o.author, o.title, o.text, o.isDeleted || false];
@@ -2474,7 +2481,8 @@ function checkTransportFields(p) {
 function showCallPreview(id) { 
     const r = reminders.find(x=>x.id==id); 
     if(!r) return;
-
+    const prioLabels = { high: '🔥 ВЫСОКИЙ', medium: '⚡ СРЕДНИЙ', low: '☁️ НИЗКИЙ' };
+    const pText = prioLabels[r.priority] || '⚡ СРЕДНИЙ';
     const me = sessionStorage.getItem('crm_user');
     
     // Подготовка названия компании как кликабельной ссылки
@@ -2509,6 +2517,7 @@ function showCallPreview(id) {
         ${companyHeader}
         <div class="preview-grid">
             <div class="preview-box"><label>Дата</label><span>${dtFmt(r.date)}</span></div>
+            <div class="preview-box"><label>Приоритет</label><span>${pText}</span></div>
             <div class="preview-box"><label>Менеджер</label><span>${r.manager}</span></div>
             <div class="preview-box"><label>Статус</label><span>${r.status}</span></div>
             <div class="preview-box" style="grid-column:span 2;"><label>Результат</label><p style="font-size:11px; margin-top:5px;">${r.topic}</p></div>
@@ -2894,7 +2903,9 @@ if (me !== 'admin') {
     
     let html = limitedList.map(r => {
         const isOverdue = r.status !== 'completed' && r.date && new Date(r.date) < now;
-        const isSelected = selectedIds.has(String(r.id)); 
+        const isSelected = selectedIds.has(String(r.id));
+        const prioIcons = { high: '🔴', medium: '🟡', low: '⚪' };
+        const pIcon = prioIcons[r.priority] || '🟡';
 
         return `<div class="list-item ${r.status==='completed'?'completed':''} ${isOverdue?'overdue':''} ${isSelected?'selected':''}" 
                      onclick="showCallPreview(${r.id})">
@@ -2904,7 +2915,7 @@ if (me !== 'admin') {
                    onclick="toggleSelect(event, '${r.id}')">
 
             <div class="item-main">
-                <h4>${r.name} ${isOverdue?'<span class="overdue-tag">ПРОСРОЧЕНО</span>':''}</h4>
+                <h4>${pIcon} ${r.name} ${isOverdue?'<span class="overdue-tag">ПРОСРОЧЕНО</span>':''}</h4>
                 <p>${dtFmt(r.date)} | ${r.manager}</p>
             </div>
             <div class="item-actions">
@@ -3437,7 +3448,13 @@ async function savePartnersAccess() {
         
         if (type === 'reminder') {
             const r = reminders.find(x => x.id == id); title.innerText = "Правка активности";
-            f.innerHTML = `<input type="text" id="eRemName" value="${r.name}" list="allEntitiesData"><input type="datetime-local" id="eRemDate" value="${forInput(r.date)}"><textarea id="eRemTopic" style="grid-column: span 2;">${r.topic}</textarea>`;
+            f.innerHTML = `<input type="text" id="eRemName" value="${r.name}" list="allEntitiesData"><input type="datetime-local" id="eRemDate" value="${forInput(r.date)}"> 
+            <select id="eRemPrio"> <!-- ДОБАВЛЕНО -->
+                <option value="high" ${r.priority==='high'?'selected':''}>🔥 Высокий</option>
+                <option value="medium" ${r.priority==='medium'?'selected':''}>⚡ Средний</option>
+                <option value="low" ${r.priority==='low'?'selected':''}>☁️ Низкий</option>
+            </select>
+            <textarea id="eRemTopic" style="grid-column: span 2;">${r.topic}</textarea>`;
         } else if (type === 'company') {
             const c = companies.find(x => x.id == id); title.innerText = "Правка компании";
             f.innerHTML = `
@@ -3620,6 +3637,7 @@ async function saveEdit() {
         reminders[i].name = document.getElementById('eRemName').value;
         reminders[i].date = document.getElementById('eRemDate').value;
         reminders[i].topic = document.getElementById('eRemTopic').value;
+        reminders[i].priority = document.getElementById('eRemPrio').value;
         updatedItem = reminders[i];
         renderReminders();
 } else if (type === 'company') {
@@ -3849,16 +3867,17 @@ async function submitFollowUp() {
     if (!checkAccess(targetComp.name)) {
         return alert("🚫 Доступ запрещен: Вы не являетесь владельцем компании '" + targetComp.name + "' и не имеете прав доступа к ней.");
     }
+const prio = document.getElementById('callPriority').value;
 
-    // 4. Если проверки пройдены, создаем объект задачи
     const newItem = { 
         id: Date.now(), 
-        name: targetComp.name, // Берем красивое название прямо из базы
+        name: targetComp.name, 
         date: document.getElementById('callTime').value, 
         topic: document.getElementById('callTopic').value, 
         manager: sessionStorage.getItem('crm_user'), 
-        status: "active" 
-    }; 
+        status: "active",
+        priority: prio // ДОБАВЛЕНО
+    };
 
     // 5. Обновляем локальные данные и интерфейс
     reminders.push(newItem); 
