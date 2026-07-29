@@ -3814,9 +3814,46 @@ async function submitFollowUp() {
     
 
     // --- ФУНКЦИИ ДОБАВЛЕНИЯ ---
-    async function addReminder() { const n = document.getElementById('callName').value; if(!n)return alert("Имя?");if (!checkAccess(n)) {
-        return alert("🚫 Ошибка доступа: Вы не можете ставить задачи по этой компании, так как не являетесь её владельцем и не имеете прав доступа.");
-    } const newItem = { id: Date.now(), name: n, date: document.getElementById('callTime').value, topic: document.getElementById('callTopic').value, manager: sessionStorage.getItem('crm_user'), status: "active" }; reminders.push(newItem); renderReminders();  updateCounters(); await sync('reminders', reminders, 'append'); ['callName', 'callTime', 'callTopic'].forEach(i=>document.getElementById(i).value=''); }
+    async function addReminder() { 
+    const n = document.getElementById('callName').value.trim(); 
+    if(!n) return alert("Введите название компании!"); 
+
+    // 1. Ищем компанию в базе (игнорируя лишние пробелы и регистр)
+    const targetComp = companies.find(c => 
+        c.name.toLowerCase().trim() === n.toLowerCase() && !c.isDeleted
+    );
+
+    // 2. Если менеджер ввел имя компании, которой нет в базе
+    if (!targetComp) {
+        return alert("⚠️ Компания не найдена в базе. Сначала создайте её во вкладке КОМПАНИИ.");
+    }
+
+    // 3. Проверяем доступ через существующую функцию checkAccess
+    if (!checkAccess(targetComp.name)) {
+        return alert("🚫 Доступ запрещен: Вы не являетесь владельцем компании '" + targetComp.name + "' и не имеете прав доступа к ней.");
+    }
+
+    // 4. Если проверки пройдены, создаем объект задачи
+    const newItem = { 
+        id: Date.now(), 
+        name: targetComp.name, // Берем красивое название прямо из базы
+        date: document.getElementById('callTime').value, 
+        topic: document.getElementById('callTopic').value, 
+        manager: sessionStorage.getItem('crm_user'), 
+        status: "active" 
+    }; 
+
+    // 5. Обновляем локальные данные и интерфейс
+    reminders.push(newItem); 
+    renderReminders();  
+    updateCounters(); 
+
+    // 6. Отправляем в Google Таблицу
+    await sync('reminders', reminders, 'append'); 
+
+    // 7. Очищаем поля формы
+    ['callName', 'callTime', 'callTopic'].forEach(i => document.getElementById(i).value = '');
+}
     async function addRequest() { 
     const c = document.getElementById('reqComp').value; 
     const t = document.getElementById('reqType').value; // Получаем тип
