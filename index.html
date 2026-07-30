@@ -5499,14 +5499,11 @@ function updateAdminUI() {
             const el = document.getElementById(id);
             if (el) el.style.display = 'inline-block';
         });
-
-        updateStatsManagerList();
     }
 
     // 3. Ограничение доступа для Помощника (Assistant)
     if (userRole === 'assistant') {
         const restrictedTabs = ['btn-deals', 'btn-report', 'btn-stats', 'btn-logs'];
-        // Проверка спец-доступа от админа
         const config = (partners && partners.length > 0) ? partners.find(p => p.id === "CONFIG_ACCESS") : null;
         const allowedList = config?.desc ? config.desc.split(',').map(u => u.trim()) : [];
         const hasFullAccess = userName ? allowedList.includes(userName) : false;
@@ -5518,30 +5515,41 @@ function updateAdminUI() {
             });
         }
     }
+
+    // ВАЖНО: Вызов перенесен сюда (вне условий), чтобы менеджер тоже получал списки
+    updateStatsManagerList();
 }
 // Вспомогательная функция для обновления списка менеджеров в зависимости от выбранной команды
 function updateStatsManagerList() {
     const role = sessionStorage.getItem('crm_role');
     const myName = sessionStorage.getItem('crm_user');
     const myTeam = String(sessionStorage.getItem('crm_team') || "none").trim().toLowerCase();
+    
     const selTeamEl = document.getElementById('statsTeamFilter');
     const selTeam = String(selTeamEl?.value || "all").trim().toLowerCase();
+    
+    // Определяем целевую команду для ФИЛЬТРОВ статистики
     let targetTeam = (role === 'admin') ? selTeam : myTeam;
     
+    // 1. Формируем список имен для фильтров статистики/отчетов
     let filteredNames = [];
     if (teamStructure && Object.keys(teamStructure).length > 0) {
-        if (targetTeam === "all") { filteredNames = Object.keys(teamStructure); } 
-        else {
+        if (targetTeam === "all") { 
+            filteredNames = Object.keys(teamStructure); 
+        } else {
             filteredNames = Object.keys(teamStructure).filter(name => {
                 const info = teamStructure[name];
                 return info && String(info.team || "").trim().toLowerCase() === targetTeam;
             });
         }
-    } else { filteredNames = managers; }
+    } else { 
+        filteredNames = managers; 
+    }
 
     let optionsHtml = (role === 'admin' || role === 'leader') ? '<option value="all">👤 Все сотрудники</option>' : '';
     optionsHtml += [...new Set(filteredNames)].sort().map(m => `<option value="${m}">${m}</option>`).join('');
 
+    // Заполняем фильтры в разных вкладках
     const filters = ['statsManagerFilter', 'reportManagerFilter', 'adminCallManagerFilter', 'adminRequestManagerFilter', 'adminDealManagerFilter'];
     filters.forEach(id => {
         const el = document.getElementById(id);
@@ -5553,10 +5561,19 @@ function updateStatsManagerList() {
         }
     });
 
+    // 2. Заполняем список НАЗНАЧЕНИЯ ЗАДАЧ (callAssignedManager)
+    // Этот блок теперь работает для всех ролей одинаково
     const taskManSel = document.getElementById('callAssignedManager');
     if (taskManSel) {
-        taskManSel.innerHTML = `<option value="${myName}">📍 Поставить задачу СЕБЕ</option>` + 
-            managers.filter(m => m !== myName).sort().map(m => `<option value="${m}">👤 НАЗНАЧИТЬ: ${m}</option>`).join('');
+        // Показываем в списке ВСЕХ менеджеров из базы (кроме админа и текущего пользователя)
+        let taskOptions = `<option value="${myName}">📍 Поставить задачу СЕБЕ</option>`;
+        taskOptions += managers
+            .filter(m => m !== myName && m !== 'admin')
+            .sort()
+            .map(m => `<option value="${m}">👤 НАЗНАЧИТЬ: ${m}</option>`)
+            .join('');
+            
+        taskManSel.innerHTML = taskOptions;
     }
 }
     
