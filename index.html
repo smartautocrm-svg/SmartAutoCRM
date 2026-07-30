@@ -1057,10 +1057,14 @@ button.main:active {
             <div class="input-row">
                 <input type="text" id="callName" list="allEntitiesData" placeholder="Компания">
                 <input type="datetime-local" id="callTime">
-                <select id="callPriority"> <!-- ДОБАВЛЕНО -->
+                <select id="callPriority">
     <option value="medium">⚡ Средний приоритет</option>
     <option value="high">🔥 ВЫСОКИЙ (Срочно)</option>
     <option value="low">☁️ Низкий приоритет</option>
+</select>
+
+<select id="callAssignedManager" style="grid-column: span 2; background: #fffde7; border: 1.5px solid #fff59d;">
+    <option value="">👤 Поставить задачу на (выберите менеджера)...</option>
 </select>
                 <textarea id="callTopic" style="grid-column: span 2;" placeholder="Результат..."></textarea>
             </div>
@@ -2084,10 +2088,11 @@ const parsers = {
     },
     reminders: x => ({ 
         id: x[0], name: String(x[1]||""), date: x[2], topic: String(x[3]||""), 
-        manager: String(x[4]||""), status: x[5], isDeleted: x[6] === true || x[6] === 'true', 
-        sharedWith: String(x[7] || ""), 
-        priority: String(x[9] || "medium") // ДОБАВЛЕНО (Колонка I)
-    }),
+    manager: String(x[4]||""), status: x[5], isDeleted: x[6] === true || x[6] === 'true', 
+    sharedWith: String(x[7] || ""), 
+    priority: String(x[9] || "medium"),
+    createdBy: String(x[10] || "") // ДОБАВЛЕНО (Колонка K)
+}),
     partners: x => ({ 
         id: x[0], name: String(x[1]||""), status: x[2], country: x[3], contact: x[4], 
         phone: x[5], email: x[6], website: x[7], desc: x[8], isDeleted: x[9] === true || x[9] === 'true'
@@ -2149,6 +2154,9 @@ function mergeDelta(delta) {
                 if (name === 'deals') deals[idx] = newItem;
                 if (name === 'requests') requests[idx] = newItem;
             } else {
+                if (name === 'reminders' && newItem.manager === me && newItem.createdBy !== me && newItem.createdBy !== "") {
+                    createNotification("📅 Новое поручение!", `${newItem.createdBy} поставил вам задачу по ${newItem.name}`, newItem.id);
+                    }
                 // --- ЛОГИКА УВЕДОМЛЕНИЯ ПРИ ДИСТАНЦИОННОМ СОЗДАНИИ ---
                 // Если компания новая в базе, владелец — Я, но создал её НЕ Я
                 if (name === 'companies' && newItem.manager === me && newItem.createdBy !== me) {
@@ -2245,7 +2253,7 @@ if (sh === 'deals') row = [
     o.blNum || "", o.awbNum || "", JSON.stringify(o.files || []), o.margin, 
     o.stage || "docs", o.isPaid || false, o.payDate || "", o.isPrivateDeal || false, o.isDeleted || false
 ];
-        if (sh === 'reminders') row = [o.id, o.name, o.date, o.topic, o.manager, o.status, o.isDeleted || false, o.sharedWith || "", "", o.priority || "medium"];
+        if (sh === 'reminders') row = [o.id, o.name, o.date, o.topic, o.manager, o.status, o.isDeleted || false, o.sharedWith || "", "", o.priority || "medium", o.createdBy || ""];
         if (sh === 'partners') row = [o.id, o.name, o.status, o.country, o.contact, o.phone, o.email, o.website, o.desc, o.isDeleted || false];
         if (sh === 'tracking') row = [o.id, o.num, o.cargo, o.weight, o.vol, o.qty, o.pack, o.trans, o.status, o.manager, o.sharedWith || "", o.isDeleted || false];
         if (sh === 'news') row = [o.id, o.date, o.author, o.title, o.text, o.isDeleted || false];
@@ -3448,14 +3456,21 @@ async function savePartnersAccess() {
         
         if (type === 'reminder') {
             const r = reminders.find(x => x.id == id); title.innerText = "Правка активности";
-            f.innerHTML = `<input type="text" id="eRemName" value="${r.name}" list="allEntitiesData"><input type="datetime-local" id="eRemDate" value="${forInput(r.date)}"> 
-            <select id="eRemPrio"> <!-- ДОБАВЛЕНО -->
-                <option value="high" ${r.priority==='high'?'selected':''}>🔥 Высокий</option>
-                <option value="medium" ${r.priority==='medium'?'selected':''}>⚡ Средний</option>
-                <option value="low" ${r.priority==='low'?'selected':''}>☁️ Низкий</option>
-            </select>
-            <textarea id="eRemTopic" style="grid-column: span 2;">${r.topic}</textarea>`;
-        } else if (type === 'company') {
+            f.innerHTML = `
+                <input type="text" id="eRemName" value="${r.name}" list="allEntitiesData">
+                <input type="datetime-local" id="eRemDate" value="${forInput(r.date)}"> 
+                <select id="eRemPrio">
+                    <option value="high" ${r.priority==='high'?'selected':''}>🔥 Высокий</option>
+                    <option value="medium" ${r.priority==='medium'?'selected':''}>⚡ Средний</option>
+                    <option value="low" ${r.priority==='low'?'selected':''}>☁️ Низкий</option>
+                </select>
+                <select id="eRemMan" style="grid-column: span 2; background: #e8f0fe;">
+                    ${managers.map(m => `<option value="${m}" ${r.manager===m?'selected':''}>Исполнитель: ${m}</option>`).join('')}
+                </select>
+                <textarea id="eRemTopic" style="grid-column: span 2;">${r.topic}</textarea>`;
+        }
+        
+        else if (type === 'company') {
             const c = companies.find(x => x.id == id); title.innerText = "Правка компании";
             f.innerHTML = `
                 <input type="text" id="eCompName" value="${c.name}" placeholder="Название компании *">
@@ -3638,6 +3653,7 @@ async function saveEdit() {
         reminders[i].date = document.getElementById('eRemDate').value;
         reminders[i].topic = document.getElementById('eRemTopic').value;
         reminders[i].priority = document.getElementById('eRemPrio').value;
+        reminders[i].manager = document.getElementById('eRemMan').value; 
         updatedItem = reminders[i];
         renderReminders();
 } else if (type === 'company') {
@@ -3868,15 +3884,19 @@ async function submitFollowUp() {
         return alert("🚫 Доступ запрещен: Вы не являетесь владельцем компании '" + targetComp.name + "' и не имеете прав доступа к ней.");
     }
 const prio = document.getElementById('callPriority').value;
+    const me = sessionStorage.getItem('crm_user');
+    // Берем выбранного менеджера или себя
+    const assignedTo = document.getElementById('callAssignedManager').value || me;
 
     const newItem = { 
         id: Date.now(), 
         name: targetComp.name, 
         date: document.getElementById('callTime').value, 
         topic: document.getElementById('callTopic').value, 
-        manager: sessionStorage.getItem('crm_user'), 
+        manager: assignedTo, // Исполнитель
         status: "active",
-        priority: prio // ДОБАВЛЕНО
+        priority: prio,
+        createdBy: me // Тот, кто поставил задачу
     };
 
     // 5. Обновляем локальные данные и интерфейс
@@ -5503,7 +5523,7 @@ function updateStatsManagerList() {
     const myName = sessionStorage.getItem('crm_user');
     const myTeam = String(sessionStorage.getItem('crm_team') || "none").trim().toLowerCase();
     
-    // Получаем текущее выбранное значение в фильтре команд (для админа)
+    // 1. Определяем, какую команду мы сейчас просматриваем (для фильтров статистики/отчетов)
     const selTeamEl = document.getElementById('statsTeamFilter');
     const selTeam = String(selTeamEl?.value || "all").trim().toLowerCase();
     
@@ -5512,7 +5532,7 @@ function updateStatsManagerList() {
     
     let filteredNames = [];
 
-    // Если есть структура команд
+    // 2. Собираем список имен менеджеров на основе структуры команды
     if (teamStructure && Object.keys(teamStructure).length > 0) {
         if (targetTeam === "all") {
             filteredNames = Object.keys(teamStructure);
@@ -5523,22 +5543,24 @@ function updateStatsManagerList() {
             });
         }
     } else {
-        filteredNames = managers; // Fallback
+        filteredNames = managers; // Резервный вариант, если структура не загрузилась
     }
 
-    // Формируем HTML опций. Админ и Лидер видят "Все сотрудники" (в рамках своей доступности)
+    // 3. Формируем HTML для стандартных фильтров (Статистика, Отчеты, Списки)
     let optionsHtml = (role === 'admin' || role === 'leader') ? '<option value="all">👤 Все сотрудники</option>' : '';
     optionsHtml += [...new Set(filteredNames)].sort().map(m => `<option value="${m}">${m}</option>`).join('');
 
-    // Рассылаем обновленные списки во все фильтры на всех вкладках
+    // Рассылаем этот список во все выпадающие фильтры
     const filters = ['statsManagerFilter', 'reportManagerFilter', 'adminCallManagerFilter', 'adminRequestManagerFilter', 'adminDealManagerFilter'];
+    
     filters.forEach(id => {
         const el = document.getElementById(id);
         if (el) {
-            const savedValue = el.value;
+            const savedValue = el.value; // Сохраняем, что было выбрано до обновления
             el.innerHTML = optionsHtml;
             
-            // Если это обычный менеджер - всегда ставим его имя. Лидеру/Админу возвращаем выбор или ставим 'all'
+            // Если это обычный менеджер — всегда ставим его имя. 
+            // Если Админ/Лидер — возвращаем то, что он выбрал ранее.
             if (role !== 'admin' && role !== 'leader') {
                 el.value = myName;
             } else if (savedValue && optionsHtml.includes(`value="${savedValue}"`)) {
@@ -5546,6 +5568,19 @@ function updateStatsManagerList() {
             }
         }
     });
+
+    // 4. ОБНОВЛЕНИЕ СПИСКА ДЛЯ ДЕЛЕГИРОВАНИЯ (ПОЛУЧАТЕЛЬ ЗАДАЧИ)
+    // Этот блок стоит ВНЕ цикла, чтобы обновиться всего один раз
+    const taskManSel = document.getElementById('callAssignedManager');
+    if (taskManSel) {
+        // Здесь мы показываем ВСЕХ менеджеров компании, чтобы можно было назначить задачу любому
+        taskManSel.innerHTML = `<option value="${myName}">📍 Поставить задачу СЕБЕ</option>` + 
+            managers
+                .filter(m => m !== myName) // Убираем себя из списка (т.к. мы уже в первой строке)
+                .sort()
+                .map(m => `<option value="${m}">👤 НАЗНАЧИТЬ: ${m}</option>`)
+                .join('');
+    }
 }
     
 // 3. Восстановление объекта (изменяем только нужный список)
