@@ -1907,7 +1907,7 @@ async function handleLogin() {
         const r = await fetch(`${SCRIPT_URL}?action=login&email=${encodeURIComponent(e)}&password=${encodeURIComponent(p)}`);
         const res = await r.json();
 if (res.success) { 
-            sessionStorage.setItem('crm_user', res.name); 
+            sessionStorage.setItem('crm_user', String(res.name).trim()); 
             sessionStorage.setItem('crm_role', res.role || 'manager'); // СОХРАНЯЕМ РОЛЬ
             sessionStorage.setItem('crm_team', res.team || 'none');     // СОХРАНЯЕМ КОМАНДУ
             
@@ -2161,6 +2161,9 @@ function mergeDelta(delta) {
                 
                 // ОБНОВЛЯЕМ СУЩЕСТВУЮЩУЮ ЗАПИСЬ
                 targetArray[idx] = newItem;
+                const previewBox = document.getElementById('preview-companies');
+    if (name === 'companies' && previewBox.innerHTML.includes(newItem.name)) { showCompanyPreview(newItem.name);
+}
             } else {
                 // --- УВЕДОМЛЕНИЕ О НОВОЙ ЗАДАЧЕ (ДЛЯ ВАС) ---
                 if (name === 'reminders' && newItem.manager === me && newItem.createdBy !== me && newItem.createdBy !== "") {
@@ -2396,7 +2399,7 @@ function checkAccess(companyName) {
     if (!c) return true;
 
     // 1. Я владелец
-    if (c.manager === me) return true;
+    if (String(c.manager).trim().toLowerCase() === String(me).trim().toLowerCase()) return true;
 
     // 2. Мне открыли доступ лично
     const sharedList = (c.sharedWith || "").split(',').map(s => s.trim());
