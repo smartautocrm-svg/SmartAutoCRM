@@ -2136,29 +2136,23 @@ function mergeDelta(delta) {
 
         let currentArray = getArrayBySheet(name === 'reminders' ? 'calls' : name);
         let newItems = delta[name].map(parsers[name]);
-        const me = sessionStorage.getItem('crm_user'); // Получаем имя текущего юзера
+        const me = sessionStorage.getItem('crm_user');
 
         newItems.forEach(newItem => {
             let idx = currentArray.findIndex(item => String(item.id) === String(newItem.id));
 
             if (idx > -1) {
-                // --- ЛОГИКА УВЕДОМЛЕНИЯ ПРИ ПЕРЕДАЧЕ ---
-                // Если это компания, новый владелец — Я, а в моей памяти владелец был ДРУГОЙ
                 if (name === 'companies' && newItem.manager === me && currentArray[idx].manager !== me) {
                     createNotification("🏢 Новая компания!", `Менеджер ${currentArray[idx].manager} передал вам: ${newItem.name}`, newItem.id);
                 }
-
                 currentArray[idx] = newItem;
-                // Принудительное обновление глобальных состояний
                 if (name === 'companies') companies[idx] = newItem;
                 if (name === 'deals') deals[idx] = newItem;
                 if (name === 'requests') requests[idx] = newItem;
             } else {
                 if (name === 'reminders' && newItem.manager === me && newItem.createdBy !== me && newItem.createdBy !== "") {
                     createNotification("📅 Новое поручение!", `${newItem.createdBy} поставил вам задачу по ${newItem.name}`, newItem.id);
-                    }
-                // --- ЛОГИКА УВЕДОМЛЕНИЯ ПРИ ДИСТАНЦИОННОМ СОЗДАНИИ ---
-                // Если компания новая в базе, владелец — Я, но создал её НЕ Я
+                }
                 if (name === 'companies' && newItem.manager === me && newItem.createdBy !== me) {
                     createNotification("🏢 Новая компания!", `Для вас создана карточка: ${newItem.name}`, newItem.id);
                 }
@@ -2166,7 +2160,6 @@ function mergeDelta(delta) {
             }
         });
 
-        // Обновляем глобальные переменные
         if (name === 'companies') companies = currentArray;
         else if (name === 'deals') deals = currentArray;
         else if (name === 'requests') requests = currentArray;
@@ -2176,8 +2169,6 @@ function mergeDelta(delta) {
         else if (name === 'news') news = currentArray;
     });
 }
-
-let lastSyncTimestamp = localStorage.getItem('lastSyncTimestamp') || 0;
 
 async function loadCloudData() {
     if (document.getElementById('editModal').style.display === 'block') return;
@@ -3458,7 +3449,8 @@ async function savePartnersAccess() {
         const f = document.getElementById('editFields'), title = document.getElementById('editModalTitle');
         
         if (type === 'reminder') {
-            const r = reminders.find(x => x.id == id); title.innerText = "Правка активности";
+            const r = reminders.find(x => x.id == id); 
+            title.innerText = "Правка активности";
             f.innerHTML = `
                 <input type="text" id="eRemName" value="${r.name}" list="allEntitiesData">
                 <input type="datetime-local" id="eRemDate" value="${forInput(r.date)}"> 
@@ -3872,33 +3864,26 @@ async function submitFollowUp() {
     const n = document.getElementById('callName').value.trim(); 
     if(!n) return alert("Введите название компании!"); 
 
-    // 1. Ищем компанию в базе (игнорируя лишние пробелы и регистр)
     const targetComp = companies.find(c => 
         c.name.toLowerCase().trim() === n.toLowerCase() && !c.isDeleted
     );
 
-    // 2. Если менеджер ввел имя компании, которой нет в базе
     if (!targetComp) {
         return alert("⚠️ Компания не найдена в базе. Сначала создайте её во вкладке КОМПАНИИ.");
     }
 
-    // 3. Проверяем доступ через существующую функцию checkAccess
-    if (!checkAccess(targetComp.name)) {
-        return alert("🚫 Доступ запрещен: Вы не являетесь владельцем компании '" + targetComp.name + "' и не имеете прав доступа к ней.");
-    }
-const prio = document.getElementById('callPriority').value;
+    const prio = document.getElementById('callPriority').value;
     const me = sessionStorage.getItem('crm_user');
-    // Берем выбранного менеджера или себя
     const assignedTo = document.getElementById('callAssignedManager').value || me;
+
+    // ПРОВЕРКА: имеет ли ИСПОЛНИТЕЛЬ доступ?
     const targetManagerInfo = teamStructure[assignedTo] || { team: 'none', role: 'manager' };
     const ownerInfo = teamStructure[targetComp.manager] || { team: 'none' };
     
-    // Проверяем права исполнителя (Админ / Владелец / Шеринг)
     let canReceiverSee = (assignedTo === 'admin') || 
                          (targetComp.manager === assignedTo) || 
                          (targetComp.sharedWith || "").split(',').map(s=>s.trim()).includes(assignedTo);
 
-    // Если исполнитель — Лидер, проверяем, в его ли команде владелец компании
     if (!canReceiverSee && targetManagerInfo.role === 'leader') {
         if (ownerInfo.team === targetManagerInfo.team && targetManagerInfo.team !== 'none') {
             canReceiverSee = true;
@@ -3914,21 +3899,17 @@ const prio = document.getElementById('callPriority').value;
         name: targetComp.name, 
         date: document.getElementById('callTime').value, 
         topic: document.getElementById('callTopic').value, 
-        manager: assignedTo, // Исполнитель
+        manager: assignedTo, 
         status: "active",
         priority: prio,
-        createdBy: me // Тот, кто поставил задачу
+        createdBy: me 
     };
 
-    // 5. Обновляем локальные данные и интерфейс
     reminders.push(newItem); 
     renderReminders();  
     updateCounters(); 
 
-    // 6. Отправляем в Google Таблицу
     await sync('reminders', reminders, 'append'); 
-
-    // 7. Очищаем поля формы
     ['callName', 'callTime', 'callTopic'].forEach(i => document.getElementById(i).value = '');
 }
     async function addRequest() { 
@@ -5543,64 +5524,39 @@ function updateStatsManagerList() {
     const role = sessionStorage.getItem('crm_role');
     const myName = sessionStorage.getItem('crm_user');
     const myTeam = String(sessionStorage.getItem('crm_team') || "none").trim().toLowerCase();
-    
-    // 1. Определяем, какую команду мы сейчас просматриваем (для фильтров статистики/отчетов)
     const selTeamEl = document.getElementById('statsTeamFilter');
     const selTeam = String(selTeamEl?.value || "all").trim().toLowerCase();
-    
-    // Определяем целевую команду для фильтрации людей
     let targetTeam = (role === 'admin') ? selTeam : myTeam;
     
     let filteredNames = [];
-
-    // 2. Собираем список имен менеджеров на основе структуры команды
     if (teamStructure && Object.keys(teamStructure).length > 0) {
-        if (targetTeam === "all") {
-            filteredNames = Object.keys(teamStructure);
-        } else {
+        if (targetTeam === "all") { filteredNames = Object.keys(teamStructure); } 
+        else {
             filteredNames = Object.keys(teamStructure).filter(name => {
                 const info = teamStructure[name];
                 return info && String(info.team || "").trim().toLowerCase() === targetTeam;
             });
         }
-    } else {
-        filteredNames = managers; // Резервный вариант, если структура не загрузилась
-    }
+    } else { filteredNames = managers; }
 
-    // 3. Формируем HTML для стандартных фильтров (Статистика, Отчеты, Списки)
     let optionsHtml = (role === 'admin' || role === 'leader') ? '<option value="all">👤 Все сотрудники</option>' : '';
     optionsHtml += [...new Set(filteredNames)].sort().map(m => `<option value="${m}">${m}</option>`).join('');
 
-    // Рассылаем этот список во все выпадающие фильтры
     const filters = ['statsManagerFilter', 'reportManagerFilter', 'adminCallManagerFilter', 'adminRequestManagerFilter', 'adminDealManagerFilter'];
-    
     filters.forEach(id => {
         const el = document.getElementById(id);
         if (el) {
-            const savedValue = el.value; // Сохраняем, что было выбрано до обновления
+            const savedValue = el.value;
             el.innerHTML = optionsHtml;
-            
-            // Если это обычный менеджер — всегда ставим его имя. 
-            // Если Админ/Лидер — возвращаем то, что он выбрал ранее.
-            if (role !== 'admin' && role !== 'leader') {
-                el.value = myName;
-            } else if (savedValue && optionsHtml.includes(`value="${savedValue}"`)) {
-                el.value = savedValue;
-            }
+            if (role !== 'admin' && role !== 'leader') el.value = myName;
+            else if (savedValue && optionsHtml.includes(`value="${savedValue}"`)) el.value = savedValue;
         }
     });
 
-    // 4. ОБНОВЛЕНИЕ СПИСКА ДЛЯ ДЕЛЕГИРОВАНИЯ (ПОЛУЧАТЕЛЬ ЗАДАЧИ)
-    // Этот блок стоит ВНЕ цикла, чтобы обновиться всего один раз
     const taskManSel = document.getElementById('callAssignedManager');
     if (taskManSel) {
-        // Здесь мы показываем ВСЕХ менеджеров компании, чтобы можно было назначить задачу любому
         taskManSel.innerHTML = `<option value="${myName}">📍 Поставить задачу СЕБЕ</option>` + 
-            managers
-                .filter(m => m !== myName) // Убираем себя из списка (т.к. мы уже в первой строке)
-                .sort()
-                .map(m => `<option value="${m}">👤 НАЗНАЧИТЬ: ${m}</option>`)
-                .join('');
+            managers.filter(m => m !== myName).sort().map(m => `<option value="${m}">👤 НАЗНАЧИТЬ: ${m}</option>`).join('');
     }
 }
     
