@@ -2527,6 +2527,7 @@ function showCallPreview(id) {
             <div class="preview-box"><label>Дата</label><span>${dtFmt(r.date)}</span></div>
             <div class="preview-box"><label>Приоритет</label><span>${pText}</span></div>
             <div class="preview-box"><label>Менеджер</label><span>${r.manager}</span></div>
+            <div class="preview-box"><label>Поставил задачу</label><span>${r.createdBy || 'Сам себе'}</span></div>
             <div class="preview-box"><label>Статус</label><span>${r.status}</span></div>
             <div class="preview-box" style="grid-column:span 2;"><label>Результат</label><p style="font-size:11px; margin-top:5px;">${r.topic}</p></div>
             ${shareHtml}
@@ -2887,7 +2888,8 @@ if (me !== 'admin') {
         const myTeam = String(sessionStorage.getItem('crm_team') || "").trim().toLowerCase();
 
         f = f.filter(r => {
-            const isAuthor = r.manager === me;
+            const isAuthor = r.manager === me; // Я исполнитель
+            const isCreator = r.createdBy === me; // Я поставил эту задачу
             const isSharedWithMe = (r.sharedWith || "").split(',').includes(me);
             
             let isTeamRecord = false;
@@ -2898,7 +2900,8 @@ if (me !== 'admin') {
                 }
             }
 
-            return isAuthor || isSharedWithMe || isTeamRecord;
+            // Теперь условие: Я вижу задачу, если я Исполнитель ИЛИ Автор ИЛИ мне дали доступ ИЛИ я Лид команды
+            return isAuthor || isCreator || isSharedWithMe || isTeamRecord;
         });
     }
     
@@ -3887,6 +3890,24 @@ const prio = document.getElementById('callPriority').value;
     const me = sessionStorage.getItem('crm_user');
     // Берем выбранного менеджера или себя
     const assignedTo = document.getElementById('callAssignedManager').value || me;
+    const targetManagerInfo = teamStructure[assignedTo] || { team: 'none', role: 'manager' };
+    const ownerInfo = teamStructure[targetComp.manager] || { team: 'none' };
+    
+    // Проверяем права исполнителя (Админ / Владелец / Шеринг)
+    let canReceiverSee = (assignedTo === 'admin') || 
+                         (targetComp.manager === assignedTo) || 
+                         (targetComp.sharedWith || "").split(',').map(s=>s.trim()).includes(assignedTo);
+
+    // Если исполнитель — Лидер, проверяем, в его ли команде владелец компании
+    if (!canReceiverSee && targetManagerInfo.role === 'leader') {
+        if (ownerInfo.team === targetManagerInfo.team && targetManagerInfo.team !== 'none') {
+            canReceiverSee = true;
+        }
+    }
+
+    if (!canReceiverSee) {
+        return alert("🚫 Ошибка: Менеджер " + assignedTo + " не имеет доступа к этой компании. Нельзя поставить задачу на него.");
+    }
 
     const newItem = { 
         id: Date.now(), 
