@@ -2131,60 +2131,65 @@ function processLoadedData(d) {
 
 function mergeDelta(delta) {
     const listNames = ['companies', 'requests', 'reminders', 'partners', 'deals', 'tracking', 'news'];
+    const me = sessionStorage.getItem('crm_user');
+
     listNames.forEach(name => {
         if (!delta[name] || delta[name].length === 0) return;
 
-        let currentArray = getArrayBySheet(name === 'reminders' ? 'calls' : name);
         let newItems = delta[name].map(parsers[name]);
-        const me = sessionStorage.getItem('crm_user'); // Получаем имя текущего юзера
+        
+        // Определяем целевой глобальный массив
+        let targetArray;
+        if (name === 'companies') targetArray = companies;
+        else if (name === 'requests') targetArray = requests;
+        else if (name === 'deals') targetArray = deals;
+        else if (name === 'reminders') targetArray = reminders;
+        else if (name === 'partners') targetArray = partners;
+        else if (name === 'tracking') targetArray = tracking;
+        else if (name === 'news') targetArray = news;
+
+        if (!targetArray) return;
 
         newItems.forEach(newItem => {
-            let idx = currentArray.findIndex(item => String(item.id) === String(newItem.id));
+            let idx = targetArray.findIndex(item => String(item.id) === String(newItem.id));
 
             if (idx > -1) {
-                // --- ЛОГИКА УВЕДОМЛЕНИЯ ПРИ ПЕРЕДАЧЕ ---
-                // Если это компания, новый владелец — Я, а в моей памяти владелец был ДРУГОЙ
-                if (name === 'companies' && newItem.manager === me && currentArray[idx].manager !== me) {
-                    createNotification("🏢 Новая компания!", `Менеджер ${currentArray[idx].manager} передал вам: ${newItem.name}`, newItem.id);
+                // --- УВЕДОМЛЕНИЕ О ПЕРЕДАЧЕ КОМПАНИИ ---
+                if (name === 'companies' && newItem.manager === me && targetArray[idx].manager !== me) {
+                    createNotification("🏢 Компания передана вам!", `Менеджер ${targetArray[idx].manager} назначил вас владельцем: ${newItem.name}`, newItem.id);
                 }
-
-                currentArray[idx] = newItem;
-                // Принудительное обновление глобальных состояний
-                if (name === 'companies') companies[idx] = newItem;
-                if (name === 'deals') deals[idx] = newItem;
-                if (name === 'requests') requests[idx] = newItem;
+                
+                // ОБНОВЛЯЕМ СУЩЕСТВУЮЩУЮ ЗАПИСЬ
+                targetArray[idx] = newItem;
             } else {
+                // --- УВЕДОМЛЕНИЕ О НОВОЙ ЗАДАЧЕ (ДЛЯ ВАС) ---
                 if (name === 'reminders' && newItem.manager === me && newItem.createdBy !== me && newItem.createdBy !== "") {
                     createNotification("📅 Новое поручение!", `${newItem.createdBy} поставил вам задачу по ${newItem.name}`, newItem.id);
-                    }
-                // --- ЛОГИКА УВЕДОМЛЕНИЯ ПРИ ДИСТАНЦИОННОМ СОЗДАНИИ ---
-                // Если компания новая в базе, владелец — Я, но создал её НЕ Я
+                }
+
+                // --- УВЕДОМЛЕНИЕ О НОВОЙ КОМПАНИИ (ДЛЯ ВАС) ---
                 if (name === 'companies' && newItem.manager === me && newItem.createdBy !== me) {
                     createNotification("🏢 Новая компания!", `Для вас создана карточка: ${newItem.name}`, newItem.id);
                 }
-                currentArray.push(newItem);
+
+                // ДОБАВЛЯЕМ НОВУЮ ЗАПИСЬ
+                targetArray.push(newItem);
             }
         });
-
-        // Обновляем глобальные переменные
-        if (name === 'companies') companies = currentArray;
-        else if (name === 'deals') deals = currentArray;
-        else if (name === 'requests') requests = currentArray;
-        else if (name === 'reminders') reminders = currentArray;
-        else if (name === 'partners') partners = currentArray;
-        else if (name === 'tracking') tracking = currentArray;
-        else if (name === 'news') news = currentArray;
     });
 }
 
-let lastSyncTimestamp = localStorage.getItem('lastSyncTimestamp') || 0;
-
 async function loadCloudData() {
+    // Если открыто окно редактирования, не обновляем, чтобы не сбить ввод данных
     if (document.getElementById('editModal').style.display === 'block') return;
     if (companies.length === 0) showLoader(true);
 
     try {
-        const url = `${SCRIPT_URL}?action=getAllData&since=${lastSyncTimestamp}`;
+        // Делаем "заступ" в 1 секунду (1000 мс) назад, чтобы поймать изменения 
+        // которые могли произойти одновременно с прошлым запросом
+        const safeSince = lastSyncTimestamp > 0 ? lastSyncTimestamp - 1000 : 0;
+        
+        const url = `${SCRIPT_URL}?action=getAllData&since=${safeSince}`;
         const r = await fetch(url);
         const d = await r.json();
 
@@ -2192,29 +2197,31 @@ async function loadCloudData() {
         if (d.teamStructure) teamStructure = d.teamStructure;
         
         if (!d || d.error) {
-            document.getElementById('sync-status').innerText = "Ошибка синхро";
+            document.getElementById('sync-status').innerText = "Ошибка синхронизации";
             return;
         }
 
         if (d.isDelta) {
-            mergeDelta(d);
+            mergeDelta(d); // Умное обновление только изменившихся строк
         } else {
-            processLoadedData(d);
+            processLoadedData(d); // Полная загрузка (при первом входе)
         }
 
+        // Обновляем метку времени данными с сервера
         lastSyncTimestamp = d.serverTime;
         localStorage.setItem('lastSyncTimestamp', lastSyncTimestamp);
         localStorage.setItem('crm_data_cache', JSON.stringify(exportCurrentData()));
 
+        // Полное обновление интерфейса
         updateCounters(); 
         updateDatalists();
-        
-        // ВАЖНО: Добавь эти две строки:
         if (typeof updateAdminUI === "function") updateAdminUI();
         if (typeof updateStatsManagerList === "function") updateStatsManagerList();
 
+        // Перерисовываем ту вкладку, на которой сейчас находится юзер
         const activeTab = document.querySelector('.content.active').id;
         renderTabById(activeTab);
+        
         document.getElementById('sync-status').innerText = "Синхро: " + new Date().toLocaleTimeString();
         
     } catch (e) { 
@@ -2224,7 +2231,6 @@ async function loadCloudData() {
         checkPartnersTabAccess();
         showLoader(false); 
     }
-    updateAdminUI();
 }
 
 function exportCurrentData() {
