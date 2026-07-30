@@ -2387,8 +2387,8 @@ function deleteFile(dealId, fileId) {
     sync('deals', deals[idx], 'update').then(() => showDealPreview(dealId));
 }
 
-function checkAccess(companyName) {
-    const me = sessionStorage.getItem('crm_user');
+function checkAccess(companyName, targetUser = null) {
+    const me = targetUser || sessionStorage.getItem('crm_user');
     const myRole = sessionStorage.getItem('crm_role');
     // Приводим свою команду к нижнему регистру для сравнения
     const myTeam = String(sessionStorage.getItem('crm_team') || "").trim().toLowerCase();
@@ -3896,6 +3896,11 @@ const prio = document.getElementById('callPriority').value;
     const me = sessionStorage.getItem('crm_user');
     // Берем выбранного менеджера или себя
     const assignedTo = document.getElementById('callAssignedManager').value || me;
+        if (assignedTo !== me) {
+        if (!checkAccess(targetComp.name, assignedTo)) {
+            return alert(`❌ ОШИБКА: У менеджера ${assignedTo} нет прав на компанию "${targetComp.name}". Сначала поделитесь с ним доступом в карточке компании.`);
+        }
+    }
 
     const newItem = { 
         id: Date.now(), 
@@ -5582,15 +5587,14 @@ function updateStatsManagerList() {
     // Этот блок стоит ВНЕ цикла, чтобы обновиться всего один раз
     const taskManSel = document.getElementById('callAssignedManager');
     if (taskManSel) {
-        // Здесь мы показываем ВСЕХ менеджеров компании, чтобы можно было назначить задачу любому
+        // Мы используем полный массив 'managers', чтобы можно было выбрать любого коллегу
         taskManSel.innerHTML = `<option value="${myName}">📍 Поставить задачу СЕБЕ</option>` + 
             managers
-                .filter(m => m !== myName) // Убираем себя из списка (т.к. мы уже в первой строке)
+                .filter(m => m !== myName)
                 .sort()
                 .map(m => `<option value="${m}">👤 НАЗНАЧИТЬ: ${m}</option>`)
                 .join('');
     }
-}
     
 // 3. Восстановление объекта (изменяем только нужный список)
 async function restoreItem(sh, id) {
