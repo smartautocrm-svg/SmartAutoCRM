@@ -2131,42 +2131,49 @@ function processLoadedData(d) {
 
 function mergeDelta(delta) {
     const listNames = ['companies', 'requests', 'reminders', 'partners', 'deals', 'tracking', 'news'];
+    const me = sessionStorage.getItem('crm_user');
+
     listNames.forEach(name => {
         if (!delta[name] || delta[name].length === 0) return;
 
-        let currentArray = getArrayBySheet(name === 'reminders' ? 'calls' : name);
+        // 1. Находим правильный глобальный массив
+        let targetArray;
+        if (name === 'companies') targetArray = companies;
+        else if (name === 'requests') targetArray = requests;
+        else if (name === 'deals') targetArray = deals;
+        else if (name === 'reminders') targetArray = reminders;
+        else if (name === 'partners') targetArray = partners;
+        else if (name === 'tracking') targetArray = tracking;
+        else if (name === 'news') targetArray = news;
+
+        if (!targetArray) return;
+
         let newItems = delta[name].map(parsers[name]);
-        const me = sessionStorage.getItem('crm_user');
 
         newItems.forEach(newItem => {
-            let idx = currentArray.findIndex(item => String(item.id) === String(newItem.id));
+            let idx = targetArray.findIndex(item => String(item.id) === String(newItem.id));
 
             if (idx > -1) {
-                if (name === 'companies' && newItem.manager === me && currentArray[idx].manager !== me) {
-                    createNotification("🏢 Новая компания!", `Менеджер ${currentArray[idx].manager} передал вам: ${newItem.name}`, newItem.id);
+                // ПРОВЕРКА УВЕДОМЛЕНИЙ ПРИ ОБНОВЛЕНИИ
+                if (name === 'companies' && newItem.manager === me && targetArray[idx].manager !== me) {
+                    createNotification("🏢 Вам передана компания!", `${targetArray[idx].manager} назначил вас владельцем: ${newItem.name}`, newItem.id);
                 }
-                currentArray[idx] = newItem;
-                if (name === 'companies') companies[idx] = newItem;
-                if (name === 'deals') deals[idx] = newItem;
-                if (name === 'requests') requests[idx] = newItem;
+                
+                // Обновляем элемент в правильном массиве
+                targetArray[idx] = newItem;
             } else {
-                if (name === 'reminders' && newItem.manager === me && newItem.createdBy !== me && newItem.createdBy !== "") {
-                    createNotification("📅 Новое поручение!", `${newItem.createdBy} поставил вам задачу по ${newItem.name}`, newItem.id);
+                // ПРОВЕРКА УВЕДОМЛЕНИЙ ПРИ ПОЯВЛЕНИИ НОВОГО
+                if (newItem.manager === me && newItem.createdBy !== me && newItem.createdBy !== "") {
+                    if (name === 'reminders') {
+                        createNotification("📅 Новое поручение!", `${newItem.createdBy} поставил вам задачу по ${newItem.name}`, newItem.id);
+                    }
+                    if (name === 'companies') {
+                        createNotification("🏢 Новая компания!", `Для вас создана карточка: ${newItem.name}`, newItem.id);
+                    }
                 }
-                if (name === 'companies' && newItem.manager === me && newItem.createdBy !== me) {
-                    createNotification("🏢 Новая компания!", `Для вас создана карточка: ${newItem.name}`, newItem.id);
-                }
-                currentArray.push(newItem);
+                targetArray.push(newItem);
             }
         });
-
-        if (name === 'companies') companies = currentArray;
-        else if (name === 'deals') deals = currentArray;
-        else if (name === 'requests') requests = currentArray;
-        else if (name === 'reminders') reminders = currentArray;
-        else if (name === 'partners') partners = currentArray;
-        else if (name === 'tracking') tracking = currentArray;
-        else if (name === 'news') news = currentArray;
     });
 }
 
@@ -2370,9 +2377,8 @@ function deleteFile(dealId, fileId) {
 }
 
 function checkAccess(companyName) {
-    const me = sessionStorage.getItem('crm_user');
+    const me = (sessionStorage.getItem('crm_user') || "").trim();
     const myRole = sessionStorage.getItem('crm_role');
-    // Приводим свою команду к нижнему регистру для сравнения
     const myTeam = String(sessionStorage.getItem('crm_team') || "").trim().toLowerCase();
 
     if (myRole === 'admin') return true; 
@@ -2380,19 +2386,20 @@ function checkAccess(companyName) {
     const c = companies.find(x => x.name === companyName);
     if (!c) return true;
 
-    // 1. Я владелец
-    if (c.manager === me) return true;
+    const ownerName = (c.manager || "").trim();
 
-    // 2. Мне открыли доступ лично
+    // 1. Я владелец
+    if (ownerName === me) return true;
+
+    // 2. Мне открыли доступ лично (shared)
     const sharedList = (c.sharedWith || "").split(',').map(s => s.trim());
     if (sharedList.includes(me)) return true;
 
-    // 3. Я лидер этой команды
+    // 3. Я лидер команды, к которой принадлежит владелец
     if (myRole === 'leader' && myTeam !== "") {
         const ownerInfo = teamStructure[c.manager];
         if (ownerInfo) {
             const ownerTeam = String(ownerInfo.team || "").trim().toLowerCase();
-            // Сравниваем команды без учета регистра
             if (ownerTeam === myTeam) return true;
         }
     }
@@ -4250,7 +4257,7 @@ function toggleDealFinanceFields() {
          lastSyncTimestamp = 0;
     loadCloudData();
 }
-    async function transferOwnership(companyId) {
+   async function transferOwnership(companyId) {
     const newManager = document.getElementById('transferNewManager').value;
     const me = sessionStorage.getItem('crm_user');
     const role = sessionStorage.getItem('crm_role');
@@ -4258,31 +4265,39 @@ function toggleDealFinanceFields() {
 
     if (!newManager) return alert("Выберите менеджера, которому хотите передать компанию!");
     
-    if (!confirm("ВНИМАНИЕ! После передачи вы (или ваш сотрудник) потеряете доступ к этой компании. Продолжить?")) return;
-
     showLoader(true);
     try {
         const idx = companies.findIndex(x => String(x.id) === String(companyId));
         if (idx === -1) throw new Error("Компания не найдена");
 
-        // Проверка прав для Лидера/Админа/Владельца
+        // --- ВОЗВРАЩАЕМ ТВОЮ ПРОВЕРКУ ПРАВ ---
         const ownerInfo = teamStructure[companies[idx].manager];
-        const isTeamManager = (role === 'leader' && ownerInfo && ownerInfo.team === myTeam);
+        const isTeamLeader = (role === 'leader' && ownerInfo && ownerInfo.team === myTeam);
         
-        if (role !== 'admin' && companies[idx].manager !== me && !isTeamManager) {
-            throw new Error("У вас нет прав для этой операции");
+        // Разрешаем если: я Админ ИЛИ я текущий Владелец ИЛИ я Лидер команды текущего владельца
+        if (role !== 'admin' && companies[idx].manager !== me && !isTeamLeader) {
+            throw new Error("У вас нет прав для передачи этой компании");
+        }
+        // -------------------------------------
+
+        if (!confirm(`Передать компанию "${companies[idx].name}" менеджеру ${newManager}?`)) {
+            showLoader(false);
+            return;
         }
 
+        // Обновляем локально
         companies[idx].manager = newManager;
-        companies[idx].sharedWith = ""; // Очищаем доступы
+        companies[idx].sharedWith = ""; // Очищаем старые доступы при передаче
 
+        // Отправляем в Google Таблицу (обновляем одну строку)
         await sync('companies', companies[idx], 'update');
+        
+        // Сбрасываем метку, чтобы принудительно обновить данные с сервера
         lastSyncTimestamp = 0; 
-    loadCloudData();
+        await loadCloudData();
 
-        document.getElementById('preview-companies').innerHTML = `<div style="padding:20px; text-align:center;">✅ Передано менеджеру ${newManager}</div>`;
+        alert(`Компания успешно передана: ${newManager}`);
         renderCompanies();
-        updateCounters();
         
     } catch (e) {
         alert("Ошибка: " + e.message);
