@@ -1733,7 +1733,7 @@ function forInput(v) {
     `;
     container.appendChild(div);
 }
-    
+    let lastSyncTimestamp = localStorage.getItem('lastSyncTimestamp') || 0;
     let reminders = [], companies = [], partners = [], requests = [], managers = [], deals = [], tracking = [], crmLogs = [], news = []; 
     
     // --- ЛОГИКА МОРСКОГО ТРЕКИНГА ---
