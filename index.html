@@ -1978,6 +1978,8 @@ async function loadProfile() {
     const user = sessionStorage.getItem('crm_user');
     if(!user) return;
     showLoader(true);
+    
+    // 1. ЗАГРУЗКА БАЗОВЫХ ДАННЫХ (Имя, Почта, Пароль)
     try {
         const r = await fetch(`${SCRIPT_URL}?action=getUserProfile&name=${encodeURIComponent(user)}`);
         const d = await r.json();
@@ -1987,10 +1989,16 @@ async function loadProfile() {
         document.getElementById('profPhone').value = d.phone || "";
         document.getElementById('profAvatar').innerText = d.name ? d.name[0].toUpperCase() : "U";
         document.getElementById('profDisplayTitle').innerText = d.name || "Пользователь";
-    } catch(e) { console.error(e); } finally { showLoader(false); }
-    // --- НАЧАЛО БЛОКА РЕДАКТОРА ШАБЛОНОВ ---
+    } catch(e) { 
+        console.error("Ошибка загрузки профиля:", e); 
+    } finally { 
+        showLoader(false); 
+    }
+
+    // 2. ОТРИСОВКА ШАБЛОНОВ (ТО, ЧТО БЫЛО ПОТЕРЯНО)
     const currentTemplates = getMyTemplates();
-    let templatesHtml = '<h3 style="margin-top:25px; color:var(--primary); border-top: 1px solid #eee; padding-top:20px;">✉️ МОЇ ШАБЛОНИ ЛИСТІВ</h3>';
+    let templatesHtml = '<div id="templates-editor-block">'; // Обертка, чтобы легко удалять/обновлять
+    templatesHtml += '<h3 style="margin-top:25px; color:var(--primary); border-top: 1px solid #eee; padding-top:20px;">✉️ МОЇ ШАБЛОНИ ЛИСТІВ</h3>';
     templatesHtml += '<p style="font-size:10px; color:#666; margin-bottom:15px;">Використовуйте <b>{{company}}</b>, <b>{{product}}</b>, <b>{{contact}}</b> для автозаповнення.</p>';
     
     currentTemplates.forEach(t => {
@@ -2004,18 +2012,27 @@ async function loadProfile() {
             </div>
         `;
     });
+    templatesHtml += '</div>';
     
     const profContainer = document.querySelector('#profile .profile-container');
-    const saveBtn = profContainer.querySelector('button.main');
     
+    // Удаляем старый блок редактора, если он уже был на странице (чтобы не дублировать)
     const oldEditor = document.getElementById('templates-editor-block');
     if(oldEditor) oldEditor.remove();
     
+    // Ищем кнопку сохранения, чтобы вставить шаблоны ПЕРЕД ней
+    const allBtns = profContainer.querySelectorAll('button.main');
+    const saveBtn = Array.from(allBtns).find(b => b.innerText.includes("Обновить"));
+
+    // Создаем элемент и вставляем
     const editorDiv = document.createElement('div');
-    editorDiv.id = 'templates-editor-block';
     editorDiv.innerHTML = templatesHtml;
-    profContainer.insertBefore(editorDiv, saveBtn);
-    // --- КОНЕЦ БЛОКА РЕДАКТОРА ШАБЛОНОВ ---
+    
+    if(saveBtn) {
+        profContainer.insertBefore(editorDiv.firstChild, saveBtn);
+    } else {
+        profContainer.appendChild(editorDiv.firstChild);
+    }
 }
 
 async function saveProfile() {
