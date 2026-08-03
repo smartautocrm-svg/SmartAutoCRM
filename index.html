@@ -854,12 +854,6 @@ button.main:active {
     height: 100%;
     border: none;
 }
-        .list-item.highlight-active {
-    border-color: var(--primary);
-    background-color: #fdf6ff !important;
-    box-shadow: 0 0 15px rgba(81, 31, 84, 0.3);
-    transform: scale(1.02);
-}
     </style>
 </head>
 <body>
@@ -3330,8 +3324,8 @@ function renderCompanies() {
         // Права на управление (✎ и ×) есть у: Админа, Владельца, Лидера группы или тех, кому открыли доступ
         const hasControlRights = (myRole === 'admin' || c.manager === me || (c.sharedWith || "").split(',').includes(me) || isTeamRecord);
 
-        return `<div id="comp-item-${c.id}" class="list-item ${isForgotten ? 'forgotten' : ''} ${isSelected ? 'selected' : ''}" 
-             onclick="showCompanyPreview('${c.name.replace(/'/g, "\\'")}')">
+        return `<div class="list-item ${isForgotten ? 'forgotten' : ''} ${isSelected ? 'selected' : ''}" 
+                     onclick="showCompanyPreview('${c.name.replace(/'/g, "\\'")}')">
             
             <input type="checkbox" class="bulk-checkbox" 
                    ${isSelected ? 'checked' : ''} 
@@ -5960,48 +5954,35 @@ const debouncedGlobalSearch = debounce(() => {
 
 // Функция перехода к результату (исправленная)
 function goToResult(tab, idOrName) {
-    // 1. Скрываем поиск
+    // Скрываем результаты и очищаем поле
     document.getElementById('globalSearchResults').style.display = 'none';
     document.getElementById('globalSearchInput').value = '';
     
-    // 2. Переходим на вкладку
+    // Переключаем вкладку
     openTab(tab);
     
-    if (tab === 'companies') {
-        // Сбрасываем фильтры поиска на вкладке компаний, чтобы целевая компания была видна
-        document.getElementById('searchCompGlobal').value = '';
-        document.getElementById('sortComp').value = '';
-        document.getElementById('secondarySelect').style.display = 'none';
-        
-        // Перерисовываем полный список
-        renderCompanies();
-
-        setTimeout(() => {
-            // Показываем превью справа
-            showCompanyPreview(idOrName);
-            
-            // Находим объект компании, чтобы узнать его ID
-            const target = companies.find(x => x.name === idOrName);
-            if (target) {
-                const element = document.getElementById(`comp-item-${target.id}`);
-                if (element) {
-                    // Убираем старые выделения
-                    document.querySelectorAll('.list-item').forEach(el => el.classList.remove('highlight-active'));
-                    // Добавляем новое выделение
-                    element.classList.add('highlight-active');
-                    // Плавно прокручиваем список к этой компании
-                    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
-            }
-        }, 300); // Небольшая задержка, чтобы список успел отрисоваться
-    } 
-    else if (tab === 'deals' || tab === 'requests') {
-        setTimeout(() => {
-            if (tab === 'deals') showDealPreview(idOrName);
-            if (tab === 'requests') showRequestPreview(idOrName);
-        }, 200);
-    }
+    // Даем небольшую задержку, чтобы DOM вкладки отрисовался, и открываем превью
+    setTimeout(() => {
+        if (tab === 'companies') {
+            showCompanyPreview(idOrName); 
+        } else if (tab === 'deals') {
+            showDealPreview(idOrName);
+        } else if (tab === 'requests') {
+            showRequestPreview(idOrName);
+        } else if (tab === 'partners') {
+            showPartnerPreview(idOrName);
+        }
+    }, 150);
 }
+    // Закрытие поиска при клике вне его области
+document.addEventListener('click', (e) => {
+    const searchInput = document.getElementById('globalSearchInput');
+    const searchResults = document.getElementById('globalSearchResults');
+    
+    if (e.target !== searchInput && e.target !== searchResults && !searchResults.contains(e.target)) {
+        searchResults.style.display = 'none';
+    }
+});
 
     async function toggleReminderAccess(rid, man, act) { 
     if(!man) return;
