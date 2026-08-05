@@ -2226,7 +2226,9 @@ function mergeDelta(delta) {
         else if (name === 'partners') targetArray = partners;
         else if (name === 'tracking') targetArray = tracking;
         else if (name === 'news') targetArray = news;
-
+        else if (name === 'chats') targetArray = chats; // Добавлено
+        else if (name === 'chat_messages') targetArray = chat_messages;
+        
         if (!targetArray) return;
 
         newItems.forEach(newItem => {
@@ -2332,6 +2334,8 @@ function exportCurrentData() {
         chats: chats.map(o => [o.id, o.name, o.creator, o.members, o.time]),
         chat_messages: chat_messages.map(o => [o.id, o.chatId, o.sender, o.text, o.time]),
         news: news.map(obj => formatRow('news', obj)),
+        chats: chats.map(obj => formatRow('chats', obj)), // Исправлено на formatRow
+        chat_messages: chat_messages.map(obj => formatRow('chat_messages', obj)), // Исправлено
         managers: managers,
         teamStructure: teamStructure, // ДОБАВИТЬ ЭТУ СТРОКУ
         logs: crmLogs
