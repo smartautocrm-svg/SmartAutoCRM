@@ -4584,13 +4584,19 @@ function renderChats() {
     
     if (role === 'admin') document.getElementById('admin-create-chat-btn').style.display = 'block';
 
+    const myName = String(me || "").trim().toLowerCase(); // Приводим свое имя к стандарту
+
     const myChats = chats.filter(c => {
         if (role === 'admin') return true;
-        return c.members.split(',').map(m => m.trim()).includes(me);
+        // Разбиваем список участников и проверяем каждого, игнорируя регистр и пробелы
+        const memberList = String(c.members || "").split(',').map(m => m.trim().toLowerCase());
+        return memberList.includes(myName);
     });
 
     container.innerHTML = myChats.map(c => `
-        <div class="list-item ${currentChatId == c.id ? 'selected' : ''}" onclick="selectChat('${c.id}', '${c.name.replace(/'/g, "\\'")}')" style="margin-bottom:0; border-radius:0; border-left:none; border-right:none; border-bottom:1px solid #eee;">
+        <div class="list-item ${currentChatId == c.id ? 'selected' : ''}" 
+             onclick="selectChat('${c.id}', '${c.name.replace(/'/g, "\\'")}')" 
+             style="margin-bottom:0; border-radius:0; border-left:none; border-right:none; border-bottom:1px solid #eee;">
             <div class="item-main">
                 <h4 style="font-size:12px;">👥 ${c.name}</h4>
                 <p style="font-size:9px;">Участников: ${c.members.split(',').length}</p>
@@ -4748,14 +4754,35 @@ function updateCounters() {
 
     function updateChatCounters() {
     const me = sessionStorage.getItem('crm_user');
-    // Фильтруем сообщения только из "моих" чатов
-    const myChatIds = chats.filter(c => c.members.includes(me) || sessionStorage.getItem('crm_role') === 'admin').map(c => String(c.id));
+    const myName = String(me || "").trim().toLowerCase();
+    const role = sessionStorage.getItem('crm_role');
+
+    // Находим ID чатов, в которых мы состоим
+    const myChatIds = chats.filter(c => {
+        const memberList = String(c.members || "").split(',').map(m => m.trim().toLowerCase());
+        return memberList.includes(myName) || role === 'admin';
+    }).map(c => String(c.id));
     
     const unread = chat_messages.filter(m => 
         myChatIds.includes(String(m.chatId)) && 
-        m.sender !== me && 
+        String(m.sender).trim().toLowerCase() !== myName && 
         m.id > lastSeenMsgId
     );
+
+    const counter = document.getElementById('count-chats');
+    if (unread.length > 0) {
+        counter.innerText = unread.length;
+        counter.style.display = 'inline-block';
+        
+        const latestMsg = unread[unread.length - 1];
+        if (!window.lastNotifiedMsgId || latestMsg.id > window.lastNotifiedMsgId) {
+            createNotification("✉️ Новое сообщение", `${latestMsg.sender}: ${latestMsg.text.substring(0, 30)}...`, latestMsg.chatId);
+            window.lastNotifiedMsgId = latestMsg.id;
+        }
+    } else {
+        counter.style.display = 'none';
+    }
+}
 
     const counter = document.getElementById('count-chats');
     if (unread.length > 0) {
