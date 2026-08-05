@@ -4747,22 +4747,40 @@ async function saveNewChat() {
     await sync('chats', chats, 'append');
 }
     async function deleteChat(id) {
-    if (!confirm("Удалить этот чат для всех участников? (Сообщения останутся в базе, но чат исчезнет из списка)")) return;
+    if (!confirm("Удалить этот чат и ВСЕ сообщения в нём навсегда?")) return;
 
-    const idx = chats.findIndex(c => String(c.id) === String(id));
-    if (idx > -1) {
-        chats[idx].isDeleted = true;
+    showLoader(true);
+    try {
+        const idx = chats.findIndex(c => String(c.id) === String(id));
+        if (idx > -1) {
+            // 1. Помечаем сам чат как удаленный
+            chats[idx].isDeleted = true;
+            await sync('chats', chats[idx], 'update');
 
-        // Если удаляемый чат сейчас открыт — закрываем окно сообщений
-        if (currentChatId === String(id)) {
-            currentChatId = null;
-            document.getElementById('chat-window').style.display = 'none';
-            document.getElementById('no-chat-selected').style.display = 'flex';
+            // 2. Даем команду серверу удалить все сообщения этого чата из таблицы
+            const resp = await fetch(`${SCRIPT_URL}?action=deleteMessages&chatId=${id}`);
+            const res = await resp.json();
+
+            if (res.success) {
+                // 3. Очищаем сообщения из локальной памяти браузера
+                chat_messages = chat_messages.filter(m => String(m.chatId) !== String(id));
+                
+                // Если этот чат был открыт — закрываем окно
+                if (currentChatId === String(id)) {
+                    currentChatId = null;
+                    document.getElementById('chat-window').style.display = 'none';
+                    document.getElementById('no-chat-selected').style.display = 'flex';
+                }
+                
+                renderChats();
+                alert("Чат и история сообщений успешно удалены.");
+            }
         }
-
-        renderChats();
-        // Отправляем обновление в таблицу (используем режим updateRow)
-        await sync('chats', chats[idx], 'update');
+    } catch (e) {
+        console.error("Ошибка при удалении чата:", e);
+        alert("Произошла ошибка при удалении данных.");
+    } finally {
+        showLoader(false);
     }
 }
 
