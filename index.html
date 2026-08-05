@@ -2275,6 +2275,8 @@ function mergeDelta(delta) {
 async function loadCloudData() {
     // Если открыто окно редактирования, не обновляем, чтобы не сбить ввод данных
     if (document.getElementById('editModal').style.display === 'block') return;
+    
+    // Если данных еще нет совсем, показываем полоску загрузки
     if (companies.length === 0) showLoader(true);
 
     try {
@@ -2286,6 +2288,7 @@ async function loadCloudData() {
         const r = await fetch(url);
         const d = await r.json();
 
+        // Обновляем списки менеджеров и структуру команд
         if (d.managers) managers = d.managers;
         if (d.teamStructure) teamStructure = d.teamStructure;
         
@@ -2294,39 +2297,57 @@ async function loadCloudData() {
             return;
         }
 
+        // Интегрируем полученные данные (новые или измененные)
         if (d.isDelta) {
             mergeDelta(d); // Умное обновление только изменившихся строк
         } else {
             processLoadedData(d); // Полная загрузка (при первом входе)
         }
 
-        // Обновляем метку времени данными с сервера
+        // Обновляем метку времени данными с сервера для следующего запроса
         lastSyncTimestamp = d.serverTime;
         localStorage.setItem('lastSyncTimestamp', lastSyncTimestamp);
         localStorage.setItem('crm_data_cache', JSON.stringify(exportCurrentData()));
 
-        // Полное обновление интерфейса
+        // Полное обновление интерфейса (счетчики на кнопках, выпадающие списки)
         updateCounters(); 
         updateDatalists();
+        
+        // Функции админа и статистики (если существуют)
         if (typeof updateAdminUI === "function") updateAdminUI();
         if (typeof updateStatsManagerList === "function") updateStatsManagerList();
 
         // Перерисовываем ту вкладку, на которой сейчас находится юзер
-        const activeTab = document.querySelector('.content.active').id;
-        renderTabById(activeTab);
-        if (activeTab === 'messenger') renderMessages();
-        updateChatCounters();
+        const activeTab = document.querySelector('.content.active')?.id;
+        
+        if (activeTab) {
+            renderTabById(activeTab);
+
+            // ИСПРАВЛЕНИЕ ДЛЯ ЧАТОВ:
+            // Если открыт мессенджер, обновляем и сообщения, и список чатов (чтобы видеть новые чаты)
+            if (activeTab === 'messenger') {
+                renderMessages(); // Отрисовка пузырей сообщений
+                renderChats();    // Отрисовка списка чатов слева (важно для коллег!)
+            }
+        }
+
+        updateChatCounters(); // Обновляем красный кружок уведомлений на кнопке "Чаты"
         document.getElementById('sync-status').innerText = "Синхро: " + new Date().toLocaleTimeString();
         
     } catch (e) { 
         console.error("Ошибка загрузки:", e);
         document.getElementById('sync-status').innerText = "Оффлайн";
        
+        // В случае ошибки сети все равно пытаемся показать текущие данные из памяти
         const currentTab = document.querySelector('.content.active')?.id;
-        if (currentTab === 'messenger') renderMessages();
+        if (currentTab === 'messenger') {
+            renderMessages();
+            renderChats();
+        }
         updateChatCounters();
     
     } finally { 
+        // В любом случае проверяем доступ к спец-вкладкам и выключаем лоадер
         checkPartnersTabAccess();
         showLoader(false); 
     }
@@ -4596,25 +4617,28 @@ function selectChat(id, name) {
 
 // Отрисовка списка чатов
 function renderChats() {
-    console.log("Состояние массива chats:", chats); 
     const me = sessionStorage.getItem('crm_user');
+    if (!me) return;
+    const myNameClean = me.trim().toLowerCase();
     const role = sessionStorage.getItem('crm_role');
     const container = document.getElementById('chat-list-container');
     
-    if (role === 'admin') document.getElementById('admin-create-chat-btn').style.display = 'block';
-
-    // Очищаем имя текущего юзера: в нижний регистр и удаляем всё, что не буквы и цифры
-    const myNameClean = String(me || "").trim().toLowerCase();
+    if (role === 'admin') {
+        const btn = document.getElementById('admin-create-chat-btn');
+        if (btn) btn.style.display = 'block';
+    }
 
     const myChats = chats.filter(c => {
+        // 1. Убираем "недочаты" (пустые строки) даже для админа
+        if (!c.name || String(c.name).trim() === "" || c.name === "undefined") return false;
+
+        // 2. Если админ - показываем все валидные чаты
         if (role === 'admin') return true;
         
-        // Разбиваем участников и каждого чистим максимально жестко
+        // 3. Для остальных - строгое сравнение без учета регистра и пробелов
         const memberList = String(c.members || "")
             .split(',')
             .map(m => m.trim().toLowerCase());
-        
-        console.log(`Сравнение для ${c.name}: ищем "${myNameClean}" в списке [${memberList.join(', ')}]`);
             
         return memberList.includes(myNameClean);
     });
@@ -4625,7 +4649,7 @@ function renderChats() {
              style="margin-bottom:0; border-radius:0; border-left:none; border-right:none; border-bottom:1px solid #eee;">
             <div class="item-main">
                 <h4 style="font-size:12px;">👥 ${c.name}</h4>
-                <p style="font-size:9px;">Участников: ${c.members.split(',').length}</p>
+                <p style="font-size:9px;">Участников: ${c.members ? c.members.split(',').length : 0}</p>
             </div>
         </div>
     `).join('');
@@ -4689,7 +4713,7 @@ function openCreateChatModal() {
 
 async function saveNewChat() {
     const name = document.getElementById('newChatName').value.trim();
-    // Собираем выбранных, обязательно применяя .trim() к именам
+    // Собираем участников, чистим каждое имя от пробелов и приводим к нижнему регистру для базы
     const selected = Array.from(document.querySelectorAll('.new-chat-member:checked'))
         .map(cb => cb.value.trim()); 
         
@@ -4698,16 +4722,14 @@ async function saveNewChat() {
     const newChat = {
         id: Date.now(),
         name: name,
-        creator: sessionStorage.getItem('crm_user'),
-        members: selected.join(','), // Список имен через запятую
+        creator: sessionStorage.getItem('crm_user').trim(),
+        members: selected.join(','), // Сохраняем как есть, но без лишних пробелов
         time: new Date().toISOString()
     };
 
     chats.push(newChat);
     renderChats();
     document.getElementById('createChatModal').style.display = 'none';
-    
-    // Отправляем на сервер
     await sync('chats', chats, 'append');
 }
 
