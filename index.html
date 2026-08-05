@@ -2266,9 +2266,11 @@ function mergeDelta(delta) {
                 // --- НОВОЕ: МОМЕНТАЛЬНОЕ ОТОБРАЖЕНИЕ СООБЩЕНИЙ В ОТКРЫТОМ ЧАТЕ ---
                 if (name === 'chat_messages' && String(newItem.chatId) === String(currentChatId)) {
                     renderMessages();
-                }
+               }
             }
         });
+    });
+} 
 
 async function loadCloudData() {
     // Если открыто окно редактирования, не обновляем, чтобы не сбить ввод данных
