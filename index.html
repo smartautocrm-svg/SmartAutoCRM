@@ -2354,12 +2354,14 @@ if (sh === 'deals') row = [
         if (sh === 'tracking') row = [o.id, o.num, o.cargo, o.weight, o.vol, o.qty, o.pack, o.trans, o.status, o.manager, o.sharedWith || "", o.isDeleted || false];
         if (sh === 'news') row = [o.id, o.date, o.author, o.title, o.text, o.isDeleted || false];
         if (row.length === 0) row = []; // Если ни одно условие не подошло
-        
-        // Добиваем пустые колонки до 24-й
-        while(row.length < 40) row.push("");
-        
-        return row;
-    }
+        if (sh === 'chats') row = [o.id, o.name, o.creator, o.members, o.time];
+        if (sh === 'chat_messages') row = [o.id, o.chatId, o.sender, o.text, o.time];
+
+    if (row.length === 0) row = [];
+    
+    while(row.length < 40) row.push(""); 
+    return row;
+}
 
   // Обновленная функция синхронизации
 async function sync(sh, dt, mode = 'saveAll') {
@@ -4774,22 +4776,6 @@ function updateCounters() {
         counter.innerText = unread.length;
         counter.style.display = 'inline-block';
         
-        const latestMsg = unread[unread.length - 1];
-        if (!window.lastNotifiedMsgId || latestMsg.id > window.lastNotifiedMsgId) {
-            createNotification("✉️ Новое сообщение", `${latestMsg.sender}: ${latestMsg.text.substring(0, 30)}...`, latestMsg.chatId);
-            window.lastNotifiedMsgId = latestMsg.id;
-        }
-    } else {
-        counter.style.display = 'none';
-    }
-}
-
-    const counter = document.getElementById('count-chats');
-    if (unread.length > 0) {
-        counter.innerText = unread.length;
-        counter.style.display = 'inline-block';
-        
-        // Если пришло совсем новое сообщение (которого не было 15 сек назад)
         const latestMsg = unread[unread.length - 1];
         if (!window.lastNotifiedMsgId || latestMsg.id > window.lastNotifiedMsgId) {
             createNotification("✉️ Новое сообщение", `${latestMsg.sender}: ${latestMsg.text.substring(0, 30)}...`, latestMsg.chatId);
