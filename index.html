@@ -4599,6 +4599,8 @@ function renderChats() {
         const memberList = String(c.members || "")
             .split(',')
             .map(m => m.trim().toLowerCase());
+
+        console.log("Проверка чата:", c.name, "Участники:", memberList, "Я:", myNameNormalized);
             
         return memberList.includes(myNameNormalized);
     });
