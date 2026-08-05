@@ -2353,15 +2353,18 @@ if (sh === 'deals') row = [
         if (sh === 'partners') row = [o.id, o.name, o.status, o.country, o.contact, o.phone, o.email, o.website, o.desc, o.isDeleted || false];
         if (sh === 'tracking') row = [o.id, o.num, o.cargo, o.weight, o.vol, o.qty, o.pack, o.trans, o.status, o.manager, o.sharedWith || "", o.isDeleted || false];
         if (sh === 'news') row = [o.id, o.date, o.author, o.title, o.text, o.isDeleted || false];
-        if (row.length === 0) row = []; // Если ни одно условие не подошло
+        if (row.length === 0) {
         if (sh === 'chats') row = [o.id, o.name, o.creator, o.members, o.time];
         if (sh === 'chat_messages') row = [o.id, o.chatId, o.sender, o.text, o.time];
+    }
 
+    // Если всё еще пусто — создаем пустой массив
     if (row.length === 0) row = [];
     
+    // Добиваем строку до 40 колонок для Google Таблицы (важно для Delta Sync)
     while(row.length < 40) row.push(""); 
     return row;
-}
+        }
 
   // Обновленная функция синхронизации
 async function sync(sh, dt, mode = 'saveAll') {
@@ -4586,13 +4589,18 @@ function renderChats() {
     
     if (role === 'admin') document.getElementById('admin-create-chat-btn').style.display = 'block';
 
-    const myName = String(me || "").trim().toLowerCase(); // Приводим свое имя к стандарту
+    // Приводим своё имя к нижнему регистру и убираем пробелы
+    const myNameNormalized = String(me || "").trim().toLowerCase();
 
     const myChats = chats.filter(c => {
         if (role === 'admin') return true;
-        // Разбиваем список участников и проверяем каждого, игнорируя регистр и пробелы
-        const memberList = String(c.members || "").split(',').map(m => m.trim().toLowerCase());
-        return memberList.includes(myName);
+        
+        // Разбиваем список участников, каждого чистим от пробелов и переводим в нижний регистр
+        const memberList = String(c.members || "")
+            .split(',')
+            .map(m => m.trim().toLowerCase());
+            
+        return memberList.includes(myNameNormalized);
     });
 
     container.innerHTML = myChats.map(c => `
@@ -4664,20 +4672,25 @@ function openCreateChatModal() {
 
 async function saveNewChat() {
     const name = document.getElementById('newChatName').value.trim();
-    const selected = Array.from(document.querySelectorAll('.new-chat-member:checked')).map(cb => cb.value);
+    // Собираем выбранных, обязательно применяя .trim() к именам
+    const selected = Array.from(document.querySelectorAll('.new-chat-member:checked'))
+        .map(cb => cb.value.trim()); 
+        
     if (!name || selected.length === 0) return alert("Введите название и выберите участников!");
 
     const newChat = {
         id: Date.now(),
         name: name,
         creator: sessionStorage.getItem('crm_user'),
-        members: selected.join(','),
+        members: selected.join(','), // Список имен через запятую
         time: new Date().toISOString()
     };
 
     chats.push(newChat);
     renderChats();
     document.getElementById('createChatModal').style.display = 'none';
+    
+    // Отправляем на сервер
     await sync('chats', chats, 'append');
 }
 
@@ -4759,7 +4772,7 @@ function updateCounters() {
     const myName = String(me || "").trim().toLowerCase();
     const role = sessionStorage.getItem('crm_role');
 
-    // Находим ID чатов, в которых мы состоим
+    // Находим ID чатов, в которых мы состоим (умный поиск)
     const myChatIds = chats.filter(c => {
         const memberList = String(c.members || "").split(',').map(m => m.trim().toLowerCase());
         return memberList.includes(myName) || role === 'admin';
