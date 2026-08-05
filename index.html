@@ -2367,13 +2367,11 @@ function exportCurrentData() {
         reminders: reminders.map(obj => formatRow('reminders', obj)),
         partners: partners.map(obj => formatRow('partners', obj)),
         tracking: tracking.map(obj => formatRow('tracking', obj)),
-        chats: chats.map(o => [o.id, o.name, o.creator, o.members, o.time]),
-        chat_messages: chat_messages.map(o => [o.id, o.chatId, o.sender, o.text, o.time]),
         news: news.map(obj => formatRow('news', obj)),
-        chats: chats.map(obj => formatRow('chats', obj)), // Исправлено на formatRow
-        chat_messages: chat_messages.map(obj => formatRow('chat_messages', obj)), // Исправлено
+        chats: chats.map(obj => formatRow('chats', obj)),
+        chat_messages: chat_messages.map(obj => formatRow('chat_messages', obj)),
         managers: managers,
-        teamStructure: teamStructure, // ДОБАВИТЬ ЭТУ СТРОКУ
+        teamStructure: teamStructure,
         logs: crmLogs
     };
 }
