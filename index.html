@@ -2127,7 +2127,7 @@ async function saveProfile() {
 // --- УНИВЕРСАЛЬНЫЕ ПАРСЕРЫ (DELTA-READY) ---
 const parsers = {
     companies: x => ({ 
-        id: x[0], name: String(x[1]||""), contact: String(x[2]||""), phone: String(x[3]||""), 
+        id: String(x[0]), name: String(x[1]||""), contact: String(x[2]||""), phone: String(x[3]||""), 
         product: String(x[4]||""), city: String(x[5]||""), email: String(x[6]||""), 
         imp: String(x[7]||""),  exp: String(x[8]||""), status: x[9], 
         createdAt: x[10], activatedAt: x[11], manager: String(x[12]||""), 
@@ -2136,19 +2136,19 @@ const parsers = {
         desc: String(x[17]||""),refuseReason: String(x[18]||""), createdBy: String(x[19] || "")
     }),
     requests: x => ({ 
-        id: x[0], company: String(x[1]||""), cargo: String(x[2]||""), transport: String(x[3]||""), 
+        id: String(x[0]), company: String(x[1]||""), cargo: String(x[2]||""), transport: String(x[3]||""), 
         weight: x[4], vol: x[5], value: x[6], currency: x[7], load: String(x[8]||""), 
         unload: String(x[9]||""), desc: String(x[10]||""), createdAt: x[11], status: x[12], 
         comment: x[13], container: x[14], zip: x[15], manager: String(x[16]||""), 
         contQty: x[17], type: x[18], sharedWith: String(x[19] || ""), 
         isDeleted: x[20] === true || x[20] === 'true',
-        lossReason: String(x[21] || "") // НОВАЯ КОЛОНКА
+        lossReason: String(x[21] || "")
     }),
     deals: x => {
         let parsedFiles = [];
         try { if (x[25] && typeof x[25] === 'string' && x[25].trim() !== "") { parsedFiles = JSON.parse(x[25]); } } catch(e) {}
         return { 
-            id: x[0], num: String(x[1]||""), company: String(x[2]||""), cargo: String(x[3]||""), 
+            id: String(x[0]), num: String(x[1]||""), company: String(x[2]||""), cargo: String(x[3]||""), 
             trans: String(x[4]||""), weight: x[5], vol: x[6], value: x[7], curr: x[8], 
             load: x[9], zip: x[10], unload: x[11], info: x[12], manager: String(x[13]||""), 
             createdAt: x[14], exp: Number(x[15]||0), inc: Number(x[16]||0), 
@@ -2160,33 +2160,37 @@ const parsers = {
         };
     },
     reminders: x => ({ 
-        id: x[0], name: String(x[1]||""), date: x[2], topic: String(x[3]||""), 
-    manager: String(x[4]||""), status: x[5], isDeleted: x[6] === true || x[6] === 'true', 
-    sharedWith: String(x[7] || ""), 
-    priority: String(x[9] || "medium"),
-    createdBy: String(x[10] || "") // ДОБАВЛЕНО (Колонка K)
-}),
+        id: String(x[0]), name: String(x[1]||""), date: x[2], topic: String(x[3]||""), 
+        manager: String(x[4]||""), status: x[5], isDeleted: x[6] === true || x[6] === 'true', 
+        sharedWith: String(x[7] || ""), 
+        priority: String(x[9] || "medium"),
+        createdBy: String(x[10] || "")
+    }),
     partners: x => ({ 
-        id: x[0], name: String(x[1]||""), status: x[2], country: x[3], contact: x[4], 
+        id: String(x[0]), name: String(x[1]||""), status: x[2], country: x[3], contact: x[4], 
         phone: x[5], email: x[6], website: x[7], desc: x[8], isDeleted: x[9] === true || x[9] === 'true'
     }),
     tracking: x => ({ 
-        id: x[0], num: String(x[1]||""), cargo: String(x[2]||""), weight: x[3], 
+        id: String(x[0]), num: String(x[1]||""), cargo: String(x[2]||""), weight: x[3], 
         vol: x[4], qty: x[5], pack: x[6], trans: x[7], status: x[8], manager: x[9], 
         sharedWith: x[10], isDeleted: x[11] === true || x[11] === 'true'
     }),
-
-    chats: x => ({ id: x[0], name: String(x[1]||""), creator: x[2], members: String(x[3]||""), time: x[4] }),
-chat_messages: x => ({ 
-    id: String(x[0]), 
-    chatId: String(x[1]), 
-    sender: String(x[2] || "Система"), 
-    text: String(x[3] || ""), 
-    time: x[4] 
-}),
-    
+    chats: x => ({ 
+        id: x[0] ? String(x[0]).replace(/[, ]/g, '').split('.')[0] : "", 
+        name: String(x[1]||""), 
+        creator: x[2], 
+        members: String(x[3]||""), 
+        time: x[4] 
+    }),
+    chat_messages: x => ({ 
+        id: x[0] ? String(x[0]).replace(/[, ]/g, '').split('.')[0] : "", 
+        chatId: x[1] ? String(x[1]).replace(/[, ]/g, '').split('.')[0] : "", 
+        sender: String(x[2] || "Система"), 
+        text: String(x[3] || ""), 
+        time: x[4] 
+    }),
     news: x => ({
-        id: x[0], date: x[1], author: x[2], title: x[3], text: x[4], isDeleted: x[5] === true || x[5] === 'true'
+        id: String(x[0]), date: x[1], author: x[2], title: x[3], text: x[4], isDeleted: x[5] === true || x[5] === 'true'
     })
 };
 
@@ -4602,14 +4606,13 @@ function openTab(id) {
         }
     // Переключение чатов
 function selectChat(id, name) {
-    currentChatId = id;
+    currentChatId = String(id); // ПРИНУДИТЕЛЬНО В СТРОКУ
     document.getElementById('no-chat-selected').style.display = 'none';
     document.getElementById('chat-window').style.display = 'flex';
     document.getElementById('chat-title').innerText = name;
     
-    // Обновляем "просмотренное"
     if(chat_messages.length > 0) {
-        const lastId = Math.max(...chat_messages.map(m => m.id));
+        const lastId = Math.max(...chat_messages.map(m => Number(m.id) || 0));
         localStorage.setItem('lastSeenMsgId', lastId);
         lastSeenMsgId = lastId;
     }
