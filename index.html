@@ -775,6 +775,31 @@ button.main:active {
     flex-direction: column;
     backdrop-filter: blur(8px);
 }
+        /* --- СТИЛИ МЕССЕНДЖЕРА --- */
+#messages-container {
+    scroll-behavior: smooth; /* Плавная прокрутка при новых сообщениях */
+}
+
+#message-input {
+    border-radius: 20px !important; /* Делаем поле ввода овальным, как в ТГ */
+    padding-left: 15px !important;
+    background: #fdfbff;
+}
+
+/* Эффект выделения чата в списке */
+#chat-list-container .list-item.selected {
+    background: #f0f7ff !important;
+    border-right: 3px solid var(--primary) !important;
+}
+
+#chat-list-container .list-item:hover {
+    background: #fff;
+}
+
+/* Пузыри сообщений: небольшая тень для объема */
+#messages-container > div > div:last-child {
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
 
 /* ВОТ СЮДА ВСТАВЛЯЙТЕ: */
 #fileViewerContent {
@@ -939,6 +964,7 @@ button.main:active {
     <button class="tab-btn" id="btn-report" onclick="openTab('report')">📊 <span class="tab-label">ОТЧЕТ</span></button>
     <button class="tab-btn" id="btn-stats" onclick="openTab('stats')">📈 <span class="tab-label">СТАТС</span></button>
     <button class="tab-btn" id="btn-tracking" onclick="openTab('tracking')">🛰️ <span class="tab-label">ТРЕКИНГ</span> <span class="tab-counter" id="count-tracking">0</span></button>
+    <button class="tab-btn" id="btn-messenger" onclick="openTab('messenger')">💬 <span class="tab-label">ЧАТЫ</span> <span class="tab-counter" id="count-chats" style="display:none;">0</span></button>    
     <button class="tab-btn" id="btn-profile" onclick="openTab('profile')">👤</button>
     <button class="tab-btn" id="btn-trash" style="display:none;" onclick="openTab('trash')">🗑️</button>
     <button class="tab-btn" id="btn-logs" style="display:none;" onclick="openTab('logs')">📜</button>
@@ -1524,6 +1550,33 @@ button.main:active {
     </div>
 </div>
 
+    <div id="messenger" class="content">
+    <div style="display: flex; height: calc(100vh - 40px); background: #fff;">
+        <div style="width: 280px; border-right: 1px solid var(--border); display: flex; flex-direction: column; background: #f8f9fc;">
+            <div style="padding: 15px; border-bottom: 1px solid var(--border); background: #fff;">
+                <h3 style="margin: 0 0 10px 0; font-size: 14px; color: var(--primary);">Мессенджер</h3>
+                <button id="admin-create-chat-btn" class="main" style="display:none; font-size: 10px; padding: 5px;" onclick="openCreateChatModal()">+ СОЗДАТЬ ЧАТ</button>
+            </div>
+            <div id="chat-list-container" class="scroll-list" style="flex-grow: 1;"></div>
+        </div>
+        <div id="chat-window" style="flex-grow: 1; display: none; flex-direction: column; background: #fff;">
+            <div id="chat-header" style="padding: 15px; border-bottom: 1px solid var(--border); font-weight: bold; color: var(--primary); background: #fff; display: flex; justify-content: space-between; align-items: center;">
+                <span id="chat-title">Выберите чат</span>
+                <small id="chat-members-count" style="font-weight: normal; color: #999; font-size: 10px;"></small>
+            </div>
+            <div id="messages-container" style="flex-grow: 1; overflow-y: auto; padding: 20px; background: #fdfbff; display: flex; flex-direction: column; gap: 12px;"></div>
+            <div style="padding: 15px; border-top: 1px solid var(--border); display: flex; gap: 10px; background: #fff;">
+                <input type="text" id="message-input" placeholder="Напишите сообщение..." style="border-radius: 20px;" onkeypress="if(event.key==='Enter') sendMessage()">
+                <button class="main" style="width: 100px; border-radius: 20px;" onclick="sendMessage()">ОТПРАВИТЬ</button>
+            </div>
+        </div>
+        <div id="no-chat-selected" style="flex-grow: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #bbb; background: #fdfbff;">
+            <div style="font-size: 50px; margin-bottom: 10px;">💬</div>
+            <div>Выберите чат для общения</div>
+        </div>
+    </div>
+</div>
+
 <div id="trash" class="content">
     <div class="controls-bar">
         <h3 style="margin:0; color:var(--danger);">🗑️ КОРЗИНА (ТОЛЬКО АДМИН)</h3>
@@ -1735,6 +1788,9 @@ function forInput(v) {
 }
     let lastSyncTimestamp = localStorage.getItem('lastSyncTimestamp') || 0;
     let reminders = [], companies = [], partners = [], requests = [], managers = [], deals = [], tracking = [], crmLogs = [], news = []; 
+    let chats = [], chat_messages = [];
+    let currentChatId = null;
+    let lastSeenMsgId = localStorage.getItem('lastSeenMsgId') || 0;
     
     // --- ЛОГИКА МОРСКОГО ТРЕКИНГА ---
   const SHIPPING_LINES = {
@@ -2119,6 +2175,10 @@ const parsers = {
         vol: x[4], qty: x[5], pack: x[6], trans: x[7], status: x[8], manager: x[9], 
         sharedWith: x[10], isDeleted: x[11] === true || x[11] === 'true'
     }),
+
+    chats: x => ({ id: x[0], name: String(x[1]||""), creator: x[2], members: String(x[3]||""), time: x[4] }),
+chat_messages: x => ({ id: x[0], chatId: x[1], sender: x[2], text: x[3], time: x[4] }),
+    
     news: x => ({
         id: x[0], date: x[1], author: x[2], title: x[3], text: x[4], isDeleted: x[5] === true || x[5] === 'true'
     })
@@ -2132,6 +2192,8 @@ function processLoadedData(d) {
     if (d.reminders) reminders = d.reminders.map(parsers.reminders);
     if (d.partners) partners = d.partners.map(parsers.partners);
     if (d.tracking) tracking = d.tracking.map(parsers.tracking);
+    if (d.chats) chats = d.chats.map(parsers.chats);
+    if (d.chat_messages) chat_messages = d.chat_messages.map(parsers.chat_messages);
     if (d.news) news = d.news.map(parsers.news);
     if (d.logs) crmLogs = d.logs;
     if (d.teamStructure) teamStructure = d.teamStructure;
@@ -2241,12 +2303,18 @@ async function loadCloudData() {
         // Перерисовываем ту вкладку, на которой сейчас находится юзер
         const activeTab = document.querySelector('.content.active').id;
         renderTabById(activeTab);
-        
+        if (activeTab === 'messenger') renderMessages();
+        updateChatCounters();
         document.getElementById('sync-status').innerText = "Синхро: " + new Date().toLocaleTimeString();
         
     } catch (e) { 
         console.error("Ошибка загрузки:", e);
         document.getElementById('sync-status').innerText = "Оффлайн";
+       
+        const currentTab = document.querySelector('.content.active')?.id;
+        if (currentTab === 'messenger') renderMessages();
+        updateChatCounters();
+    
     } finally { 
         checkPartnersTabAccess();
         showLoader(false); 
@@ -2261,6 +2329,8 @@ function exportCurrentData() {
         reminders: reminders.map(obj => formatRow('reminders', obj)),
         partners: partners.map(obj => formatRow('partners', obj)),
         tracking: tracking.map(obj => formatRow('tracking', obj)),
+        chats: chats.map(o => [o.id, o.name, o.creator, o.members, o.time]),
+        chat_messages: chat_messages.map(o => [o.id, o.chatId, o.sender, o.text, o.time]),
         news: news.map(obj => formatRow('news', obj)),
         managers: managers,
         teamStructure: teamStructure, // ДОБАВИТЬ ЭТУ СТРОКУ
@@ -4472,12 +4542,136 @@ function openTab(id) {
     else if (id === 'partners') renderPartners();
     else if (id === 'tracking') renderTracking();
     else if (id === 'logs') renderLogs();
+    else if (id === 'messenger') {
+    renderChats();
+    // Сбрасываем уведомления, так как мы зашли в раздел
+    if(chat_messages.length > 0) {
+        lastSeenMsgId = Math.max(...chat_messages.map(m => m.id));
+        localStorage.setItem('lastSeenMsgId', lastSeenMsgId);
+        updateChatCounters();
+    }
+}
     else if (id === 'trash') renderTrash();
     else if (id === 'profile') {
     loadProfile();
     renderAdminAccessUI(); // Добавь это
 }
         }
+    // Переключение чатов
+function selectChat(id, name) {
+    currentChatId = id;
+    document.getElementById('no-chat-selected').style.display = 'none';
+    document.getElementById('chat-window').style.display = 'flex';
+    document.getElementById('chat-title').innerText = name;
+    
+    // Обновляем "просмотренное"
+    if(chat_messages.length > 0) {
+        const lastId = Math.max(...chat_messages.map(m => m.id));
+        localStorage.setItem('lastSeenMsgId', lastId);
+        lastSeenMsgId = lastId;
+    }
+    
+    renderMessages();
+    renderChats();
+    updateChatCounters();
+}
+
+// Отрисовка списка чатов
+function renderChats() {
+    const me = sessionStorage.getItem('crm_user');
+    const role = sessionStorage.getItem('crm_role');
+    const container = document.getElementById('chat-list-container');
+    
+    if (role === 'admin') document.getElementById('admin-create-chat-btn').style.display = 'block';
+
+    const myChats = chats.filter(c => {
+        if (role === 'admin') return true;
+        return c.members.split(',').map(m => m.trim()).includes(me);
+    });
+
+    container.innerHTML = myChats.map(c => `
+        <div class="list-item ${currentChatId == c.id ? 'selected' : ''}" onclick="selectChat('${c.id}', '${c.name.replace(/'/g, "\\'")}')" style="margin-bottom:0; border-radius:0; border-left:none; border-right:none; border-bottom:1px solid #eee;">
+            <div class="item-main">
+                <h4 style="font-size:12px;">👥 ${c.name}</h4>
+                <p style="font-size:9px;">Участников: ${c.members.split(',').length}</p>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Отрисовка сообщений
+function renderMessages() {
+    if (!currentChatId) return;
+    const me = sessionStorage.getItem('crm_user');
+    const container = document.getElementById('messages-container');
+    const msgs = chat_messages.filter(m => String(m.chatId) === String(currentChatId));
+    
+    container.innerHTML = msgs.map(m => {
+        const isMy = m.sender === me;
+        return `
+            <div style="max-width: 85%; ${isMy ? 'align-self: flex-end;' : 'align-self: flex-start;'}">
+                <div style="font-size: 8px; color: #999; margin: 0 5px 2px 5px; text-align: ${isMy?'right':'left'};">${m.sender} • ${dtFmt(m.time)}</div>
+                <div style="padding: 8px 12px; border-radius: 12px; font-size: 11px; line-height:1.4; ${isMy ? 'background: var(--primary); color: white; border-bottom-right-radius: 2px;' : 'background: #eee; color: #333; border-bottom-left-radius: 2px;'}">
+                    ${m.text}
+                </div>
+            </div>
+        `;
+    }).join('');
+    container.scrollTop = container.scrollHeight;
+}
+
+// Отправка сообщения
+async function sendMessage() {
+    const input = document.getElementById('message-input');
+    const text = input.value.trim();
+    if (!text || !currentChatId) return;
+
+    const me = sessionStorage.getItem('crm_user');
+    const newMsg = {
+        id: Date.now(),
+        chatId: currentChatId,
+        sender: me,
+        text: text,
+        time: new Date().toISOString()
+    };
+
+    chat_messages.push(newMsg);
+    renderMessages();
+    input.value = '';
+    
+    localStorage.setItem('lastSeenMsgId', newMsg.id);
+    await sync('chat_messages', chat_messages, 'append');
+}
+
+// Модалка админа
+function openCreateChatModal() {
+    const membersBox = document.getElementById('chat-members-select');
+    membersBox.innerHTML = managers.map(m => `
+        <label style="display: flex; align-items: center; gap: 10px; margin-bottom: 8px; cursor:pointer;">
+            <input type="checkbox" class="new-chat-member" value="${m}" style="width:auto;"> ${m}
+        </label>
+    `).join('');
+    document.getElementById('createChatModal').style.display = 'flex';
+}
+
+async function saveNewChat() {
+    const name = document.getElementById('newChatName').value.trim();
+    const selected = Array.from(document.querySelectorAll('.new-chat-member:checked')).map(cb => cb.value);
+    if (!name || selected.length === 0) return alert("Введите название и выберите участников!");
+
+    const newChat = {
+        id: Date.now(),
+        name: name,
+        creator: sessionStorage.getItem('crm_user'),
+        members: selected.join(','),
+        time: new Date().toISOString()
+    };
+
+    chats.push(newChat);
+    renderChats();
+    document.getElementById('createChatModal').style.display = 'none';
+    await sync('chats', chats, 'append');
+}
 
     function renderAll() { 
     renderReminders(); 
@@ -4549,6 +4743,33 @@ function updateCounters() {
     if(document.getElementById('count-tracking')) {
         const myTracking = tracking.filter(t => checkTrackingAccess(t) && !t.isDeleted);
         document.getElementById('count-tracking').innerText = myTracking.length;
+    }
+}
+
+    function updateChatCounters() {
+    const me = sessionStorage.getItem('crm_user');
+    // Фильтруем сообщения только из "моих" чатов
+    const myChatIds = chats.filter(c => c.members.includes(me) || sessionStorage.getItem('crm_role') === 'admin').map(c => String(c.id));
+    
+    const unread = chat_messages.filter(m => 
+        myChatIds.includes(String(m.chatId)) && 
+        m.sender !== me && 
+        m.id > lastSeenMsgId
+    );
+
+    const counter = document.getElementById('count-chats');
+    if (unread.length > 0) {
+        counter.innerText = unread.length;
+        counter.style.display = 'inline-block';
+        
+        // Если пришло совсем новое сообщение (которого не было 15 сек назад)
+        const latestMsg = unread[unread.length - 1];
+        if (!window.lastNotifiedMsgId || latestMsg.id > window.lastNotifiedMsgId) {
+            createNotification("✉️ Новое сообщение", `${latestMsg.sender}: ${latestMsg.text.substring(0, 30)}...`, latestMsg.chatId);
+            window.lastNotifiedMsgId = latestMsg.id;
+        }
+    } else {
+        counter.style.display = 'none';
     }
 }
 
@@ -6169,6 +6390,18 @@ document.addEventListener('keydown', function(e) {
         <div style="display: flex; gap: 10px;">
             <button class="main" style="background: var(--refused);" onclick="submitCompanyRefuse()">Подтвердить</button>
             <button class="main" style="background: var(--cold); width: 100px;" onclick="document.getElementById('companyRefuseModal').style.display='none'">Отмена</button>
+        </div>
+    </div>
+</div>
+<div id="createChatModal" class="modal-overlay" onclick="if(event.target===this) this.style.display='none'">
+    <div class="modal-content" style="width: 400px; border-top: 5px solid var(--primary);">
+        <h3>Создать новый чат</h3>
+        <input type="text" id="newChatName" placeholder="Название чата (например: Логистика)" style="margin-bottom: 15px;">
+        <label style="font-size: 10px; font-weight: bold; color: var(--primary);">ВЫБЕРИТЕ УЧАСТНИКОВ:</label>
+        <div id="chat-members-select" style="margin-top: 10px; max-height: 200px; overflow-y: auto; border: 1px solid #eee; padding: 10px; border-radius: 8px; background: #fdfbff;"></div>
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+            <button class="main" onclick="saveNewChat()">Создать чат</button>
+            <button class="main" style="background: var(--cold); width: 100px;" onclick="document.getElementById('createChatModal').style.display='none'">Отмена</button>
         </div>
     </div>
 </div>
