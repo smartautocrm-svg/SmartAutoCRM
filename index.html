@@ -2845,6 +2845,9 @@ function showCompanyPreview(n) {
         document.getElementById('preview-companies').innerHTML = `<div style="padding:15px; text-align:center; background:#fff3cd; border-radius:4px;">🔒 ОГРАНИЧЕН</div>`; 
         return; 
     }
+    // ТОЧКА 1: Подготовка контейнера и кода кнопки
+    document.getElementById('preview-companies').style.position = 'relative'; 
+    const editBtnHtml = hasFullControl ? `<button class="action-btn" title="Редактировать" onclick="openEdit('${c.id}','company')" style="position: absolute; top: 15px; right: 15px; font-size: 20px; color: var(--primary); background: #fdf6ff; border: 1px solid var(--border); border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1); z-index: 10; cursor: pointer;">✎</button>` : "";
 
     // 3. Формирование блоков управления
     let shareHtml = hasFullControl ? `<div style="grid-column:span 2; border-top:1px solid #eee; margin-top:10px; padding-top:5px;"><label style="font-size:8px;">ДОСТУП</label><div style="display:flex; gap:5px; margin-top:5px;"><select id="shMan" style="flex-grow:1; font-size:10px;"><option value="">Поделиться...</option>${managers.filter(m=>m!==me).map(m=>`<option value="${m}">${m}</option>`).join('')}</select><button onclick="toggleAccess('${c.id}', document.getElementById('shMan').value, 'add')" style="padding:2px 8px; font-size:10px;">+</button></div></div>` : "";
@@ -2871,6 +2874,7 @@ function showCompanyPreview(n) {
 
     // 4. ВЫВОД ФИНАЛЬНОГО HTML
     document.getElementById('preview-companies').innerHTML = `
+    ${editBtnHtml}
     <h3>🏢 ${c.name}</h3>
     <div class="preview-grid">
         <div class="preview-box highlight" style="position: relative;">
@@ -3455,13 +3459,12 @@ function renderCompanies() {
             </div>
 
             <div class="item-actions">
-                ${hasControlRights ? `
-                    <button class="action-btn" title="Редактировать" onclick="openEdit('${c.id}','company')">✎</button>
-                    <button class="action-btn btn-delete" title="Удалить" onclick="deleteItem('companies', '${c.id}')">×</button>
-                ` : `
-                    <span title="Только для чтения (Владелец: ${c.manager})" style="opacity:0.3; cursor:help; font-size:14px;">🔒</span>
-                `}
-            </div>
+    ${hasControlRights ? `
+        <button class="action-btn btn-delete" title="Удалить" onclick="deleteItem('companies', '${c.id}')">×</button>
+    ` : `
+        <span title="Только для чтения" style="opacity:0.3; cursor:help; font-size:14px;">🔒</span>
+    `}
+</div>
         </div>`;
     }).join('');
 
@@ -4656,7 +4659,7 @@ function renderChats() {
         <div class="list-item ${currentChatId == c.id ? 'selected' : ''}" 
              onclick="selectChat('${c.id}', '${c.name.replace(/'/g, "\\'")}')" 
              style="margin-bottom:0; border-radius:0; border-left:none; border-right:none; border-bottom:1px solid #eee; position: relative;">
-            <div class="item-main">
+    <div class="item-main">
                 <h4 style="font-size:12px;">👥 ${c.name}</h4>
                 <p style="font-size:9px;">Участников: ${c.members ? c.members.split(',').length : 0}</p>
             </div>
