@@ -2192,8 +2192,11 @@ function processLoadedData(d) {
     if (d.reminders) reminders = d.reminders.map(parsers.reminders);
     if (d.partners) partners = d.partners.map(parsers.partners);
     if (d.tracking) tracking = d.tracking.map(parsers.tracking);
+    
+    // ВАЖНО: Эти строки должны быть здесь
     if (d.chats) chats = d.chats.map(parsers.chats);
     if (d.chat_messages) chat_messages = d.chat_messages.map(parsers.chat_messages);
+    
     if (d.news) news = d.news.map(parsers.news);
     if (d.logs) crmLogs = d.logs;
     if (d.teamStructure) teamStructure = d.teamStructure;
@@ -4587,26 +4590,27 @@ function selectChat(id, name) {
 
 // Отрисовка списка чатов
 function renderChats() {
+    console.log("Состояние массива chats:", chats); 
     const me = sessionStorage.getItem('crm_user');
     const role = sessionStorage.getItem('crm_role');
     const container = document.getElementById('chat-list-container');
     
     if (role === 'admin') document.getElementById('admin-create-chat-btn').style.display = 'block';
 
-    // Приводим своё имя к нижнему регистру и убираем пробелы
-    const myNameNormalized = String(me || "").trim().toLowerCase();
+    // Очищаем имя текущего юзера: в нижний регистр и удаляем всё, что не буквы и цифры
+    const myNameClean = String(me || "").trim().toLowerCase();
 
     const myChats = chats.filter(c => {
         if (role === 'admin') return true;
         
-        // Разбиваем список участников, каждого чистим от пробелов и переводим в нижний регистр
+        // Разбиваем участников и каждого чистим максимально жестко
         const memberList = String(c.members || "")
             .split(',')
             .map(m => m.trim().toLowerCase());
-
-        console.log("Проверка чата:", c.name, "Участники:", memberList, "Я:", myNameNormalized);
+        
+        console.log(`Сравнение для ${c.name}: ищем "${myNameClean}" в списке [${memberList.join(', ')}]`);
             
-        return memberList.includes(myNameNormalized);
+        return memberList.includes(myNameClean);
     });
 
     container.innerHTML = myChats.map(c => `
@@ -4620,6 +4624,7 @@ function renderChats() {
         </div>
     `).join('');
 }
+
 
 // Отрисовка сообщений
 function renderMessages() {
