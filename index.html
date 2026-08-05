@@ -2177,7 +2177,13 @@ const parsers = {
     }),
 
     chats: x => ({ id: x[0], name: String(x[1]||""), creator: x[2], members: String(x[3]||""), time: x[4] }),
-chat_messages: x => ({ id: x[0], chatId: x[1], sender: x[2], text: x[3], time: x[4] }),
+chat_messages: x => ({ 
+    id: String(x[0]), 
+    chatId: String(x[1]), 
+    sender: String(x[2] || "Система"), 
+    text: String(x[3] || ""), 
+    time: x[4] 
+}),
     
     news: x => ({
         id: x[0], date: x[1], author: x[2], title: x[3], text: x[4], isDeleted: x[5] === true || x[5] === 'true'
@@ -2212,7 +2218,7 @@ function processLoadedData(d) {
 }
 
 function mergeDelta(delta) {
-    const listNames = ['companies', 'requests', 'reminders', 'partners', 'deals', 'tracking', 'news'];
+    const listNames = ['companies', 'requests', 'reminders', 'partners', 'deals', 'tracking', 'news', 'chats', 'chat_messages'];
     const me = sessionStorage.getItem('crm_user');
 
     listNames.forEach(name => {
