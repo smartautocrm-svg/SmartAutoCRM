@@ -892,85 +892,113 @@ button.main:active {
     height: 100%;
     border: none;
 }
-        /* --- МОБИЛЬНАЯ ОПТИМИЗАЦИЯ (ADAPTIVE) --- */
+/* --- ОБНОВЛЕННАЯ МОБИЛЬНАЯ ОПТИМИЗАЦИЯ --- */
 @media (max-width: 768px) {
-    /* 1. Навигация: делаем вкладки прокручиваемыми горизонтально */
+    /* 1. Навигация: кнопки в ряд со скроллом */
     .tabs {
         overflow-x: auto;
         display: flex;
         flex-wrap: nowrap;
-        -webkit-overflow-scrolling: touch; /* Плавный скролл для iOS */
         padding-bottom: 5px;
-        height: auto;
+        height: 45px;
+        border-bottom: 1px solid var(--border);
+        background: #fff;
+        position: sticky;
+        top: 0;
+        z-index: 1000;
     }
     .tab-btn {
-        flex: 0 0 auto; /* Не дает кнопкам сжиматься */
-        font-size: 11px;
-        padding: 10px 12px;
-    }
-    .tab-label {
-        display: none; /* Прячем текст на мобилках, оставляем иконки для экономии места? 
-                          Или оставь, если хочешь скролл с текстом. Если хочешь текст - удали эту строку */
+        flex: 0 0 auto;
+        font-size: 12px;
+        padding: 0 15px;
     }
 
-    /* 2. Перестраиваем сетку: формы и превью теперь друг под другом */
+    /* 2. ГРАФИКИ: делаем их на всю ширину */
+    .charts-container {
+        grid-template-columns: 1fr !important; /* Вместо 2 колонок - одна */
+        gap: 15px;
+    }
+    
+    .chart-box {
+        height: 280px !important; /* Фиксированная высота для мобилки */
+        width: 100% !important;
+        box-sizing: border-box;
+    }
+
+    /* 3. ФОРМЫ: исправляем нечитаемые поля */
+    .input-row {
+        grid-template-columns: 1fr !important; /* ОДНО ПОЛЕ НА СТРОКУ */
+        gap: 12px !important;
+    }
+
+    /* Растягиваем все элементы формы на полную ширину */
+    .input-row input, 
+    .input-row select, 
+    .input-row textarea {
+        grid-column: span 1 !important; 
+        width: 100% !important;
+        height: 45px !important; /* Увеличиваем высоту для удобства нажатия */
+        font-size: 14px !important;
+    }
+
+    /* Специально для textarea (описание), делаем её повыше */
+    textarea {
+        height: 80px !important;
+    }
+
+    /* 4. СЕКЦИИ: убираем деление экрана пополам */
     .top-section {
-        display: flex;
-        flex-direction: column;
+        display: block !important; /* Форма теперь сверху, превью снизу */
+        height: auto !important;
+        min-height: auto !important;
+        padding: 10px;
+    }
+
+    .bottom-section {
+        flex-grow: 0;
         height: auto;
-        min-height: auto;
-        overflow-y: visible;
-    }
-    
-    .card {
-        height: auto;
-        margin-bottom: 10px;
     }
 
-    /* 3. Исправляем скролл всего приложения */
-    body {
-        overflow-y: auto; /* Разрешаем общий скролл */
-    }
-    
-    .content {
-        height: auto;
-        min-height: calc(100vh - 50px);
-        overflow-y: visible;
-    }
-
-    /* 4. Поля ввода делаем крупнее, чтобы было удобно попадать пальцем */
-    input, select, textarea, button.main {
-        font-size: 14px !important; /* Минимум 14px, чтобы iPhone не "зумил" при клике */
-        padding: 12px !important;
-    }
-
-    /* 5. Уменьшаем боковые отступы, чтобы контент был шире */
-    .scroll-list {
-        padding: 5px;
-    }
-
-    .list-item {
-        padding: 12px 10px;
-    }
-
-    /* 6. Дашборд: карточки в одну колонку */
+    /* 5. ДАШБОРД (ГЛАВНАЯ) */
     .dashboard-grid {
         grid-template-columns: 1fr !important;
         gap: 10px;
     }
-    
+
     .dashboard-lower-grid {
         grid-template-columns: 1fr !important;
     }
 
-    /* Сетка превью (параметры сделок) тоже в одну колонку */
+    .dash-card {
+        padding: 15px;
+    }
+
+    /* 6. СПИСКИ (Сделки, Компании) */
+    .list-item {
+        flex-direction: column; /* Элементы внутри карточки тоже в колонку */
+        align-items: flex-start;
+        gap: 8px;
+    }
+
+    .item-actions {
+        width: 100%;
+        justify-content: flex-end;
+        border-top: 1px solid #eee;
+        padding-top: 8px;
+    }
+
+    /* ПРЕВЬЮ: параметры грузов */
     .preview-grid {
         grid-template-columns: 1fr !important;
     }
 
-    /* Поиск */
+    /* Поиск в шапке */
     #globalSearchInput {
-        width: 120px;
+        width: 100px;
+        transition: width 0.3s;
+    }
+    #globalSearchInput:focus {
+        width: 180px;
     }
 }
     </style>
