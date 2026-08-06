@@ -33,7 +33,7 @@
     --radius: 12px;    /* Единый стандарт скругления для всей системы */
     --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
 } 
-        body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg); margin: 0; padding: 0; font-size: 13px; color: #3c4043; overflow: hidden; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: var(--bg); margin: 0; padding: 0; font-size: 13px; color: #3c4043; }
         
         .logo-container {
     display: flex;
@@ -891,6 +891,87 @@ button.main:active {
     width: 100%;
     height: 100%;
     border: none;
+}
+        /* --- МОБИЛЬНАЯ ОПТИМИЗАЦИЯ (ADAPTIVE) --- */
+@media (max-width: 768px) {
+    /* 1. Навигация: делаем вкладки прокручиваемыми горизонтально */
+    .tabs {
+        overflow-x: auto;
+        display: flex;
+        flex-wrap: nowrap;
+        -webkit-overflow-scrolling: touch; /* Плавный скролл для iOS */
+        padding-bottom: 5px;
+        height: auto;
+    }
+    .tab-btn {
+        flex: 0 0 auto; /* Не дает кнопкам сжиматься */
+        font-size: 11px;
+        padding: 10px 12px;
+    }
+    .tab-label {
+        display: none; /* Прячем текст на мобилках, оставляем иконки для экономии места? 
+                          Или оставь, если хочешь скролл с текстом. Если хочешь текст - удали эту строку */
+    }
+
+    /* 2. Перестраиваем сетку: формы и превью теперь друг под другом */
+    .top-section {
+        display: flex;
+        flex-direction: column;
+        height: auto;
+        min-height: auto;
+        overflow-y: visible;
+    }
+    
+    .card {
+        height: auto;
+        margin-bottom: 10px;
+    }
+
+    /* 3. Исправляем скролл всего приложения */
+    body {
+        overflow-y: auto; /* Разрешаем общий скролл */
+    }
+    
+    .content {
+        height: auto;
+        min-height: calc(100vh - 50px);
+        overflow-y: visible;
+    }
+
+    /* 4. Поля ввода делаем крупнее, чтобы было удобно попадать пальцем */
+    input, select, textarea, button.main {
+        font-size: 14px !important; /* Минимум 14px, чтобы iPhone не "зумил" при клике */
+        padding: 12px !important;
+    }
+
+    /* 5. Уменьшаем боковые отступы, чтобы контент был шире */
+    .scroll-list {
+        padding: 5px;
+    }
+
+    .list-item {
+        padding: 12px 10px;
+    }
+
+    /* 6. Дашборд: карточки в одну колонку */
+    .dashboard-grid {
+        grid-template-columns: 1fr !important;
+        gap: 10px;
+    }
+    
+    .dashboard-lower-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Сетка превью (параметры сделок) тоже в одну колонку */
+    .preview-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Поиск */
+    #globalSearchInput {
+        width: 120px;
+    }
 }
     </style>
 </head>
