@@ -2,6 +2,19 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
+    <!-- Блок PWA: Мета-теги для мобильных устройств -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="SmartAuto CRM">
+
+    <!-- Иконка для iOS -->
+    <link rel="apple-touch-icon" href="https://i.ibb.co/QjcfFR9c/image.jpg">
+
+    <!-- Встроенный манифест -->
+    <link rel="manifest" href='data:application/manifest+json,{"name":"SmartAuto CRM PRO+","short_name":"SmartAuto","description":"CRM система для логистики","start_url":".","display":"standalone","background_color":"#511f54","theme_color":"#511f54","icons":[{"src":"https://i.ibb.co/QjcfFR9c/image.jpg","sizes":"192x192","type":"image/jpeg"},{"src":"https://i.ibb.co/QjcfFR9c/image.jpg","sizes":"512x512","type":"image/jpeg"}]}'>
+    
     <title>SmartAuto CRM PRO+ v.10</title>
     <!-- ВОТ ЭТА СТРОКА ДОЛЖНА БЫТЬ ЗДЕСЬ: -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -6524,5 +6537,28 @@ document.addEventListener('keydown', function(e) {
         </div>
     </div>
 </div>
+    <!-- Скрипт регистрации Service Worker для PWA -->
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function() {
+      const swContent = `
+        self.addEventListener('install', (event) => {
+          self.skipWaiting();
+        });
+        self.addEventListener('fetch', (event) => {
+          event.respondWith(fetch(event.request));
+        });
+      `;
+      const blob = new Blob([swContent], { type: 'text/javascript' });
+      const swUrl = URL.createObjectURL(blob);
+      
+      navigator.serviceWorker.register(swUrl).then(function(registration) {
+        console.log('PWA: ServiceWorker зарегистрирован');
+      }).catch(function(err) {
+        console.log('PWA: Ошибка ServiceWorker', err);
+      });
+    });
+  }
+</script>
 </body>
 </html> 
