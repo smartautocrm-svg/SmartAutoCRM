@@ -1081,6 +1081,17 @@ button.main:active {
     .preview-grid {
         grid-template-columns: 1fr !important; /* Параметры один под другим */
     }
+    /* Исправление для блока "План на сегодня" на главной */
+    #dash-today-plan {
+        grid-template-columns: 1fr !important; /* Делаем одну колонку вместо двух */
+        gap: 10px !important;
+    }
+
+    /* Убираем лишнюю высоту у карточки Плана, чтобы она подстраивалась под контент */
+    .card[style*="min-height: 200px"] {
+        height: auto !important;
+        min-height: auto !important;
+    }
 }
     </style>
 </head>
