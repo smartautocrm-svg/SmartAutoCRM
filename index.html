@@ -6374,26 +6374,29 @@ async function sendToAI() {
     document.getElementById('ai-typing').style.display = 'block';
 
     const me = sessionStorage.getItem('crm_user');
+    
+    // Пытаемся понять, о какой компании идет речь (простой поиск по тексту)
+    const mentionedCompany = companies.find(c => prompt.toLowerCase().includes(c.name.toLowerCase()))?.name;
 
-    // ОПТИМИЗИРОВАННЫЙ КОНТЕКСТ (Берем меньше, но точнее)
+    // ФОРМИРУЕМ ГЛУБОКИЙ КОНТЕКСТ
     const context = {
         user: me,
-        // Берем последние 40 компаний
-        companies: companies.filter(c => !c.isDeleted && checkAccess(c.name)).slice(-40).map(c => ({
-            n: c.name, s: c.status, d: (c.desc || "").substring(0, 50)
-        })),
-        // Последние 30 сделок
-        deals: deals.filter(d => !d.isDeleted && checkDealAccess(d)).slice(-30).map(d => ({
-            cl: d.company, pr: d.prof, st: d.stage
-        })),
-        // Последние 30 запросов (с причинами отказов)
-        reqs: requests.filter(r => !r.isDeleted && checkAccess(r.company)).slice(-30).map(r => ({
-            cl: r.company, st: r.status, rsn: r.lossReason, cm: r.comment
-        })),
-        // Последние 40 записей истории
-        hist: reminders.filter(rem => !rem.isDeleted && (me === 'admin' || rem.manager === me)).slice(-40).map(rem => ({
-            cl: rem.name, txt: rem.topic, dt: rem.date
-        }))
+        // Если упомянута компания, берем ВСЕ данные по ней, если нет — последние 50
+        companies: companies.filter(c => !c.isDeleted && checkAccess(c.name))
+                    .filter(c => mentionedCompany ? c.name === mentionedCompany : true)
+                    .slice(-50).map(c => ({ n: c.name, s: c.status, d: c.desc })),
+        
+        deals: deals.filter(d => !d.isDeleted && checkDealAccess(d))
+                    .filter(d => mentionedCompany ? d.company === mentionedCompany : true)
+                    .slice(-50).map(d => ({ cl: d.company, pr: d.prof, st: d.stage, dt: d.createdAt })),
+        
+        reqs: requests.filter(r => !r.isDeleted && checkAccess(r.company))
+                    .filter(r => mentionedCompany ? r.company === mentionedCompany : true)
+                    .slice(-50).map(r => ({ cl: r.company, st: r.status, rsn: r.lossReason, cm: r.comment })),
+        
+        hist: reminders.filter(rem => !rem.isDeleted && (me === 'admin' || rem.manager === me))
+                    .filter(rem => mentionedCompany ? rem.name === mentionedCompany : true)
+                    .slice(-60).map(rem => ({ cl: rem.name, txt: rem.topic, dt: rem.date }))
     };
 
     try {
@@ -6405,13 +6408,13 @@ async function sendToAI() {
         document.getElementById('ai-typing').style.display = 'none';
 
         if (res.success) {
-            container.innerHTML += `<div style="background: white; border: 1px solid #eee; padding: 12px; border-radius: 15px; align-self: flex-start; font-size: 13px; line-height: 1.4; color: #333; margin-bottom: 10px;">${res.answer.replace(/\n/g, '<br>')}</div>`;
+            container.innerHTML += `<div style="background: white; border: 1px solid #eee; padding: 12px; border-radius: 15px; align-self: flex-start; font-size: 13px; line-height: 1.4; color: #333; margin-bottom: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">${res.answer.replace(/\n/g, '<br>')}</div>`;
         } else {
-            container.innerHTML += `<div style="color:red; font-size:11px;">Ошибка: ${res.error}</div>`;
+            container.innerHTML += `<div style="color:red; font-size:11px;">Ошибка аналитики: ${res.error}</div>`;
         }
     } catch (e) {
         document.getElementById('ai-typing').style.display = 'none';
-        container.innerHTML += `<div style="color:red; font-size:11px;">Ошибка сети. Сократите вопрос.</div>`;
+        container.innerHTML += `<div style="color:red; font-size:11px;">Превышен лимит данных. Попробуйте спросить конкретнее.</div>`;
     }
     container.scrollTop = container.scrollHeight;
 }
