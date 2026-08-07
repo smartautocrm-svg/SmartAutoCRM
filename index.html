@@ -1093,6 +1093,44 @@ button.main:active {
         min-height: auto !important;
     }
 }
+        /* Стили для ИИ Помощника */
+#ai-fab {
+    position: fixed;
+    bottom: 25px;
+    right: 25px;
+    width: 60px;
+    height: 60px;
+    background: var(--primary);
+    border-radius: 50%;
+    box-shadow: 0 8px 25px rgba(81, 31, 84, 0.4);
+    cursor: pointer;
+    z-index: 100000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+#ai-fab:hover { transform: scale(1.1); box-shadow: 0 12px 30px rgba(81, 31, 84, 0.5); }
+#ai-chat-window {
+    display: none;
+    position: fixed;
+    bottom: 100px;
+    right: 25px;
+    width: 380px;
+    height: 550px;
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 15px 50px rgba(0,0,0,0.25);
+    z-index: 100000;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    animation: aiSlideUp 0.4s ease-out;
+}
+@keyframes aiSlideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+#ai-messages::-webkit-scrollbar { width: 4px; }
+#ai-messages::-webkit-scrollbar-thumb { background: #eee; border-radius: 10px; }
+        
     </style>
 </head>
 <body>
@@ -6312,6 +6350,54 @@ const debouncedRenderDeals = debounce(() => renderDeals());
 const debouncedRenderCompanies = debounce(() => renderCompanies());
 const debouncedRenderRequests = debounce(() => renderRequests());
 
+    // Логика ИИ
+function toggleAIChat() {
+    const win = document.getElementById('ai-chat-window');
+    win.style.display = (win.style.display === 'none' || win.style.display === '') ? 'flex' : 'none';
+    if(win.style.display === 'flex') document.getElementById('ai-input').focus();
+}
+
+function clearAIChat() {
+    document.getElementById('ai-messages').innerHTML = '<div style="background: white; border: 1px solid #eee; padding: 12px; border-radius: 15px; align-self: flex-start; font-size: 13px;">История очищена.</div>';
+}
+
+async function sendToAI() {
+    const input = document.getElementById('ai-input');
+    const prompt = input.value.trim();
+    if (!prompt) return;
+
+    const container = document.getElementById('ai-messages');
+    container.innerHTML += `<div style="background: var(--primary); color: white; padding: 10px; border-radius: 15px; align-self: flex-end; font-size: 13px; max-width: 80%;">${prompt}</div>`;
+    input.value = '';
+    container.scrollTop = container.scrollHeight;
+
+    document.getElementById('ai-typing').style.display = 'block';
+
+    // Собираем контекст (только то, что видит юзер)
+    const context = {
+    manager: sessionStorage.getItem('crm_user'),
+    companies: companies.filter(c => !c.isDeleted && checkAccess(c.name)).map(c => ({ n: c.name, p: c.product, s: c.status, city: c.city })),
+    deals: deals.filter(d => !d.isDeleted && checkDealAccess(d)).map(d => ({ id: d.num, cl: d.company, pr: d.prof, st: d.stage })),
+    requests: requests.filter(r => !r.isDeleted && checkAccess(r.company)).map(r => ({ cl: r.company, cr: r.cargo, st: r.status })) 
+};
+
+    try {
+        const response = await fetch(SCRIPT_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'aiQuery', prompt: prompt, context: context, user: context.manager })
+        });
+        const res = await response.json();
+        document.getElementById('ai-typing').style.display = 'none';
+        if (res.success) {
+            container.innerHTML += `<div style="background: white; border: 1px solid #eee; padding: 12px; border-radius: 15px; align-self: flex-start; font-size: 13px; line-height: 1.4;">${res.answer.replace(/\n/g, '<br>')}</div>`;
+        }
+    } catch (e) {
+        document.getElementById('ai-typing').style.display = 'none';
+        container.innerHTML += `<div style="color:red; font-size:11px;">Ошибка связи</div>`;
+    }
+    container.scrollTop = container.scrollHeight;
+}
+
 function renderLogs() {
     const s = document.getElementById('searchLogs').value.toLowerCase();
     
@@ -6761,5 +6847,47 @@ document.addEventListener('keydown', function(e) {
     });
   }
 </script>
+    <!-- Кнопка ИИ -->
+<div id="ai-fab" onclick="toggleAIChat()">
+    <span style="font-size: 30px;">✨</span>
+</div>
+
+<!-- Окно чата ИИ -->
+<div id="ai-chat-window">
+    <!-- Шапка -->
+    <div style="background: var(--primary); color: white; padding: 18px; display: flex; justify-content: space-between; align-items: center;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="font-size: 22px;">🤖</div>
+            <div>
+                <div style="font-weight: bold; font-size: 15px;">SmartAuto AI</div>
+                <div style="font-size: 9px; opacity: 0.8;">ONLINE | GEMINI 1.5 FLASH</div>
+            </div>
+        </div>
+        <div style="display: flex; gap: 15px;">
+            <span onclick="clearAIChat()" title="Очистить" style="cursor: pointer; font-size: 18px;">🧹</span>
+            <span onclick="toggleAIChat()" title="Закрыть" style="cursor: pointer; font-size: 18px;">✕</span>
+        </div>
+    </div>
+    
+    <!-- Сообщения -->
+    <div id="ai-messages" style="flex-grow: 1; overflow-y: auto; padding: 20px; background: #fdfbff; display: flex; flex-direction: column; gap: 15px;">
+        <div style="background: white; border: 1px solid #eee; padding: 12px 16px; border-radius: 18px 18px 18px 4px; align-self: flex-start; max-width: 85%; font-size: 13px; color: #444; box-shadow: 0 3px 10px rgba(0,0,0,0.03);">
+            Здравствуйте! Я ваш ИИ-помощник. Я вижу данные системы, к которым у вас есть доступ. О чем хотите спросить?
+        </div>
+    </div>
+
+    <!-- Индикатор загрузки -->
+    <div id="ai-typing" style="display: none; padding: 10px 20px; font-size: 11px; color: var(--primary); font-weight: bold;">
+        Gemini анализирует базу данных...
+    </div>
+
+    <!-- Ввод -->
+    <div style="padding: 18px; background: white; border-top: 1px solid #eee; display: flex; gap: 10px;">
+        <input type="text" id="ai-input" placeholder="Напишите вопрос..." style="flex-grow: 1; border-radius: 25px; border: 1.5px solid #eee; padding: 12px 20px; font-size: 13px; outline: none;" onkeypress="if(event.key==='Enter') sendToAI()">
+        <button onclick="sendToAI()" style="background: var(--primary); color: white; border: none; border-radius: 50%; width: 45px; height: 45px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+            <span style="font-size: 20px;">🚀</span>
+        </button>
+    </div>
+</div>
 </body>
 </html> 
