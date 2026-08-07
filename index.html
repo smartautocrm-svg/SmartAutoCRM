@@ -6375,6 +6375,51 @@ function openNotificationSource(id, title) {
             }
         });
     }
+let recognition;
+let isRecognizing = false;
+
+function toggleVoiceRecognition() {
+    const MicBtn = document.getElementById('ai-mic-btn');
+    const MicIcon = document.getElementById('mic-icon');
+    const aiInput = document.getElementById('ai-input');
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        alert("Ваш браузер не поддерживает распознавание речи. Пожалуйста, используйте Chrome или Safari.");
+        return;
+    }
+
+    if (!recognition) {
+        recognition = new SpeechRecognition();
+        recognition.lang = 'ru-RU';
+        recognition.interimResults = false;
+        recognition.continuous = false;
+
+        recognition.onstart = () => {
+            isRecognizing = true;
+            MicBtn.style.background = '#ff4444';
+            MicBtn.style.color = 'white';
+            MicIcon.innerText = '🛑';
+            aiInput.placeholder = "Слушаю вас...";
+        };
+
+        recognition.onresult = (event) => {
+            const transcript = event.results[0][0].transcript;
+            aiInput.value = transcript;
+        };
+
+        recognition.onend = () => {
+            isRecognizing = false;
+            MicBtn.style.background = '#f1f3f4';
+            MicBtn.style.color = 'black';
+            MicIcon.innerText = '🎤';
+            aiInput.placeholder = "Напишите или продиктуйте...";
+        };
+    }
+
+    if (isRecognizing) { recognition.stop(); } else { recognition.start(); }
+}
+    
     window.onload = startApp;
 const debouncedRenderDeals = debounce(() => renderDeals());
 const debouncedRenderCompanies = debounce(() => renderCompanies());
@@ -6433,7 +6478,37 @@ async function sendToAI() {
         document.getElementById('ai-typing').style.display = 'none';
 
         if (res.success) {
-            container.innerHTML += `<div style="background: white; border: 1px solid #eee; padding: 12px; border-radius: 15px; align-self: flex-start; font-size: 13px; line-height: 1.4; color: #333; margin-bottom: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">${res.answer.replace(/\n/g, '<br>')}</div>`;
+            let answer = res.answer;
+            let taskHtml = "";
+
+            // Проверяем, прислал ли ИИ данные для задачи
+            const taskMatch = answer.match(/\[TASK_DATA:(.*?)\]/);
+            if (taskMatch) {
+                try {
+                    const taskData = JSON.parse(taskMatch[1]);
+                    answer = answer.replace(/\[TASK_DATA:.*?\]/, ""); // Убираем код из текста
+
+                    window.lastAiTask = taskData; 
+
+            taskHtml = `
+                <div style="margin-top: 12px; padding: 12px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 10px;">
+                    <b style="color: #166534; display: block; margin-bottom: 5px; font-size: 12px;">📅 Сформирована задача:</b>
+                    <div style="font-size: 11px; color: #333; margin-bottom: 10px;">
+                        🏢 <b>${taskData.company}</b><br>
+                        ⏰ ${new Date(taskData.date).toLocaleString('ru-RU', {day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit'})}<br>
+                        📝 ${taskData.topic}
+                    </div>
+                    <button class="main" onclick='createVoiceTask(window.lastAiTask)' style="background:#22c55e; height:32px; font-size:11px;">СОЗДАТЬ ЗАДАЧУ</button>
+                </div>
+            `;
+                } catch(e) { console.error("JSON parse error", e); }
+            }
+
+            container.innerHTML += `
+                <div style="background: white; border: 1px solid #eee; padding: 12px; border-radius: 15px; align-self: flex-start; font-size: 13px; line-height: 1.4; color: #333; margin-bottom: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">
+                    ${answer.replace(/\n/g, '<br>')}
+                    ${taskHtml}
+                </div>`;
         } else {
             container.innerHTML += `<div style="color:red; font-size:11px; background:#fff0f0; padding:10px; border-radius:8px;">${res.error}</div>`;
         }
@@ -6442,6 +6517,33 @@ async function sendToAI() {
         container.innerHTML += `<div style="color:red; font-size:11px;">Ошибка соединения. Попробуйте обновить страницу.</div>`;
     }
     container.scrollTop = container.scrollHeight;
+}
+    async function createVoiceTask(data) {
+    showLoader(true);
+    try {
+        const newItem = {
+            id: Date.now(),
+            name: data.company,
+            date: data.date,
+            topic: data.topic,
+            manager: sessionStorage.getItem('crm_user'),
+            status: "active",
+            priority: "medium",
+            createdBy: "AI Voice"
+        };
+        
+        reminders.push(newItem);
+        renderReminders();
+        // Используем существующую функцию синхронизации
+        await sync('reminders', reminders, 'append');
+        
+        alert("✅ Задача создана: " + data.company);
+        toggleAIChat(); // Закрываем чат после успеха
+    } catch(e) {
+        alert("Ошибка при сохранении задачи");
+    } finally {
+        showLoader(false);
+    }
 }
 
 function renderLogs() {
@@ -6927,11 +7029,14 @@ document.addEventListener('keydown', function(e) {
         Gemini анализирует базу данных...
     </div>
 
-    <!-- Ввод -->
-    <div style="padding: 12px; background: white; border-top: 1px solid #eee; display: flex; gap: 8px; align-items: center;">
-        <input type="text" id="ai-input" placeholder="Спросите ИИ..." style="flex-grow: 1; border-radius: 25px; border: 1.5px solid #eee; padding: 10px 15px; font-size: 14px; outline: none;" onkeypress="if(event.key==='Enter') sendToAI()">
-        <button onclick="sendToAI()" style="flex-shrink: 0; background: var(--primary); color: white; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
-            <span style="font-size: 18px;">🚀</span>
+    <!-- Обновленный блок ввода ИИ с микрофоном -->
+    <div style="padding: 18px; background: white; border-top: 1px solid #eee; display: flex; gap: 10px; align-items: center;">
+        <button id="ai-mic-btn" onclick="toggleVoiceRecognition()" style="background: #f1f3f4; border: none; border-radius: 50%; width: 45px; height: 45px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.3s;">
+            <span id="mic-icon" style="font-size: 20px;">🎤</span>
+        </button>
+        <input type="text" id="ai-input" placeholder="Напишите или продиктуйте..." style="flex-grow: 1; border-radius: 25px; border: 1.5px solid #eee; padding: 12px 20px; font-size: 13px; outline: none;" onkeypress="if(event.key==='Enter') sendToAI()">
+        <button onclick="sendToAI()" style="background: var(--primary); color: white; border: none; border-radius: 50%; width: 45px; height: 45px; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+            <span style="font-size: 20px;">🚀</span>
         </button>
     </div>
 </div>
