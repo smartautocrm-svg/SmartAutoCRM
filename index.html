@@ -1092,6 +1092,34 @@ button.main:active {
         height: auto !important;
         min-height: auto !important;
     }
+    /* Адаптация ИИ для мобильных устройств */
+    #ai-chat-window {
+        width: calc(100% - 30px) !important; /* Почти на всю ширину */
+        height: 80vh !important; /* Увеличиваем высоту на мобилках */
+        right: 15px !important;
+        left: 15px !important;
+        bottom: 85px !important;
+        max-height: none !important;
+    }
+
+    #ai-fab {
+        width: 50px !important;
+        height: 50px !important;
+        bottom: 20px !important;
+        right: 20px !important;
+    }
+
+    /* Увеличиваем шрифт в чате для удобства чтения с телефона */
+    #ai-messages div {
+        font-size: 14px !important;
+        max-width: 90% !important;
+    }
+
+    /* Делаем поле ввода выше, чтобы удобнее было попадать пальцем */
+    #ai-input {
+        padding: 10px 15px !important;
+        font-size: 14px !important;
+    }
 }
         /* Стили для ИИ Помощника */
 #ai-fab {
@@ -1114,10 +1142,11 @@ button.main:active {
 #ai-chat-window {
     display: none;
     position: fixed;
-    bottom: 100px;
+    bottom: 90px;
     right: 25px;
     width: 380px;
-    height: 550px;
+    height: 60vh; /* Используем относительную высоту */
+    max-height: 600px;
     background: white;
     border-radius: 20px;
     box-shadow: 0 15px 50px rgba(0,0,0,0.25);
@@ -1125,7 +1154,8 @@ button.main:active {
     flex-direction: column;
     overflow: hidden;
     border: 1px solid var(--border);
-    animation: aiSlideUp 0.4s ease-out;
+    animation: aiSlideUp 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transition: all 0.3s ease;
 }
 @keyframes aiSlideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
 #ai-messages::-webkit-scrollbar { width: 4px; }
@@ -6898,10 +6928,10 @@ document.addEventListener('keydown', function(e) {
     </div>
 
     <!-- Ввод -->
-    <div style="padding: 18px; background: white; border-top: 1px solid #eee; display: flex; gap: 10px;">
-        <input type="text" id="ai-input" placeholder="Напишите вопрос..." style="flex-grow: 1; border-radius: 25px; border: 1.5px solid #eee; padding: 12px 20px; font-size: 13px; outline: none;" onkeypress="if(event.key==='Enter') sendToAI()">
-        <button onclick="sendToAI()" style="background: var(--primary); color: white; border: none; border-radius: 50%; width: 45px; height: 45px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
-            <span style="font-size: 20px;">🚀</span>
+    <div style="padding: 12px; background: white; border-top: 1px solid #eee; display: flex; gap: 8px; align-items: center;">
+        <input type="text" id="ai-input" placeholder="Спросите ИИ..." style="flex-grow: 1; border-radius: 25px; border: 1.5px solid #eee; padding: 10px 15px; font-size: 14px; outline: none;" onkeypress="if(event.key==='Enter') sendToAI()">
+        <button onclick="sendToAI()" style="flex-shrink: 0; background: var(--primary); color: white; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+            <span style="font-size: 18px;">🚀</span>
         </button>
     </div>
 </div>
