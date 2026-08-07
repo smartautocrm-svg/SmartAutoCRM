@@ -6375,20 +6375,20 @@ async function sendToAI() {
 
     const me = sessionStorage.getItem('crm_user') || "Admin";
     
-    // Поиск компании в вопросе
+    // Ищем, упомянута ли какая-то компания в вопросе
     const mentionedCompany = companies.find(c => prompt.toLowerCase().includes(c.name.toLowerCase()))?.name;
 
-    // Умный сбор контекста
+    // Собираем данные: если компания упомянута, берем ВСЁ по ней. Если нет — последние 40 записей.
     const context = {
         companies: companies.filter(c => !c.isDeleted && checkAccess(c.name))
                     .filter(c => mentionedCompany ? c.name === mentionedCompany : true)
                     .slice(-40).map(c => ({ n: c.name, s: c.status, d: c.desc })),
         deals: deals.filter(d => !d.isDeleted && checkDealAccess(d))
                     .filter(d => mentionedCompany ? d.company === mentionedCompany : true)
-                    .slice(-40).map(d => ({ cl: d.company, pr: d.prof, st: d.stage })),
+                    .slice(-40).map(d => ({ cl: d.company, pr: d.prof, st: d.stage, dt: d.createdAt })),
         reqs: requests.filter(r => !r.isDeleted && checkAccess(r.company))
                     .filter(r => mentionedCompany ? r.company === mentionedCompany : true)
-                    .slice(-40).map(r => ({ cl: r.company, st: r.status, rsn: r.lossReason })),
+                    .slice(-40).map(r => ({ cl: r.company, st: r.status, rsn: r.lossReason, cm: r.comment })),
         hist: reminders.filter(rem => !rem.isDeleted && (me === 'admin' || rem.manager === me))
                     .filter(rem => mentionedCompany ? rem.name === mentionedCompany : true)
                     .slice(-50).map(rem => ({ cl: rem.name, txt: rem.topic, dt: rem.date }))
@@ -6409,7 +6409,7 @@ async function sendToAI() {
         }
     } catch (e) {
         document.getElementById('ai-typing').style.display = 'none';
-        container.innerHTML += `<div style="color:red; font-size:11px;">Ошибка сети. Попробуйте обновить страницу.</div>`;
+        container.innerHTML += `<div style="color:red; font-size:11px;">Ошибка соединения. Попробуйте обновить страницу.</div>`;
     }
     container.scrollTop = container.scrollHeight;
 }
