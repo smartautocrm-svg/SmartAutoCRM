@@ -6374,12 +6374,14 @@ async function sendToAI() {
     document.getElementById('ai-typing').style.display = 'block';
 
     // Собираем контекст (только то, что видит юзер)
+    // Собираем контекст (только то, что видит юзер)
     const context = {
-    manager: sessionStorage.getItem('crm_user'),
-    companies: companies.filter(c => !c.isDeleted && checkAccess(c.name)).map(c => ({ n: c.name, p: c.product, s: c.status, city: c.city })),
-    deals: deals.filter(d => !d.isDeleted && checkDealAccess(d)).map(d => ({ id: d.num, cl: d.company, pr: d.prof, st: d.stage })),
-    requests: requests.filter(r => !r.isDeleted && checkAccess(r.company)).map(r => ({ cl: r.company, cr: r.cargo, st: r.status })) 
-};
+        manager: sessionStorage.getItem('crm_user') || "Admin",
+        companies: (typeof companies !== 'undefined') ? companies.filter(c => !c.isDeleted && checkAccess(c.name)).slice(0, 100).map(c => ({ n: c.name, p: c.product })) : [],
+        deals: (typeof deals !== 'undefined') ? deals.filter(d => !d.isDeleted && checkDealAccess(d)).slice(0, 50).map(d => ({ cl: d.company, pr: d.prof })) : []
+    };
+    
+    console.log("Отправляю данные ИИ:", context); // Это поможет нам увидеть данные в консоли
 
     try {
         const response = await fetch(SCRIPT_URL, {
