@@ -6367,80 +6367,52 @@ async function sendToAI() {
     if (!prompt) return;
 
     const container = document.getElementById('ai-messages');
-    
-    // 1. Рисуем бабл пользователя
-    container.innerHTML += `<div style="background: var(--primary); color: white; padding: 10px 15px; border-radius: 15px 15px 2px 15px; align-self: flex-end; font-size: 13px; max-width: 85%; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">${prompt}</div>`;
-    
+    container.innerHTML += `<div style="background: var(--primary); color: white; padding: 10px 15px; border-radius: 15px 15px 2px 15px; align-self: flex-end; max-width: 85%; margin-bottom: 10px;">${prompt}</div>`;
     input.value = '';
     container.scrollTop = container.scrollHeight;
 
-    // 2. Показываем индикатор загрузки
-    const typingIndicator = document.getElementById('ai-typing');
-    typingIndicator.style.display = 'block';
+    document.getElementById('ai-typing').style.display = 'block';
 
-    // 3. Собираем контекст (фильтруем только то, что менеджер реально видит)
+    const me = sessionStorage.getItem('crm_user');
+
+    // ОПТИМИЗИРОВАННЫЙ КОНТЕКСТ (Берем меньше, но точнее)
     const context = {
-        manager: sessionStorage.getItem('crm_user'),
-        role: sessionStorage.getItem('crm_role'),
-        // Компании: название, статус, описание (важно для анализа характера)
-        companies: companies.filter(c => !c.isDeleted && checkAccess(c.name)).slice(0, 100).map(c => ({
-            n: c.name, s: c.status, desc: c.desc, m: c.manager, dt: c.createdAt
+        user: me,
+        // Берем последние 40 компаний
+        companies: companies.filter(c => !c.isDeleted && checkAccess(c.name)).slice(-40).map(c => ({
+            n: c.name, s: c.status, d: (c.desc || "").substring(0, 50)
         })),
-        // Сделки: суммы, стадии и даты
-        deals: deals.filter(d => !d.isDeleted && checkDealAccess(d)).slice(0, 50).map(d => ({
-            cl: d.company, pr: d.prof, st: d.stage, dt: d.createdAt, num: d.num
+        // Последние 30 сделок
+        deals: deals.filter(d => !d.isDeleted && checkDealAccess(d)).slice(-30).map(d => ({
+            cl: d.company, pr: d.prof, st: d.stage
         })),
-        // Запросы: тут ИИ увидит, ПОЧЕМУ не поехали (lossReason)
-        requests: requests.filter(r => !r.isDeleted && checkAccess(r.company)).slice(0, 50).map(r => ({
-            cl: r.company, st: r.status, cr: r.cargo, reason: r.lossReason, comm: r.comment, dt: r.createdAt
+        // Последние 30 запросов (с причинами отказов)
+        reqs: requests.filter(r => !r.isDeleted && checkAccess(r.company)).slice(-30).map(r => ({
+            cl: r.company, st: r.status, rsn: r.lossReason, cm: r.comment
         })),
-        // История активностей: тут вся хронология общения
-        history: reminders.filter(rem => !rem.isDeleted && (context.manager === 'admin' || rem.manager === context.manager))
-                    .slice(0, 100).map(rem => ({
-            cl: rem.name, txt: rem.topic, m: rem.manager, dt: rem.date, st: rem.status
+        // Последние 40 записей истории
+        hist: reminders.filter(rem => !rem.isDeleted && (me === 'admin' || rem.manager === me)).slice(-40).map(rem => ({
+            cl: rem.name, txt: rem.topic, dt: rem.date
         }))
     };
-    
+
     try {
         const response = await fetch(SCRIPT_URL, {
             method: 'POST',
-            mode: 'no-cors', // Важно для Google Apps Script в некоторых случаях
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                action: 'aiQuery', 
-                prompt: prompt, 
-                context: context, 
-                user: context.manager 
-            })
+            body: JSON.stringify({ action: 'aiQuery', prompt: prompt, context: context, user: me })
         });
-
-        // Так как Google Apps Script при POST часто делает редирект, 
-        // браузер может не выдать ответ в обычном fetch. 
-        // Если через 5 секунд ответа нет - пробуем альтернативный метод (обычный fetch без no-cors)
-        
-        const responseNormal = await fetch(SCRIPT_URL, {
-            method: 'POST',
-            body: JSON.stringify({ action: 'aiQuery', prompt: prompt, context: context, user: context.manager })
-        });
-        
-        const res = await responseNormal.json();
-        typingIndicator.style.display = 'none';
+        const res = await response.json();
+        document.getElementById('ai-typing').style.display = 'none';
 
         if (res.success) {
-            // 4. Рисуем бабл ИИ
-            container.innerHTML += `
-                <div style="background: white; border: 1px solid #eee; padding: 12px 15px; border-radius: 15px 15px 15px 2px; align-self: flex-start; font-size: 13px; line-height: 1.5; max-width: 85%; margin-bottom: 10px; color: #333; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-                    ${res.answer.replace(/\n/g, '<br>')}
-                </div>`;
+            container.innerHTML += `<div style="background: white; border: 1px solid #eee; padding: 12px; border-radius: 15px; align-self: flex-start; font-size: 13px; line-height: 1.4; color: #333; margin-bottom: 10px;">${res.answer.replace(/\n/g, '<br>')}</div>`;
         } else {
-            container.innerHTML += `<div style="color:red; font-size:11px; padding: 5px;">Ошибка: ${res.error}</div>`;
+            container.innerHTML += `<div style="color:red; font-size:11px;">Ошибка: ${res.error}</div>`;
         }
     } catch (e) {
-        typingIndicator.style.display = 'none';
-        console.error("AI Error:", e);
-        container.innerHTML += `<div style="color:red; font-size:11px; padding: 5px;">Ошибка связи с сервером. Убедитесь, что скрипт опубликован как "Web App" для "Anyone".</div>`;
+        document.getElementById('ai-typing').style.display = 'none';
+        container.innerHTML += `<div style="color:red; font-size:11px;">Ошибка сети. Сократите вопрос.</div>`;
     }
-    
     container.scrollTop = container.scrollHeight;
 }
 
