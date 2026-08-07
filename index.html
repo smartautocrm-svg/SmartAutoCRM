@@ -6380,19 +6380,27 @@ async function sendToAI() {
 
     // 3. Собираем контекст (фильтруем только то, что менеджер реально видит)
     const context = {
-        manager: sessionStorage.getItem('crm_user') || "Admin",
-        // Берем по 60 записей, чтобы не превысить лимит текста Google Скрипта
-        companies: companies.filter(c => !c.isDeleted && checkAccess(c.name))
-                    .slice(0, 60)
-                    .map(c => ({ n: c.name, p: c.product, s: c.status, city: c.city })),
-        deals: deals.filter(d => !d.isDeleted && checkDealAccess(d))
-                    .slice(0, 40)
-                    .map(d => ({ num: d.num, cl: d.company, cargo: d.cargo, pr: d.prof, st: d.stage })),
-        requests: requests.filter(r => !r.isDeleted && checkAccess(r.company))
-                    .slice(0, 30)
-                    .map(r => ({ cl: r.company, cr: r.cargo, st: r.status }))
+        manager: sessionStorage.getItem('crm_user'),
+        role: sessionStorage.getItem('crm_role'),
+        // Компании: название, статус, описание (важно для анализа характера)
+        companies: companies.filter(c => !c.isDeleted && checkAccess(c.name)).slice(0, 100).map(c => ({
+            n: c.name, s: c.status, desc: c.desc, m: c.manager, dt: c.createdAt
+        })),
+        // Сделки: суммы, стадии и даты
+        deals: deals.filter(d => !d.isDeleted && checkDealAccess(d)).slice(0, 50).map(d => ({
+            cl: d.company, pr: d.prof, st: d.stage, dt: d.createdAt, num: d.num
+        })),
+        // Запросы: тут ИИ увидит, ПОЧЕМУ не поехали (lossReason)
+        requests: requests.filter(r => !r.isDeleted && checkAccess(r.company)).slice(0, 50).map(r => ({
+            cl: r.company, st: r.status, cr: r.cargo, reason: r.lossReason, comm: r.comment, dt: r.createdAt
+        })),
+        // История активностей: тут вся хронология общения
+        history: reminders.filter(rem => !rem.isDeleted && (context.manager === 'admin' || rem.manager === context.manager))
+                    .slice(0, 100).map(rem => ({
+            cl: rem.name, txt: rem.topic, m: rem.manager, dt: rem.date, st: rem.status
+        }))
     };
-
+    
     try {
         const response = await fetch(SCRIPT_URL, {
             method: 'POST',
