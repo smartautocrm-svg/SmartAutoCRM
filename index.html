@@ -6373,30 +6373,25 @@ async function sendToAI() {
 
     document.getElementById('ai-typing').style.display = 'block';
 
-    const me = sessionStorage.getItem('crm_user');
+    const me = sessionStorage.getItem('crm_user') || "Admin";
     
-    // Пытаемся понять, о какой компании идет речь (простой поиск по тексту)
+    // Поиск компании в вопросе
     const mentionedCompany = companies.find(c => prompt.toLowerCase().includes(c.name.toLowerCase()))?.name;
 
-    // ФОРМИРУЕМ ГЛУБОКИЙ КОНТЕКСТ
+    // Умный сбор контекста
     const context = {
-        user: me,
-        // Если упомянута компания, берем ВСЕ данные по ней, если нет — последние 50
         companies: companies.filter(c => !c.isDeleted && checkAccess(c.name))
                     .filter(c => mentionedCompany ? c.name === mentionedCompany : true)
-                    .slice(-50).map(c => ({ n: c.name, s: c.status, d: c.desc })),
-        
+                    .slice(-40).map(c => ({ n: c.name, s: c.status, d: c.desc })),
         deals: deals.filter(d => !d.isDeleted && checkDealAccess(d))
                     .filter(d => mentionedCompany ? d.company === mentionedCompany : true)
-                    .slice(-50).map(d => ({ cl: d.company, pr: d.prof, st: d.stage, dt: d.createdAt })),
-        
+                    .slice(-40).map(d => ({ cl: d.company, pr: d.prof, st: d.stage })),
         reqs: requests.filter(r => !r.isDeleted && checkAccess(r.company))
                     .filter(r => mentionedCompany ? r.company === mentionedCompany : true)
-                    .slice(-50).map(r => ({ cl: r.company, st: r.status, rsn: r.lossReason, cm: r.comment })),
-        
+                    .slice(-40).map(r => ({ cl: r.company, st: r.status, rsn: r.lossReason })),
         hist: reminders.filter(rem => !rem.isDeleted && (me === 'admin' || rem.manager === me))
                     .filter(rem => mentionedCompany ? rem.name === mentionedCompany : true)
-                    .slice(-60).map(rem => ({ cl: rem.name, txt: rem.topic, dt: rem.date }))
+                    .slice(-50).map(rem => ({ cl: rem.name, txt: rem.topic, dt: rem.date }))
     };
 
     try {
@@ -6410,11 +6405,11 @@ async function sendToAI() {
         if (res.success) {
             container.innerHTML += `<div style="background: white; border: 1px solid #eee; padding: 12px; border-radius: 15px; align-self: flex-start; font-size: 13px; line-height: 1.4; color: #333; margin-bottom: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.05);">${res.answer.replace(/\n/g, '<br>')}</div>`;
         } else {
-            container.innerHTML += `<div style="color:red; font-size:11px;">Ошибка аналитики: ${res.error}</div>`;
+            container.innerHTML += `<div style="color:red; font-size:11px; background:#fff0f0; padding:10px; border-radius:8px;">${res.error}</div>`;
         }
     } catch (e) {
         document.getElementById('ai-typing').style.display = 'none';
-        container.innerHTML += `<div style="color:red; font-size:11px;">Превышен лимит данных. Попробуйте спросить конкретнее.</div>`;
+        container.innerHTML += `<div style="color:red; font-size:11px;">Ошибка сети. Попробуйте обновить страницу.</div>`;
     }
     container.scrollTop = container.scrollHeight;
 }
