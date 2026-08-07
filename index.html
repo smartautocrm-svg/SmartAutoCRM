@@ -6358,7 +6358,7 @@ function toggleAIChat() {
 }
 
 function clearAIChat() {
-    document.getElementById('ai-messages').innerHTML = '<div style="background: white; border: 1px solid #eee; padding: 12px; border-radius: 15px; align-self: flex-start; font-size: 13px;">История очищена.</div>';
+    document.getElementById('ai-messages').innerHTML = '<div style="background: white; border: 1px solid #eee; padding: 12px; border-radius: 15px; align-self: flex-start; font-size: 13px; color: #666;">История очищена. Я готов к новым вопросам.</div>';
 }
 
 async function sendToAI() {
@@ -6367,36 +6367,72 @@ async function sendToAI() {
     if (!prompt) return;
 
     const container = document.getElementById('ai-messages');
-    container.innerHTML += `<div style="background: var(--primary); color: white; padding: 10px; border-radius: 15px; align-self: flex-end; font-size: 13px; max-width: 80%;">${prompt}</div>`;
+    
+    // 1. Рисуем бабл пользователя
+    container.innerHTML += `<div style="background: var(--primary); color: white; padding: 10px 15px; border-radius: 15px 15px 2px 15px; align-self: flex-end; font-size: 13px; max-width: 85%; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">${prompt}</div>`;
+    
     input.value = '';
     container.scrollTop = container.scrollHeight;
 
-    document.getElementById('ai-typing').style.display = 'block';
+    // 2. Показываем индикатор загрузки
+    const typingIndicator = document.getElementById('ai-typing');
+    typingIndicator.style.display = 'block';
 
-    // Собираем контекст (только то, что видит юзер)
-    // Собираем контекст (только то, что видит юзер)
+    // 3. Собираем контекст (фильтруем только то, что менеджер реально видит)
     const context = {
         manager: sessionStorage.getItem('crm_user') || "Admin",
-        companies: (typeof companies !== 'undefined') ? companies.filter(c => !c.isDeleted && checkAccess(c.name)).slice(0, 100).map(c => ({ n: c.name, p: c.product })) : [],
-        deals: (typeof deals !== 'undefined') ? deals.filter(d => !d.isDeleted && checkDealAccess(d)).slice(0, 50).map(d => ({ cl: d.company, pr: d.prof })) : []
+        // Берем по 60 записей, чтобы не превысить лимит текста Google Скрипта
+        companies: companies.filter(c => !c.isDeleted && checkAccess(c.name))
+                    .slice(0, 60)
+                    .map(c => ({ n: c.name, p: c.product, s: c.status, city: c.city })),
+        deals: deals.filter(d => !d.isDeleted && checkDealAccess(d))
+                    .slice(0, 40)
+                    .map(d => ({ num: d.num, cl: d.company, cargo: d.cargo, pr: d.prof, st: d.stage })),
+        requests: requests.filter(r => !r.isDeleted && checkAccess(r.company))
+                    .slice(0, 30)
+                    .map(r => ({ cl: r.company, cr: r.cargo, st: r.status }))
     };
-    
-    console.log("Отправляю данные ИИ:", context); // Это поможет нам увидеть данные в консоли
 
     try {
         const response = await fetch(SCRIPT_URL, {
             method: 'POST',
+            mode: 'no-cors', // Важно для Google Apps Script в некоторых случаях
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                action: 'aiQuery', 
+                prompt: prompt, 
+                context: context, 
+                user: context.manager 
+            })
+        });
+
+        // Так как Google Apps Script при POST часто делает редирект, 
+        // браузер может не выдать ответ в обычном fetch. 
+        // Если через 5 секунд ответа нет - пробуем альтернативный метод (обычный fetch без no-cors)
+        
+        const responseNormal = await fetch(SCRIPT_URL, {
+            method: 'POST',
             body: JSON.stringify({ action: 'aiQuery', prompt: prompt, context: context, user: context.manager })
         });
-        const res = await response.json();
-        document.getElementById('ai-typing').style.display = 'none';
+        
+        const res = await responseNormal.json();
+        typingIndicator.style.display = 'none';
+
         if (res.success) {
-            container.innerHTML += `<div style="background: white; border: 1px solid #eee; padding: 12px; border-radius: 15px; align-self: flex-start; font-size: 13px; line-height: 1.4;">${res.answer.replace(/\n/g, '<br>')}</div>`;
+            // 4. Рисуем бабл ИИ
+            container.innerHTML += `
+                <div style="background: white; border: 1px solid #eee; padding: 12px 15px; border-radius: 15px 15px 15px 2px; align-self: flex-start; font-size: 13px; line-height: 1.5; max-width: 85%; margin-bottom: 10px; color: #333; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
+                    ${res.answer.replace(/\n/g, '<br>')}
+                </div>`;
+        } else {
+            container.innerHTML += `<div style="color:red; font-size:11px; padding: 5px;">Ошибка: ${res.error}</div>`;
         }
     } catch (e) {
-        document.getElementById('ai-typing').style.display = 'none';
-        container.innerHTML += `<div style="color:red; font-size:11px;">Ошибка связи</div>`;
+        typingIndicator.style.display = 'none';
+        console.error("AI Error:", e);
+        container.innerHTML += `<div style="color:red; font-size:11px; padding: 5px;">Ошибка связи с сервером. Убедитесь, что скрипт опубликован как "Web App" для "Anyone".</div>`;
     }
+    
     container.scrollTop = container.scrollHeight;
 }
 
