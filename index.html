@@ -4337,12 +4337,10 @@ const prio = document.getElementById('callPriority').value;
     reminders.push(newItem); 
     renderReminders();  
     updateCounters(); 
+    ['callName', 'callTime', 'callTopic'].forEach(i => document.getElementById(i).value = '');
 
     // 6. Отправляем в Google Таблицу
     await sync('reminders', reminders, 'append'); 
-
-    // 7. Очищаем поля формы
-    ['callName', 'callTime', 'callTopic'].forEach(i => document.getElementById(i).value = '');
 }
     async function addRequest() { 
     const c = document.getElementById('reqComp').value; 
