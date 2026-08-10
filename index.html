@@ -2681,7 +2681,8 @@ if (sh === 'deals') row = [
     o.load, o.zip, o.unload, o.info, o.manager, o.createdAt, o.exp, o.inc, 
     o.prof, o.container, o.sharedWith || "", o.status, o.type, o.contQty || "", 
     o.blNum || "", o.awbNum || "", JSON.stringify(o.files || []), o.margin, 
-    o.stage || "docs", o.isPaid || false, o.payDate || "", o.isPrivateDeal || false, o.isDeleted || false, "", "", o.folderUrl || "", o.folderId || ""
+    o.stage || "docs", o.isPaid || false, o.payDate || "", o.isPrivateDeal || false, 
+    o.isDeleted || false, "", "", o.folderUrl || "", o.folderId || ""
 ];
         if (sh === 'reminders') row = [o.id, o.name, o.date, o.topic, o.manager, o.status, o.isDeleted || false, o.sharedWith || "", "", o.priority || "medium", o.createdBy || ""];
         if (sh === 'partners') row = [o.id, o.name, o.status, o.country, o.contact, o.phone, o.email, o.website, o.desc, o.isDeleted || false];
