@@ -6549,7 +6549,7 @@ async function sendToAI() {
             if (reqMatch) {
                 try {
                     const r = JSON.parse(reqMatch[1]);
-                    answer = answer.replace(/\[REQ_DATA:.*?\]/, "📦 **Параметры запроса внесены!**");
+                    answer = answer.replace(/\[REQ_DATA:.*?\]/, "📦 **Заявка из чата распознана и внесена в форму!**");
                     openTab('requests');
                     
                     if (r.company) document.getElementById('reqComp').value = r.company;
@@ -6559,16 +6559,16 @@ async function sendToAI() {
                     if (r.value) document.getElementById('reqValue').value = r.value;
                     if (r.load) document.getElementById('reqLoad').value = r.load;
                     if (r.unload) document.getElementById('reqUnload').value = r.unload;
-                    if (r.zip) document.getElementById('reqZip').value = r.zip;
                     if (r.type) document.getElementById('reqType').value = r.type;
                     
-                    // Работа с транспортом
-                    const reqTrans = r.transport || r.trans;
-                    if (reqTrans) {
-                        document.getElementById('reqTransport').value = reqTrans;
+                    // Заполняем примечания (детали из чата)
+                    if (r.desc) document.getElementById('reqDesc').value = r.desc;
+                    
+                    if (r.transport) {
+                        document.getElementById('reqTransport').value = r.transport;
                         if (typeof checkTransportFields === 'function') checkTransportFields('req');
                     }
-                } catch(e) { console.error("AI Request Error", e); }
+                } catch(e) { console.error("AI Scraper Error", e); }
             }
 
 
