@@ -2014,7 +2014,9 @@ const defaultTemplates = [
     
     // Превращает строку "27.05.2026" в объект даты для сравнения
 function parsePayDate(str) {
-    if (!str || typeof str !== 'string') return null;
+    if (!str) return null;
+    if (str instanceof Date) return str; // Если это уже дата
+    if (typeof str !== 'string') return null;
     const p = str.split('.');
     if (p.length !== 3) return null;
     return new Date(p[2], p[1] - 1, p[0]);
@@ -5210,11 +5212,13 @@ function updateDashboard() {
     // --- РАСЧЕТ ПРИБЫЛИ ТЕКУЩЕГО МЕСЯЦА ---
     const profitThisMonth = myDeals
         .filter(d => {
-            if (!d.isPaid || !d.payDate) return false; // Считаем только оплаченные
-            const pDate = parsePayDate(d.payDate);
-            if (!pDate) return false;
+            const dDate = new Date(d.createdAt);
             const isVisible = (me === 'admin') ? true : (d.manager === me);
-            return pDate.getMonth() === currentMonth && pDate.getFullYear() === currentYear && isVisible;
+            // Считаем завершенные сделки или оплаченные в этом месяце
+            return dDate.getMonth() === currentMonth && 
+                   dDate.getFullYear() === currentYear && 
+                   isVisible && 
+                   (d.status === 'completed' || d.stage === 'closed' || d.isPaid === true);
         })
         .reduce((sum, d) => sum + parseFloat(d.prof || 0), 0);
     // --- РАСЧЕТ ПРОШЛОГО МЕСЯЦА (ДЛЯ ТРЕНДА) ---
@@ -5325,11 +5329,12 @@ function updateDashChart(myDeals) {
 last6Months.forEach(m => {
         m.profit = myDeals
             .filter(d => {
-                if (!d.isPaid || !d.payDate) return false; // Важно: на графике теперь только реальные деньги
-                const pDate = parsePayDate(d.payDate);
-                if (!pDate) return false;
+                const dDate = new Date(d.createdAt);
                 const isMine = (me === 'admin') ? true : (d.manager === me);
-                return pDate.getMonth() === m.month && pDate.getFullYear() === m.year && isMine;
+                return dDate.getMonth() === m.month && 
+                       dDate.getFullYear() === m.year && 
+                       isMine &&
+                       (d.status === 'completed' || d.stage === 'closed' || d.isPaid === true);
             })
             .reduce((sum, d) => sum + parseFloat(d.prof || 0), 0);
     });
