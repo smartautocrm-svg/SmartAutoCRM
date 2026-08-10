@@ -6481,6 +6481,45 @@ async function sendToAI() {
             let answer = res.answer;
             let taskHtml = "";
 
+            // Блок распознавания СДЕЛОК
+            const dealMatch = answer.match(/\[DEAL_DATA:(.*?)\]/);
+            if (dealMatch) {
+                try {
+                    const d = JSON.parse(dealMatch[1]);
+                    answer = answer.replace(/\[DEAL_DATA:.*?\]/, "✅ **Данные сделки разнесены по полям!**");
+                    openTab('deals');
+                    if (d.company) document.getElementById('dealComp').value = d.company;
+                    if (d.cargo) document.getElementById('dealCargo').value = d.cargo;
+                    if (d.weight) document.getElementById('dealWeight').value = d.weight;
+                    if (d.vol) document.getElementById('dealVol').value = d.vol;
+                    if (d.inc) document.getElementById('dealInc').value = d.inc;
+                    if (d.exp) document.getElementById('dealExp').value = d.exp;
+                    if (d.load) document.getElementById('dealLoad').value = d.load;
+                    if (d.unload) document.getElementById('dealUnload').value = d.unload;
+                    if (d.type) document.getElementById('dealType').value = d.type;
+                    if (typeof calcDealProfit === 'function') calcDealProfit();
+                } catch(e) { console.error("Ошибка парсинга сделки", e); }
+            }
+
+            // Блок распознавания ЗАПРОСОВ
+            const reqMatch = answer.match(/\[REQ_DATA:(.*?)\]/);
+            if (reqMatch) {
+                try {
+                    const r = JSON.parse(reqMatch[1]);
+                    answer = answer.replace(/\[REQ_DATA:.*?\]/, "📦 **Параметры запроса внесены в форму!**");
+                    openTab('requests');
+                    if (r.company) document.getElementById('reqComp').value = r.company;
+                    if (r.cargo) document.getElementById('reqCargo').value = r.cargo;
+                    if (r.weight) document.getElementById('reqWeight').value = r.weight;
+                    if (r.vol) document.getElementById('reqVol').value = r.vol;
+                    if (r.load) document.getElementById('reqLoad').value = r.load;
+                    if (r.unload) document.getElementById('reqUnload').value = r.unload;
+                    if (r.type) document.getElementById('reqType').value = r.type;
+                    if (typeof checkTransportFields === 'function') checkTransportFields('req');
+                } catch(e) { console.error("Ошибка парсинга запроса", e); }
+            }
+
+
             // Проверяем, прислал ли ИИ данные для задачи
             const taskMatch = answer.match(/\[TASK_DATA:(.*?)\]/);
             if (taskMatch) {
