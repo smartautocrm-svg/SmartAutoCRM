@@ -2445,7 +2445,9 @@ const parsers = {
             status: x[20], type: x[21], contQty: x[22], blNum: x[23], awbNum: x[24], 
             files: parsedFiles, margin: x[26] || "0%", stage: x[27] || "docs",
             isPaid: x[28] === true || x[28] === 'true', payDate: x[29] || "",
-            isPrivateDeal: x[30] === true || x[30] === 'true', isDeleted: x[31] === true || x[31] === 'true'
+            isPrivateDeal: x[30] === true || x[30] === 'true', isDeleted: x[31] === true || x[31] === 'true',
+            folderUrl: x[34] || "", // Новое: ссылка на папку
+            folderId: x[35] || ""   // Новое: ID папки
         };
     },
     reminders: x => ({ 
@@ -2679,7 +2681,7 @@ if (sh === 'deals') row = [
     o.load, o.zip, o.unload, o.info, o.manager, o.createdAt, o.exp, o.inc, 
     o.prof, o.container, o.sharedWith || "", o.status, o.type, o.contQty || "", 
     o.blNum || "", o.awbNum || "", JSON.stringify(o.files || []), o.margin, 
-    o.stage || "docs", o.isPaid || false, o.payDate || "", o.isPrivateDeal || false, o.isDeleted || false
+    o.stage || "docs", o.isPaid || false, o.payDate || "", o.isPrivateDeal || false, o.isDeleted || false, "", "", o.folderUrl || "", o.folderId || ""
 ];
         if (sh === 'reminders') row = [o.id, o.name, o.date, o.topic, o.manager, o.status, o.isDeleted || false, o.sharedWith || "", "", o.priority || "medium", o.createdBy || ""];
         if (sh === 'partners') row = [o.id, o.name, o.status, o.country, o.contact, o.phone, o.email, o.website, o.desc, o.isDeleted || false];
@@ -2752,12 +2754,14 @@ async function sync(sh, dt, mode = 'saveAll') {
                 reader.onload = async function(e) {
                     try {
                         const base64 = e.target.result.split(',')[1];
+                        const d = deals.find(x => x.id == dealId); // Находим сделку в памяти
                         const payload = { 
-                            action: 'uploadFile', 
-                            filename: file.name, 
-                            mimeType: file.type, 
-                            base64: base64 
-                        };
+        action: 'uploadFile', 
+        filename: file.name, 
+        mimeType: file.type, 
+        base64: base64,
+        targetFolderId: d.folderId // ПЕРЕДАЕМ ID ПАПКИ СЕРВЕРУ
+    };
                         const response = await fetch(SCRIPT_URL, { 
                             method: 'POST', 
                             body: JSON.stringify(payload) 
@@ -3092,6 +3096,13 @@ function showDealPreview(id) {
             <div class="preview-box" style="grid-column: span 2;"><label>📍 Маршрут</label><span>${d.load} ➔ ${d.unload}</span></div>
             <div class="preview-box" style="grid-column: span 2;"><label>📦 Груз</label><span>${d.cargo}</span></div>
         </div>
+
+        ${d.folderUrl ? `
+            <a href="${d.folderUrl}" target="_blank" class="main" style="background:#4285f4; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:8px; margin-top:10px; margin-bottom:5px; color:white; font-size:10px; font-weight:bold; height:32px; border-radius:30px;">
+                📂 ОТКРЫТЬ ПАПКУ НА ДИСКЕ
+            </a>` : ''
+        }
+        `;
 
         <!-- КНОПКА PDF (СОХРАНЕНО) -->
         <button class="btn-pdf" onclick="generateInvoicePDF(${d.id})">📄 Згенерувати пропозицію</button>
