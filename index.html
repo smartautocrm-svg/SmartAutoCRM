@@ -2270,7 +2270,6 @@ if (res.success) {
 }
 
 async function startApp() {
-    document.getElementById('ai-fab').style.display = 'flex';
     if (document.getElementById('reqContainer')) document.getElementById('reqContainer').innerHTML = CONTAINER_TYPES_HTML;
     if (document.getElementById('dealContainer')) document.getElementById('dealContainer').innerHTML = CONTAINER_TYPES_HTML;
     const user = sessionStorage.getItem('crm_user');
@@ -2283,6 +2282,7 @@ async function startApp() {
         }
         return;
     }
+    document.getElementById('ai-fab').style.display = 'flex';
     document.getElementById('login-screen').style.display = 'none';
     document.getElementById('user-display').innerText = user;
 
