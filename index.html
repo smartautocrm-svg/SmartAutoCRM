@@ -6389,11 +6389,12 @@ function toggleVoiceRecognition() {
         return;
     }
 
-    if (!recognition) {
-        recognition = new SpeechRecognition();
-        recognition.lang = 'ru-RU';
-        recognition.interimResults = false;
-        recognition.continuous = false;
+    if (isRecognizing) { recognition.stop(); return; } // Если уже пишем — стоп
+
+recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)(); 
+recognition.lang = 'ru-RU';
+recognition.interimResults = false;
+recognition.continuous = false;
 
         recognition.onstart = () => {
             isRecognizing = true;
@@ -6402,6 +6403,12 @@ function toggleVoiceRecognition() {
             MicIcon.innerText = '🛑';
             aiInput.placeholder = "Слушаю вас...";
         };
+
+    recognition.onerror = (event) => {
+    console.error("Mic error:", event.error);
+    if(event.error === 'not-allowed') alert("Доступ к микрофону запрещен в настройках Safari");
+    isRecognizing = false;
+};
 
         recognition.onresult = (event) => {
             const transcript = event.results[0][0].transcript;
@@ -6415,9 +6422,8 @@ function toggleVoiceRecognition() {
             MicIcon.innerText = '🎤';
             aiInput.placeholder = "Напишите или продиктуйте...";
         };
-    }
 
-    if (isRecognizing) { recognition.stop(); } else { recognition.start(); }
+    recognition.start();
 }
     
     window.onload = startApp;
@@ -6530,8 +6536,9 @@ async function sendToAI() {
                     if (r.type) document.getElementById('reqType').value = r.type;
                     
                     // Работа с транспортом
-                    if (r.transport) {
-                        document.getElementById('reqTransport').value = r.transport;
+                    const reqTrans = r.transport || r.trans;
+                    if (reqTrans) {
+                        document.getElementById('reqTransport').value = reqTrans;
                         if (typeof checkTransportFields === 'function') checkTransportFields('req');
                     }
                 } catch(e) { console.error("AI Request Error", e); }
