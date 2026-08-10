@@ -1123,6 +1123,7 @@ button.main:active {
 }
         /* Стили для ИИ Помощника */
 #ai-fab {
+    display: none; /* Скрыта по умолчанию */
     position: fixed;
     bottom: 25px;
     right: 25px;
@@ -2233,7 +2234,11 @@ function openOceanTracking(containerNum) {
     let charts = { dyn: null, type: null, perf: null, loss: null };
 
     function showLoader(s) { document.getElementById('loader').style.display = s ? 'block' : 'none'; }
-    function logout() { sessionStorage.clear(); location.reload(); }
+    function logout() { 
+    sessionStorage.clear(); 
+    document.getElementById('ai-fab').style.display = 'none'; // Скрываем кнопку
+    location.reload(); 
+}
    
 async function handleLogin() {
     const e = document.getElementById('loginEmail').value;
@@ -2265,6 +2270,7 @@ if (res.success) {
 }
 
 async function startApp() {
+    document.getElementById('ai-fab').style.display = 'flex';
     if (document.getElementById('reqContainer')) document.getElementById('reqContainer').innerHTML = CONTAINER_TYPES_HTML;
     if (document.getElementById('dealContainer')) document.getElementById('dealContainer').innerHTML = CONTAINER_TYPES_HTML;
     const user = sessionStorage.getItem('crm_user');
