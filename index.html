@@ -6470,7 +6470,9 @@ async function sendToAI() {
                     .slice(-40).map(r => ({ cl: r.company, st: r.status, rsn: r.lossReason, cm: r.comment })),
         hist: reminders.filter(rem => !rem.isDeleted && (me === 'admin' || rem.manager === me))
                     .filter(rem => mentionedCompany ? rem.name === mentionedCompany : true)
-                    .slice(-50).map(rem => ({ cl: rem.name, txt: rem.topic, dt: rem.date }))
+                    // Увеличиваем лимит до 100 записей, если компания упомянута, 
+                    // чтобы ИИ видел глубокую историю для анализа
+                    .slice(-100).map(rem => ({ cl: rem.name, txt: rem.topic, dt: rem.date }))
     };
 
     try {
