@@ -3028,6 +3028,15 @@ function showRequestPreview(id) {
 function showDealPreview(id) {
     const d = deals.find(x => x.id == id); 
     if (!d) return;
+    // Расчет удельных показателей
+    const d_inc = parseFloat(d.inc) || 0;
+    const d_w = parseFloat(d.weight) || 0;
+    const d_v = parseFloat(d.vol) || 0;
+    const d_val = parseFloat(d.value) || 0;
+    
+    const usdKg = d_w > 0 ? (d_inc / d_w).toFixed(2) : "0.00";
+    const usdM3 = d_v > 0 ? (d_inc / d_v).toFixed(2) : "0.00";
+    const logPct = d_val > 0 ? ((d_inc / d_val) * 100).toFixed(1) : "0.0";
 
     // --- БЛОК 1: Логика номеров Букинга/Авианакладной (НОВОЕ) ---
     let transportDetails = "";
@@ -3051,16 +3060,24 @@ function showDealPreview(id) {
     }
 
     // --- БЛОК 3: Основной интерфейс (СОХРАНЕНО + ДОБАВЛЕНЫ ДОХОДЫ/РАСХОДЫ) ---
-    document.getElementById('preview-deals').innerHTML = `
+        document.getElementById('preview-deals').innerHTML = `
         <h3>💰 Сделка № ${d.num}</h3>
+        
         <div class="preview-grid">
             <div class="preview-box"><label>💵 Доходы</label><span style="color:var(--primary); font-weight:bold;">${d.inc} USD</span></div>
             <div class="preview-box"><label>💸 Расходы</label><span style="color:var(--danger); font-weight:bold;">${d.exp} USD</span></div>
             <div class="preview-box highlight"><label>📈 Прибыль</label><span style="color:var(--success); font-size: 16px;">${d.prof} USD</span></div>
             <div class="preview-box"><label>📊 Маржа %</label><span>${d.margin || '0%'}</span></div>
-            
+        </div>
+
+        <div class="preview-grid" style="margin-top:8px; border-top: 1px dashed #ddd; padding-top: 8px;">
+            <div class="preview-box"><label>⚖️ $/КГ</label><span>${usdKg}$</span></div>
+            <div class="preview-box"><label>📐 $/М³</label><span>${usdM3}$</span></div>
+            <div class="preview-box" style="grid-column: span 2; background: #f0f7ff;"><label>🛡️ % Логистики от инвойса</label><span style="color:var(--primary); font-weight:bold;">${logPct}%</span></div>
+        </div>
+
+        <div class="preview-grid" style="margin-top:8px;">
             ${transportDetails}
-            
             <div class="preview-box"><label>🚛 Транспорт</label><span>${d.trans.toUpperCase()}</span></div>
         </div>
 
