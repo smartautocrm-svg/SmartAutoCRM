@@ -3098,12 +3098,6 @@ function showDealPreview(id) {
             <div class="preview-box" style="grid-column: span 2;"><label>📦 Груз</label><span>${d.cargo}</span></div>
         </div>
 
-        ${d.folderUrl ? `
-            <a href="${d.folderUrl}" target="_blank" class="main" style="background:#4285f4; text-decoration:none; display:flex; align-items:center; justify-content:center; gap:8px; margin-top:10px; margin-bottom:5px; color:white; font-size:10px; font-weight:bold; height:32px; border-radius:30px;">
-                📂 ОТКРЫТЬ ПАПКУ НА ДИСКЕ
-            </a>` : ''
-        }
-
         <!-- КНОПКА PDF (СОХРАНЕНО) -->
         <button class="btn-pdf" onclick="generateInvoicePDF(${d.id})">📄 Згенерувати пропозицію</button>
 
