@@ -5713,47 +5713,6 @@ function generateReport() {
     const selDateRaw = document.getElementById('reportDateFilter').value;
     const targetDateStr = selDateRaw ? dFmt(selDateRaw) : new Date().toLocaleDateString('ru-RU');
     let dailyJournalHtml = "";
-    
-    const ms = ["Янв", "Фев", "Мар", "Апр", "Май", "Июн", "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек"];
-    const ap = new Map(); 
-
-    // --- 1. ФУНКЦИЯ ФИЛЬТРАЦИИ ДОСТУПА (ГЛАВНАЯ) ---
-    const filterByAccess = (itemManager, itemDate) => {
-        if (!itemDate) return false;
-        const d = new Date(itemDate);
-        if (isNaN(d.getTime())) return false;
-
-        // Фильтр по дате
-        if (selYear !== 'all' && d.getFullYear().toString() !== selYear) return false;
-        if (selMonth !== 'all' && d.getMonth().toString() !== selMonth) return false;
-
-        const mName = String(itemManager || "").trim().toLowerCase();
-        const currentSel = String(selMan).trim().toLowerCase();
-
-        if (role === 'admin') {
-            return (selMan === 'all' || mName === currentSel);
-        } else if (role === 'leader') {
-            const mInfo = (teamStructure && teamStructure[itemManager]) ? teamStructure[itemManager] : { team: 'none' };
-            const itemTeam = String(mInfo.team || "none").trim().toLowerCase();
-            // Лидер видит свою команду или себя
-            if (itemTeam === myTeam || itemManager === me) {
-                return (selMan === 'all' || mName === currentSel);
-            }
-            return false;
-        }
-        return itemManager === me; // Менеджер видит только себя
-    };
-
-    const mk = (dateStr) => { 
-        const d = new Date(dateStr);
-        const k = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
-        ap.set(k, {y:d.getFullYear(), m:d.getMonth()}); 
-    }; 
-
-    // Сбор всех месяцев, где есть активность
-    reminders.forEach(r => { if(filterByAccess(r.manager, r.date)) mk(r.date); });
-    requests.forEach(r => { if(filterByAccess(r.manager, r.createdAt)) mk(r.createdAt); });
-    companies.forEach(c => { if(c.status === 'active' && filterByAccess(c.manager, c.activatedAt)) mk(c.activatedAt); });
 
     if (selMan !== 'all') {
     const todayActs = reminders.filter(r => r.manager === selMan && !r.isDeleted && dFmt(r.date) === targetDateStr);
@@ -5792,30 +5751,8 @@ const todayRefused = companies.filter(c => {
                 </table>
             </div>`;
     }
-
-    let h = `<h3>📊 Активность: ${selMan === 'all' ? (role === 'leader' ? 'Моя группа' : 'Все') : selMan}</h3>
-             <table class="report-table"><thead><tr><th>Период</th><th>Звонки</th><th>Запросы</th><th>Новые клиенты</th></tr></thead><tbody>`; 
-
-    // Сборка основной таблицы
-    Array.from(ap.keys()).sort().reverse().forEach(k => { 
-        const {y, m} = ap.get(k); 
-        const cC = (reminders || []).filter(r => {
-            const d = new Date(r.date);
-            return d.getMonth() === m && d.getFullYear() === y && filterByAccess(r.manager, r.date);
-        }).length;
-        const rC = (requests || []).filter(r => {
-            const d = new Date(r.createdAt);
-            return d.getMonth() === m && d.getFullYear() === y && filterByAccess(r.manager, r.createdAt);
-        }).length;
-        const clC = (companies || []).filter(c => {
-            if (c.status !== 'active' || !c.activatedAt) return false;
-            const d = new Date(c.activatedAt);
-            return d.getMonth() === m && d.getFullYear() === y && filterByAccess(c.manager, c.activatedAt);
-        }).length;
-        h += `<tr><td>${ms[m]} ${y}</td><td>${cC}</td><td>${rC}</td><td style="color:var(--success); font-weight:bold;">${clC}</td></tr>`; 
-    }); 
-
-    document.getElementById('reportData').innerHTML = dailyJournalHtml + h + '</tbody></table>'; 
+    
+    document.getElementById('reportData').innerHTML = dailyJournalHtml; 
 
     // --- 2. БЛОК KPI ПОМОЩНИКА (ДЛЯ ПОМОЩНИКОВ И АДМИНОВ) ---
     // Проверяем роль через teamStructure
