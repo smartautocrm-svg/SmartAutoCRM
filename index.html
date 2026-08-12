@@ -1862,6 +1862,13 @@ button.main:active {
 <div id="trash" class="content">
     <div class="controls-bar">
         <h3 style="margin:0; color:var(--danger);">🗑️ КОРЗИНА (ТОЛЬКО АДМИН)</h3>
+        
+        <!-- Добавляем чекбокс Выделить все -->
+        <label style="font-size: 11px; display: flex; align-items: center; gap: 5px; cursor: pointer; background: #fff1f0; padding: 4px 10px; border-radius: 4px; border: 1px solid #ffa39e;">
+            <input type="checkbox" id="selectAllTrash" onchange="toggleSelectAllTrash(this)" style="width: auto; margin: 0;"> 
+            <b>ВЫДЕЛИТЬ ВСЕ</b>
+        </label>
+
         <select id="trashType" onchange="renderTrash()">
             <option value="deals">💰 Сделки</option>
             <option value="partners">🤝 Партнеры</option>
@@ -4786,21 +4793,19 @@ function toggleSelect(e, id) {
 // Обновление состояния нижней панели
 function updateBulkBar() {
     const bar = document.getElementById('bulk-actions-bar');
-    const countSpan = document.getElementById('bulk-count');
-    const adminTools = document.getElementById('admin-bulk-tools');
-    const me = sessionStorage.getItem('crm_user');
-
+    const activeTab = document.querySelector('.content.active').id;
+    
     if (selectedIds.size > 0) {
         bar.style.display = 'flex';
-        countSpan.innerText = `Выбрано: ${selectedIds.size}`;
+        document.getElementById('bulk-count').innerText = `Выбрано: ${selectedIds.size}`;
         
-        if (me === 'admin') {
-            adminTools.style.display = 'flex';
-            const sel = document.getElementById('bulkManagerSelect');
-            // Заполняем список менеджеров если он пуст
-            if (sel && sel.options.length <= 1) {
-                sel.innerHTML = managers.map(m => `<option value="${m}">${m}</option>`).join('');
-            }
+        // Если мы в корзине - показываем кнопку "Стереть навсегда", прячем "В корзину"
+        if (activeTab === 'trash') {
+            document.getElementById('bulk-to-trash-btn').style.display = 'none';
+            document.getElementById('bulk-hard-delete-btn').style.display = 'inline-block';
+        } else {
+            document.getElementById('bulk-to-trash-btn').style.display = 'inline-block';
+            document.getElementById('bulk-hard-delete-btn').style.display = 'none';
         }
     } else {
         bar.style.display = 'none';
@@ -6294,29 +6299,26 @@ async function restoreItem(sh, id) {
 
 // 4. Окончательное удаление (Hard Delete) — Удаляет строку из таблицы навсегда
 async function hardDeleteItem(sh, id) {
-    if (!confirm("ВНИМАНИЕ! Вы удаляете данные навсегда. Папка на Диске также будет удалена. Продолжить?")) return;
+    if (!confirm("ВНИМАНИЕ! Вы удаляете данные навсегда. Папка на Диске (если это сделка) также будет удалена. Продолжить?")) return;
     
     let fullArray = getArrayBySheet(sh);
     const itemToDelete = fullArray.find(x => String(x.id) === String(id));
-    
-    // Если это сделка и у неё есть папка — отправляем спец. команду на сервер
-    let folderIdToDelete = (sh === 'deals' && itemToDelete) ? itemToDelete.folderId : null;
 
-    if (folderIdToDelete) {
-        showLoader(true);
+    // --- ДОБАВЛЕНО: УДАЛЕНИЕ ПАПКИ ПРИ ОДИНОЧНОМ УДАЛЕНИИ ---
+    if (sh === 'deals' && itemToDelete && itemToDelete.folderId) {
         try {
             await fetch(SCRIPT_URL, {
                 method: 'POST',
                 body: JSON.stringify({
                     action: 'deleteFolder',
-                    folderId: folderIdToDelete,
-                    user: sessionStorage.getItem('crm_user')
+                    folderId: itemToDelete.folderId,
+                    user: 'admin'
                 })
             });
-        } catch (e) { console.error("Ошибка при удалении папки:", e); }
+        } catch (e) { console.error("Ошибка удаления папки:", e); }
     }
+    // -------------------------------------------------------
 
-    // Дальше стандартная логика удаления строки из таблицы
     const updatedFullData = fullArray.filter(x => String(x.id) !== String(id));
 
     if(sh==='requests') requests = updatedFullData;
@@ -6328,17 +6330,17 @@ async function hardDeleteItem(sh, id) {
 
     renderTrash();
     updateCounters();
-
     await sync(sh, updatedFullData, 'saveAll');
-    alert("Объект и его папка удалены навсегда.");
+    alert("Объект и его папка стерты.");
 }
 
+    
 // Вспомогательная функция (чтобы код понимал, с каким массивом работать)
 function getArrayBySheet(sh) {
     if(sh==='requests') return requests;
     if(sh==='deals') return deals;
     if(sh==='companies') return companies;
-    if(sh==='calls') return reminders; // Вкладка называется 'calls', а массив 'reminders'
+    if(sh==='calls' || sh==='reminders') return reminders;
     if(sh==='partners') return partners;
     if(sh==='tracking') return tracking;
     return [];
@@ -6838,44 +6840,97 @@ const debouncedGlobalSearch = debounce(() => {
     function renderTrash() {
     const type = document.getElementById('trashType').value;
     const container = document.getElementById('trashList');
+    document.getElementById('selectAllTrash').checked = false; // Сбрасываем общую галочку при смене типа
     
-    // Получаем массив данных в зависимости от выбранного типа в корзине
-    let data = [];
-    if(type === 'deals') data = deals;
-    else if(type === 'partners') data = partners;
-    else if(type === 'companies') data = companies;
-    else if(type === 'requests') data = requests;
-    else if(type === 'reminders') data = reminders;
-    else if(type === 'tracking') data = tracking;
-
-    // Фильтруем только удаленные объекты (isDeleted === true)
+    let data = getArrayBySheet(type === 'reminders' ? 'calls' : type);
     const deletedItems = data.filter(x => x.isDeleted === true);
 
     let html = deletedItems.map(item => {
-        // Определяем, что выводить в заголовок в зависимости от типа объекта
         let title = item.name || (item.num ? "Сделка №" + item.num : "") || item.company || "Без названия";
         let sub = item.topic || item.cargo || (item.manager ? "Менеджер: " + item.manager : "") || "";
+        const isSelected = selectedIds.has(String(item.id));
 
         return `
-            <div class="list-item" style="border-left: 4px solid var(--danger); cursor: default;">
+            <div class="list-item ${isSelected ? 'selected' : ''}" style="border-left: 4px solid var(--danger);" onclick="toggleSelect(event, '${item.id}')">
+                <input type="checkbox" class="bulk-checkbox" 
+                       ${isSelected ? 'checked' : ''} 
+                       onclick="toggleSelect(event, '${item.id}')">
+                
                 <div class="item-main">
                     <h4>${title}</h4>
                     <p>${sub}</p>
                 </div>
                 <div class="item-actions">
-                    <!-- Кнопка Восстановить -->
                     <button class="action-btn" title="Восстановить" style="color:var(--success); font-size:18px;" 
-                            onclick="restoreItem('${type}', '${item.id}')">↺</button>
-                    
-                    <!-- Кнопка Удалить Навсегда -->
+                            onclick="event.stopPropagation(); restoreItem('${type}', '${item.id}')">↺</button>
                     <button class="action-btn" title="Удалить навсегда" style="color:var(--danger); font-size:18px;" 
-                            onclick="hardDeleteItem('${type}', '${item.id}')">🗑️</button>
+                            onclick="event.stopPropagation(); hardDeleteItem('${type}', '${item.id}')">🗑️</button>
                 </div>
             </div>
         `;
     }).join('');
 
     container.innerHTML = html || '<div style="padding:40px; text-align:center; color:#999;">🗑️ Корзина пуста</div>';
+}
+
+    // Функция выделения всех элементов в корзине
+function toggleSelectAllTrash(mainCheckbox) {
+    const type = document.getElementById('trashType').value;
+    let data = getArrayBySheet(type === 'reminders' ? 'calls' : type);
+    const deletedItems = data.filter(x => x.isDeleted === true);
+
+    if (mainCheckbox.checked) {
+        deletedItems.forEach(item => selectedIds.add(String(item.id)));
+    } else {
+        selectedIds.clear();
+    }
+    renderTrash();
+    updateBulkBar();
+}
+
+// Массовое ОКОНЧАТЕЛЬНОЕ удаление (для бара действий)
+async function bulkHardDelete() {
+    const count = selectedIds.size;
+    if (!count) return;
+    if (!confirm(`ВНИМАНИЕ! Вы удаляете ${count} объектов НАВСЕГДА. Папки на Диске (если есть) также будут удалены. Продолжить?`)) return;
+
+    const type = document.getElementById('trashType').value;
+    const sheetName = (type === 'reminders') ? 'reminders' : type;
+    let fullArray = getArrayBySheet(type === 'reminders' ? 'calls' : type);
+
+    showLoader(true);
+
+    for (let id of selectedIds) {
+        const item = fullArray.find(x => String(x.id) === String(id));
+        // Если это сделка и есть ID папки — удаляем папку
+        if (sheetName === 'deals' && item && item.folderId) {
+            try {
+                await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'deleteFolder', folderId: item.folderId, user: 'admin' })
+                });
+            } catch (e) { console.error("Folder del err:", e); }
+        }
+    }
+
+    // Удаляем из массива все выделенные ID
+    const updatedData = fullArray.filter(x => !selectedIds.has(String(x.id)));
+
+    // Обновляем глобальные переменные
+    if(sheetName === 'deals') deals = updatedData;
+    else if(sheetName === 'requests') requests = updatedData;
+    else if(sheetName === 'companies') companies = updatedData;
+    else if(sheetName === 'reminders') reminders = updatedData;
+    else if(sheetName === 'partners') partners = updatedData;
+    else if(sheetName === 'tracking') tracking = updatedData;
+
+    await sync(sheetName, updatedData, 'saveAll');
+
+    selectedIds.clear();
+    renderTrash();
+    updateCounters();
+    showLoader(false);
+    alert("Выбранные объекты стерты из базы.");
 }
 
 // Функция перехода к результату (исправленная)
@@ -7043,6 +7098,7 @@ document.addEventListener('keydown', function(e) {
     <div id="bulk-actions-bar">
     <span id="bulk-count">Выбрано: 0</span>
     <button class="bulk-btn" onclick="bulkDelete()">🗑️ В корзину</button>
+    <button id="bulk-hard-delete-btn" class="bulk-btn" style="background:var(--danger); display:none;" onclick="bulkHardDelete()">🔥 СТЕРЕТЬ НАВСЕГДА</button>
     
     <!-- Только для админа: Смена менеджера -->
     <div id="admin-bulk-tools" style="display:none; align-items:center; gap:8px; border-left: 1px solid rgba(255,255,255,0.3); padding-left: 15px;">
