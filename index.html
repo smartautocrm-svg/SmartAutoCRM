@@ -5704,6 +5704,8 @@ function generateReport() {
     let selMan = (role === 'admin' || role === 'leader') ? (document.getElementById('reportManagerFilter').value || 'all') : me;
     const selYear = document.getElementById('reportYearFilter').value;
     const selMonth = document.getElementById('reportMonthFilter').value;
+    const todayStr = new Date().toLocaleDateString('ru-RU');
+    let dailyJournalHtml = "";
     
     const ms = ["Янв", "Фев", "Мар", "Апр", "Май", "Июн", "Июл", "Авг", "Сен", "Окт", "Ноя", "Дек"];
     const ap = new Map(); 
@@ -5746,6 +5748,46 @@ function generateReport() {
     requests.forEach(r => { if(filterByAccess(r.manager, r.createdAt)) mk(r.createdAt); });
     companies.forEach(c => { if(c.status === 'active' && filterByAccess(c.manager, c.activatedAt)) mk(c.activatedAt); });
 
+    if (selMan !== 'all') {
+        const todayActs = reminders.filter(r => r.manager === selMan && !r.isDeleted && dFmt(r.date) === todayStr);
+        const todayReqs = requests.filter(r => r.manager === selMan && !r.isDeleted && dFmt(r.createdAt) === todayStr);
+        const todayRefused = companies.filter(c => {
+    if (c.status !== 'refused' || c.isDeleted) return false;
+    
+    // Проверяем, была ли по этой компании "Правка" сегодня от этого менеджера
+    // (это значит, что статус был изменен именно сегодня)
+    const hasLogToday = crmLogs.some(log => 
+        log[1] === selMan && 
+        log[3] === 'companies' && 
+        String(log[5]) === String(c.id) && 
+        dFmt(log[0]) === todayStr
+    );
+    
+    // Либо компания была создана сегодня со статусом refused
+    const isCreatedToday = dFmt(c.createdAt) === todayStr && c.manager === selMan;
+
+    return hasLogToday || isCreatedToday;
+});
+
+        dailyJournalHtml = `
+            <div style="background:#fff; border:2px solid var(--primary); padding:15px; border-radius:10px; margin-bottom:20px;">
+                <h3 style="margin-top:0; color:var(--primary); border-bottom:1px solid #eee; padding-bottom:10px;">📅 Журнал активности за сегодня (${todayStr})</h3>
+                <div style="display:flex; gap:20px; margin-bottom:15px;">
+                    <div style="flex:1; background:#f0f7ff; padding:10px; border-radius:5px; text-align:center;"><b>Звонки: ${todayActs.length}</b></div>
+                    <div style="flex:1; background:#fdf6ff; padding:10px; border-radius:5px; text-align:center;"><b>Запросы: ${todayReqs.length}</b></div>
+                    <div style="flex:1; background:#fff0f0; padding:10px; border-radius:5px; text-align:center;"><b>Отказы: ${todayRefused.length}</b></div>
+                </div>
+                <table class="report-table" style="font-size:10px;">
+                    <tbody style="text-align:left;">
+                        ${todayReqs.map(r => `<tr><td style="color:var(--warm)">📦 ЗАПРОС</td><td><b>${r.company}</b></td><td>${r.cargo}</td></tr>`).join('')}
+                        ${todayActs.map(a => `<tr><td style="color:var(--primary)">📞 ЗВОНОК</td><td><b>${a.name}</b></td><td>${a.topic} ${a.status==='completed'?'✅':''}</td></tr>`).join('')}
+                        ${todayRefused.map(c => `<tr><td style="color:var(--danger)">⛔ ОТКАЗ</td><td><b>${c.name}</b></td><td>Статус изменен на "Не интересно"</td></tr>`).join('')}
+                        ${(todayActs.length + todayReqs.length + todayRefused.length === 0) ? '<tr><td colspan="3" style="text-align:center; color:#999;">Активности за сегодня не найдено</td></tr>' : ''}
+                    </tbody>
+                </table>
+            </div>`;
+    }
+
     let h = `<h3>📊 Активность: ${selMan === 'all' ? (role === 'leader' ? 'Моя группа' : 'Все') : selMan}</h3>
              <table class="report-table"><thead><tr><th>Период</th><th>Звонки</th><th>Запросы</th><th>Новые клиенты</th></tr></thead><tbody>`; 
 
@@ -5768,7 +5810,7 @@ function generateReport() {
         h += `<tr><td>${ms[m]} ${y}</td><td>${cC}</td><td>${rC}</td><td style="color:var(--success); font-weight:bold;">${clC}</td></tr>`; 
     }); 
 
-    document.getElementById('reportData').innerHTML = h + '</tbody></table>'; 
+    document.getElementById('reportData').innerHTML = dailyJournalHtml + h + '</tbody></table>'; 
 
     // --- 2. БЛОК KPI ПОМОЩНИКА (ДЛЯ ПОМОЩНИКОВ И АДМИНОВ) ---
     // Проверяем роль через teamStructure
