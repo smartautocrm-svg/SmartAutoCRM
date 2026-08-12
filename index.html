@@ -6321,16 +6321,22 @@ async function hardDeleteItem(sh, id) {
 
     const updatedFullData = fullArray.filter(x => String(x.id) !== String(id));
 
-    if(sh==='requests') requests = updatedFullData;
-    else if(sh==='deals') deals = updatedFullData;
-    else if(sh==='companies') companies = updatedFullData;
-    else if(sh==='reminders' || sh==='calls') reminders = updatedFullData;
-    else if(sh==='partners') partners = updatedFullData;
-    else if(sh==='tracking') tracking = updatedFullData;
+    if (sh === 'requests') requests = updatedFullData;
+    else if (sh === 'deals') deals = updatedFullData;
+    else if (sh === 'companies') companies = updatedFullData;
+    else if (sh === 'reminders' || sh === 'calls') reminders = updatedFullData;
+    else if (sh === 'partners') partners = updatedFullData;
+    else if (sh === 'tracking') tracking = updatedFullData;
 
+    // Сразу перерисовываем интерфейс
     renderTrash();
     updateCounters();
-    await sync(sh, updatedFullData, 'saveAll');
+
+    // Отправляем команду на полную перезапись листа в Google Таблицу
+    // Если sh это 'calls', заменяем на системное имя листа 'reminders'
+    const targetSheet = (sh === 'calls' || sh === 'reminders') ? 'reminders' : sh;
+    await sync(targetSheet, updatedFullData, 'saveAll');
+
     alert("Объект и его папка стерты.");
 }
 
@@ -6917,20 +6923,21 @@ async function bulkHardDelete() {
     const updatedData = fullArray.filter(x => !selectedIds.has(String(x.id)));
 
     // Обновляем глобальные переменные
-    if(sheetName === 'deals') deals = updatedData;
-    else if(sheetName === 'requests') requests = updatedData;
-    else if(sheetName === 'companies') companies = updatedData;
-    else if(sheetName === 'reminders') reminders = updatedData;
-    else if(sheetName === 'partners') partners = updatedData;
-    else if(sheetName === 'tracking') tracking = updatedData;
+    if (sheetName === 'deals') deals = updatedData;
+    else if (sheetName === 'requests') requests = updatedData;
+    else if (sheetName === 'companies') companies = updatedData;
+    else if (sheetName === 'reminders') reminders = updatedData;
+    else if (sheetName === 'partners') partners = updatedData;
+    else if (sheetName === 'tracking') tracking = updatedData;
 
     await sync(sheetName, updatedData, 'saveAll');
 
     selectedIds.clear();
-    renderTrash();
+    document.getElementById('selectAllTrash').checked = false;
+    renderTrash(); // Теперь в корзине будет пусто
     updateCounters();
     showLoader(false);
-    alert("Выбранные объекты стерты из базы.");
+    alert("Выбранные объекты полностью удалены.");
 }
 
 // Функция перехода к результату (исправленная)
@@ -7097,7 +7104,7 @@ document.addEventListener('keydown', function(e) {
     <div id="notification-container"></div>
     <div id="bulk-actions-bar">
     <span id="bulk-count">Выбрано: 0</span>
-    <button class="bulk-btn" onclick="bulkDelete()">🗑️ В корзину</button>
+    <button id="bulk-to-trash-btn" class="bulk-btn" onclick="bulkDelete()">🗑️ В корзину</button>
     <button id="bulk-hard-delete-btn" class="bulk-btn" style="background:var(--danger); display:none;" onclick="bulkHardDelete()">🔥 СТЕРЕТЬ НАВСЕГДА</button>
     
     <!-- Только для админа: Смена менеджера -->
