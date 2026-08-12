@@ -6294,15 +6294,31 @@ async function restoreItem(sh, id) {
 
 // 4. Окончательное удаление (Hard Delete) — Удаляет строку из таблицы навсегда
 async function hardDeleteItem(sh, id) {
-    if (!confirm("ВНИМАНИЕ! Вы удаляете данные навсегда из базы. Это действие нельзя отменить через CRM. Продолжить?")) return;
+    if (!confirm("ВНИМАНИЕ! Вы удаляете данные навсегда. Папка на Диске также будет удалена. Продолжить?")) return;
     
-    // 1. Получаем ВЕСЬ массив данных (включая активные и удаленные)
     let fullArray = getArrayBySheet(sh);
+    const itemToDelete = fullArray.find(x => String(x.id) === String(id));
     
-    // 2. Оставляем всё, КРОМЕ того объекта, который мы стираем окончательно
+    // Если это сделка и у неё есть папка — отправляем спец. команду на сервер
+    let folderIdToDelete = (sh === 'deals' && itemToDelete) ? itemToDelete.folderId : null;
+
+    if (folderIdToDelete) {
+        showLoader(true);
+        try {
+            await fetch(SCRIPT_URL, {
+                method: 'POST',
+                body: JSON.stringify({
+                    action: 'deleteFolder',
+                    folderId: folderIdToDelete,
+                    user: sessionStorage.getItem('crm_user')
+                })
+            });
+        } catch (e) { console.error("Ошибка при удалении папки:", e); }
+    }
+
+    // Дальше стандартная логика удаления строки из таблицы
     const updatedFullData = fullArray.filter(x => String(x.id) !== String(id));
 
-    // 3. Обновляем глобальные переменные в памяти CRM
     if(sh==='requests') requests = updatedFullData;
     else if(sh==='deals') deals = updatedFullData;
     else if(sh==='companies') companies = updatedFullData;
@@ -6310,13 +6326,11 @@ async function hardDeleteItem(sh, id) {
     else if(sh==='partners') partners = updatedFullData;
     else if(sh==='tracking') tracking = updatedFullData;
 
-    renderTrash(); // Обновляем вид корзины
-    updateCounters(); 
+    renderTrash();
+    updateCounters();
 
-    // 4. Сохраняем в таблицу только ПОЛНЫЙ массив данных
-    // Это гарантирует, что мы не затрем активные записи пустым списком
     await sync(sh, updatedFullData, 'saveAll');
-    alert("Объект стерт из базы данных.");
+    alert("Объект и его папка удалены навсегда.");
 }
 
 // Вспомогательная функция (чтобы код понимал, с каким массивом работать)
