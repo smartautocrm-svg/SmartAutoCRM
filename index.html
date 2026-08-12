@@ -6611,44 +6611,39 @@ async function sendToAI() {
 
             // --- ОБРАБОТКА КОМПАНИЙ (COMP_DATA) ---
             const compMatch = answer.match(/\[COMP_DATA:(.*?)\]/);
-if (compMatch) {
-    try {
-        // Очищаем JSON от возможных лишних пробелов по краям
-        const jsonRaw = compMatch[1].trim();
-        const c = JSON.parse(jsonRaw);
-        
-        // ВАЖНО: Выведите это в консоль (F12 в браузере), 
-        // чтобы увидеть, ЧТО именно прислал ИИ. Если тут пустые строки - значит проблема в промпте/скрипте.
-        console.log("AI извлек данные компании:", c); 
+            if (compMatch) {
+                try {
+                    const c = JSON.parse(compMatch[1]);
+                    console.log("Данные от ИИ:", c); // Это поможет тебе увидеть в консоли (F12), что нашел ИИ
 
-        answer = answer.replace(/\[COMP_DATA:.*?\]/, "🏢 **Карточка компании заполнена!**");
-        openTab('companies');
-        
-        // Заполняем поля (добавляем || "" чтобы не было undefined)
-        document.getElementById('compName').value = c.name || "";
-        document.getElementById('compProduct').value = c.product || "";
-        document.getElementById('compCity').value = c.city || "";
-        document.getElementById('compContact').value = c.contact || "";
-        document.getElementById('compPhone').value = c.phone || "";
-        document.getElementById('compEmail').value = c.email || "";
-        document.getElementById('compWebsite').value = c.website || "";
-        document.getElementById('compDesc').value = c.desc || "";
-        
-        // Добавляем импорт и экспорт, которых у вас не было в коде
-        if (document.getElementById('compImp')) document.getElementById('compImp').value = c.imp || "";
-        if (document.getElementById('compExp')) document.getElementById('compExp').value = c.exp || "";
-        
-        if (c.status) {
-            const validStatuses = ['cold', 'warm', 'active', 'refused'];
-            if (validStatuses.includes(c.status)) {
-                document.getElementById('compStatus').value = c.status;
+                    answer = answer.replace(/\[COMP_DATA:.*?\]/, "🏢 **Карточка компании заполнена!**");
+                    openTab('companies');
+                    
+                    // Заполняем основные поля
+                    if (c.name) document.getElementById('compName').value = c.name;
+                    if (c.product) document.getElementById('compProduct').value = c.product;
+                    if (c.city) document.getElementById('compCity').value = c.city;
+                    if (c.contact) document.getElementById('compContact').value = c.contact;
+                    if (c.phone) document.getElementById('compPhone').value = c.phone;
+                    if (c.email) document.getElementById('compEmail').value = c.email;
+                    if (c.website) document.getElementById('compWebsite').value = c.website;
+                    if (c.desc) document.getElementById('compDesc').value = c.desc;
+
+                    // Добавляем импорт/экспорт (этого не было в твоем коде)
+                    if (c.imp && document.getElementById('compImp')) document.getElementById('compImp').value = c.imp;
+                    if (c.exp && document.getElementById('compExp')) document.getElementById('compExp').value = c.exp;
+                    
+                    if (c.status) {
+                        const validStatuses = ['cold', 'warm', 'active', 'refused'];
+                        if (validStatuses.includes(c.status)) {
+                            document.getElementById('compStatus').value = c.status;
+                        }
+                    }
+                } catch(e) { 
+                    console.error("AI Company Error", e);
+                    console.log("Сырой JSON от ИИ:", compMatch[1]);
+                }
             }
-        }
-    } catch(e) { 
-        console.error("Ошибка обработки COMP_DATA:", e); 
-        console.log("Сырые данные из тега:", compMatch[1]);
-    }
-}
 
 
             // Проверяем, прислал ли ИИ данные для задачи
