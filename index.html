@@ -5715,7 +5715,18 @@ function generateReport() {
     let dailyJournalHtml = "";
 
     if (selMan !== 'all') {
-    const todayActs = reminders.filter(r => r.manager === selMan && !r.isDeleted && dFmt(r.date) === targetDateStr);
+    const todayActs = reminders.filter(r => {
+    if (r.isDeleted) return false;
+    
+    // Если задачу поставил этот менеджер (createdBy) 
+    // ИЛИ если он является исполнителем (manager) в отсутствие отметки создателя
+    const isAuthor = (r.createdBy === selMan) || (r.manager === selMan && !r.createdBy);
+    
+    // Превращаем ID (timestamp) в дату и сравниваем с выбранным днем
+    const createdDate = dFmt(parseInt(r.id)); 
+    
+    return isAuthor && createdDate === targetDateStr;
+});
 const todayReqs = requests.filter(r => r.manager === selMan && !r.isDeleted && dFmt(r.createdAt) === targetDateStr);
 const todayRefused = companies.filter(c => {
     if (c.status !== 'refused' || c.isDeleted) return false;
@@ -5744,7 +5755,15 @@ const todayRefused = companies.filter(c => {
                 <table class="report-table" style="font-size:10px;">
                     <tbody style="text-align:left;">
                         ${todayReqs.map(r => `<tr><td style="color:var(--warm)">📦 ЗАПРОС</td><td><b>${r.company}</b></td><td>${r.cargo}</td></tr>`).join('')}
-                        ${todayActs.map(a => `<tr><td style="color:var(--primary)">📞 ЗВОНОК</td><td><b>${a.name}</b></td><td>${a.topic} ${a.status==='completed'?'✅':''}</td></tr>`).join('')}
+                        ${todayActs.map(a => `
+    <tr>
+        <td style="color:var(--primary); font-weight:bold;">📞 ДОБАВЛЕНА ЗАДАЧА</td>
+        <td><b>${a.name}</b></td>
+        <td>
+            <span style="background:#fff3e0; padding:2px 5px; border-radius:4px; font-size:9px;">План на: ${dFmt(a.date)}</span><br>
+            ${a.topic}
+        </td>
+    </tr>`).join('')}
                         ${todayRefused.map(c => `<tr><td style="color:var(--danger)">⛔ ОТКАЗ</td><td><b>${c.name}</b></td><td>Статус изменен на "Не интересно"</td></tr>`).join('')}
                         ${(todayActs.length + todayReqs.length + todayRefused.length === 0) ? '<tr><td colspan="3" style="text-align:center; color:#999;">Активности за сегодня не найдено</td></tr>' : ''}
                     </tbody>
