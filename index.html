@@ -2738,13 +2738,17 @@ async function sync(sh, dt, mode = 'saveAll') {
             body: JSON.stringify(payload) 
         }); 
         const res = await response.json();
-        if(!res.success) console.error("Sync error:", res.error);
+        
+        if (!res.success) {
+            alert("❌ ОШИБКА СЕРВЕРА: " + res.error);
+            console.error("Sync error:", res.error);
+        } else {
+            console.log("✅ Синхронизация успешна:", sh);
+        }
     } catch (e) { 
+        alert("❌ ОШИБКА СЕТИ: Данные не ушли в таблицу.");
         console.error("Sync connection error:", e); 
-    } finally { 
-        showLoader(false); 
     }
-}
 
   async function uploadDealFile(dealId) {
     const fileInput = document.getElementById('dealFileInput');
@@ -4287,6 +4291,7 @@ async function saveEdit() {
             await sync('companies', companies[i], 'update'); 
 
             lastSyncTimestamp = 0;
+            loadCloudData();
             
             // Вместо полной перезагрузки просто обновляем интерфейс локально
             renderCompanies();
