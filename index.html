@@ -2686,39 +2686,27 @@ function exportCurrentData() {
     };
 }
     function formatRow(sh, o) {
-let row = []; 
+    let row = []; 
     if (sh === 'companies') row = [o.id, o.name, o.contact, o.phone, o.product || "", o.city || "", o.email || "", o.imp || "", o.exp || "", o.status, o.createdAt, o.activatedAt || "", o.manager, o.isPrivate, o.sharedWith || "", o.website || "", o.isDeleted || false, o.desc || "", o.refuseReason || "", o.createdBy || ""];
-if (sh === 'requests') row = [o.id, o.company, o.cargo, o.transport, o.weight, o.vol, o.value, o.currency, o.load, o.unload, o.desc, o.createdAt, o.status, o.comment, o.container, o.zip, o.manager, o.contQty || "", o.type || "", o.sharedWith || "", o.isDeleted || false, o.lossReason || ""];
+    else if (sh === 'requests') row = [o.id, o.company, o.cargo, o.transport, o.weight, o.vol, o.value, o.currency, o.load, o.unload, o.desc, o.createdAt, o.status, o.comment, o.container, o.zip, o.manager, o.contQty || "", o.type || "", o.sharedWith || "", o.isDeleted || false, o.lossReason || ""];
+    else if (sh === 'deals') row = [o.id, o.num, o.company, o.cargo, o.trans, o.weight, o.vol, o.value, o.curr, o.load, o.zip, o.unload, o.info, o.manager, o.createdAt, o.exp, o.inc, o.prof, o.container, o.sharedWith || "", o.status, o.type, o.contQty || "", o.blNum || "", o.awbNum || "", JSON.stringify(o.files || []), o.margin, o.stage || "docs", o.isPaid || false, o.payDate || "", o.isPrivateDeal || false, o.isDeleted || false, "", "", o.folderUrl || "", o.folderId || ""];
+    else if (sh === 'reminders') row = [o.id, o.name, o.date, o.topic, o.manager, o.status, o.isDeleted || false, o.sharedWith || "", "", o.priority || "medium", o.createdBy || "", o.tgSent || ""];
+    else if (sh === 'partners') row = [o.id, o.name, o.status, o.country, o.contact, o.phone, o.email, o.website, o.desc, o.isDeleted || false];
+    else if (sh === 'tracking') row = [o.id, o.num, o.cargo, o.weight, o.vol, o.qty, o.pack, o.trans, o.status, o.manager, o.sharedWith || "", o.isDeleted || false];
+    else if (sh === 'news') row = [o.id, o.date, o.author, o.title, o.text, o.isDeleted || false];
+    else if (sh === 'chats') row = [o.id, o.name, o.creator, o.members, o.time, "", o.isDeleted || false];
+    else if (sh === 'chat_messages') row = [o.id, o.chatId, o.sender, o.text, o.time];
 
-if (sh === 'deals') row = [
-    o.id, o.num, o.company, o.cargo, o.trans, o.weight, o.vol, o.value, o.curr, 
-    o.load, o.zip, o.unload, o.info, o.manager, o.createdAt, o.exp, o.inc, 
-    o.prof, o.container, o.sharedWith || "", o.status, o.type, o.contQty || "", 
-    o.blNum || "", o.awbNum || "", JSON.stringify(o.files || []), o.margin, 
-    o.stage || "docs", o.isPaid || false, o.payDate || "", o.isPrivateDeal || false, 
-    o.isDeleted || false, "", "", o.folderUrl || "", o.folderId || ""
-];
-        if (sh === 'reminders') row = [
-    o.id, o.name, o.date, o.topic, o.manager, o.status, 
-    o.isDeleted || false, o.sharedWith || "", "", 
-    o.priority || "medium", o.createdBy || "", 
-    o.tgSent || "" // <--- ДОБАВЛЕНО (Индекс 11, Колонка L)
-];
-        if (sh === 'partners') row = [o.id, o.name, o.status, o.country, o.contact, o.phone, o.email, o.website, o.desc, o.isDeleted || false];
-        if (sh === 'tracking') row = [o.id, o.num, o.cargo, o.weight, o.vol, o.qty, o.pack, o.trans, o.status, o.manager, o.sharedWith || "", o.isDeleted || false];
-        if (sh === 'news') row = [o.id, o.date, o.author, o.title, o.text, o.isDeleted || false];
-        if (row.length === 0) {
-        if (sh === 'chats') row = [o.id, o.name, o.creator, o.members, o.time, "", o.isDeleted || false];
-        if (sh === 'chat_messages') row = [o.id, o.chatId, o.sender, o.text, o.time];
-    }
-
-    // Если всё еще пусто — создаем пустой массив
+    // Если всё еще пусто — возвращаем пустой массив
     if (row.length === 0) row = [];
     
-    // Добиваем строку до 40 колонок для Google Таблицы (важно для Delta Sync)
-    while(row.length < 40) row.push(""); 
-    return row;
-        }
+    // ПРАВИЛЬНЫЙ ФИКС: Создаем массив ровно на 40 ячеек
+    let finalArray = new Array(40).fill(""); 
+    for (let i = 0; i < row.length; i++) {
+        finalArray[i] = row[i];
+    }
+    return finalArray;
+}
 
   // Обновленная функция синхронизации
 async function sync(sh, dt, mode = 'saveAll') {
