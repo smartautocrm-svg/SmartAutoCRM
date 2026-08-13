@@ -2720,10 +2720,12 @@ async function sync(sh, dt, mode = 'saveAll') {
 
     if (mode === 'bulkUpdate') {
         payload.action = 'bulkUpdate';
-        payload.payload = dt; // Здесь dt должен быть массивом [{id, rowData}, ...]
+        payload.payload = dt; // Здесь dt — массив [{id, rowData}, ...]
     } else if (mode === 'append') {
         payload.action = 'append';
-        payload.rowData = formatRow(sh, dt[dt.length - 1]);
+        // Если передали массив — берем последний элемент, если объект — берем его самого
+        let itemToFormat = Array.isArray(dt) ? dt[dt.length - 1] : dt;
+        payload.rowData = formatRow(sh, itemToFormat);
     } else if (mode === 'update') {
         payload.action = 'updateRow';
         payload.rowData = formatRow(sh, dt);
@@ -2748,7 +2750,10 @@ async function sync(sh, dt, mode = 'saveAll') {
     } catch (e) { 
         alert("❌ ОШИБКА СЕТИ: Данные не ушли в таблицу.");
         console.error("Sync connection error:", e); 
+    } finally {
+        showLoader(false);
     }
+}
 
   async function uploadDealFile(dealId) {
     const fileInput = document.getElementById('dealFileInput');
