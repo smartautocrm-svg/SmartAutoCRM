@@ -4285,6 +4285,8 @@ async function saveEdit() {
         try {
             // Отправляем в таблицу и ЖДЕМ завершения (await)
             await sync('companies', companies[i], 'update'); 
+
+            lastSyncTimestamp = 0;
             
             // Вместо полной перезагрузки просто обновляем интерфейс локально
             renderCompanies();
