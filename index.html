@@ -4135,9 +4135,19 @@ async function saveEdit() {
         renderReminders();
 } else if (type === 'company') {
         sheetName = 'companies';
-        const i = companies.findIndex(x => String(x.id) === String(id))
+        const i = companies.findIndex(x => String(x.id) === String(id));
         const oldSt = companies[i].status;
         const newSt = document.getElementById('eCompStatus').value;
+
+        // --- ЛОГИКА СТАТУСА "НЕ ИНТЕРЕСНО" ---
+        if (newSt === 'refused') {
+            document.getElementById('compRefuseReason').value = "";
+            document.getElementById('companyRefuseModal').style.display = 'block';
+            // Мы выходим из функции здесь. Сохранение произойдет в submitCompanyRefuse
+            return; 
+        }
+
+        // --- ОБЫЧНОЕ СОХРАНЕНИЕ ДЛЯ ДРУГИХ СТАТУСОВ ---
         if (newSt === 'active' && oldSt !== 'active') companies[i].activatedAt = new Date().toISOString();
         
         companies[i].name = document.getElementById('eCompName').value;
@@ -4149,22 +4159,18 @@ async function saveEdit() {
         companies[i].website = document.getElementById('eCompWeb').value;
         companies[i].imp = document.getElementById('eCompImp').value;
         companies[i].exp = document.getElementById('eCompExp').value;
-        
-        // ИСПРАВЛЕННЫЕ ID:
         companies[i].manager = document.getElementById('eCompMan').value; 
         companies[i].status = newSt;
         companies[i].isPrivate = document.getElementById('eCompPriv').checked;
         companies[i].desc = document.getElementById('eCompDesc').value;
-        if (newSt !== 'refused') companies[i].refuseReason = ""; 
-        if (newSt === 'refused' && !companies[i].refuseReason) {
-            document.getElementById('compRefuseReason').value = "";
-            document.getElementById('companyRefuseModal').style.display = 'block';
-            return; // Прерываем сохранение, пока не выберут причину
-        }
         
+        // Очищаем причину отказа, если статус изменили на рабочий
+        companies[i].refuseReason = ""; 
+
         updatedItem = companies[i];
         renderCompanies();
         updateDatalists();
+    }
     } else if (type === 'request') {
     sheetName = 'requests';
     const i = requests.findIndex(x => String(x.id) === String(id));
@@ -4281,15 +4287,30 @@ async function saveEdit() {
     const i = companies.findIndex(x => String(x.id) === String(id));
     
     if (i > -1) {
+        showLoader(true); // Включаем лоадер
+        companies[i].status = 'refused';
         companies[i].refuseReason = reason;
+        
+        // Закрываем модалки сразу
         document.getElementById('companyRefuseModal').style.display = 'none';
         document.getElementById('editModal').style.display = 'none';
         
-        renderCompanies();
-        await sync('companies', companies[i], 'update');
-        lastSyncTimestamp = 0;
-        loadCloudData();
-        alert("Статус обновлен");
+        try {
+            // Отправляем в таблицу и ЖДЕМ завершения (await)
+            await sync('companies', companies[i], 'update'); 
+            
+            // Вместо полной перезагрузки просто обновляем интерфейс локально
+            renderCompanies();
+            updateCounters();
+            
+            // Сбрасываем метку времени, чтобы следующая синхронизация точно подтянула изменения
+            lastSyncTimestamp = 0; 
+            console.log("Статус 'Не интересно' успешно сохранен");
+        } catch (e) {
+            alert("Ошибка сохранения статуса. Попробуйте еще раз.");
+        } finally {
+            showLoader(false);
+        }
     }
 }
 async function submitFollowUp() {
