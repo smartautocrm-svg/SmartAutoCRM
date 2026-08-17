@@ -6541,23 +6541,27 @@ async function sendToAI() {
     // Ищем, упомянута ли какая-то компания в вопросе
     const mentionedCompany = companies.find(c => prompt.toLowerCase().includes(c.name.toLowerCase()))?.name;
 
-    // Собираем данные: если компания упомянута, берем ВСЁ по ней. Если нет — последние 40 записей.
     const context = {
-        companies: companies.filter(c => !c.isDeleted && checkAccess(c.name))
-                    .filter(c => mentionedCompany ? c.name === mentionedCompany : true)
-                    .slice(-40).map(c => ({ n: c.name, s: c.status, d: c.desc })),
-        deals: deals.filter(d => !d.isDeleted && checkDealAccess(d))
-                    .filter(d => mentionedCompany ? d.company === mentionedCompany : true)
-                    .slice(-40).map(d => ({ cl: d.company, pr: d.prof, st: d.stage, dt: d.createdAt })),
-        reqs: requests.filter(r => !r.isDeleted && checkAccess(r.company))
-                    .filter(r => mentionedCompany ? r.company === mentionedCompany : true)
-                    .slice(-40).map(r => ({ cl: r.company, st: r.status, rsn: r.lossReason, cm: r.comment })),
-        hist: reminders.filter(rem => !rem.isDeleted && (me === 'admin' || rem.manager === me))
-                    .filter(rem => mentionedCompany ? rem.name === mentionedCompany : true)
-                    // Увеличиваем лимит до 100 записей, если компания упомянута, 
-                    // чтобы ИИ видел глубокую историю для анализа
-                    .slice(-100).map(rem => ({ cl: rem.name, txt: rem.topic, dt: rem.date }))
-    };
+    // Вместо 40 компаний берем 20, и только важные поля
+    companies: companies.filter(c => !c.isDeleted && checkAccess(c.name))
+                .filter(c => mentionedCompany ? c.name === mentionedCompany : true)
+                .slice(-20).map(c => ({ n: c.name, s: c.status, d: c.desc.substring(0, 100) })), // обрезаем описание
+
+    // Сделки: только последние 15 (обычно этого хватает для анализа)
+    deals: deals.filter(d => !d.isDeleted && checkDealAccess(d))
+                .filter(d => mentionedCompany ? d.company === mentionedCompany : true)
+                .slice(-15).map(d => ({ cl: d.company, pr: d.prof, st: d.stage })),
+
+    // Запросы: только последние 15
+    reqs: requests.filter(r => !r.isDeleted && checkAccess(r.company))
+                .filter(r => mentionedCompany ? r.company === mentionedCompany : true)
+                .slice(-15).map(r => ({ cl: r.company, st: r.status })),
+
+    // История (самый тяжелый блок): сокращаем со 100 до 30 записей
+    hist: reminders.filter(rem => !rem.isDeleted && (me === 'admin' || rem.manager === me))
+                .filter(rem => mentionedCompany ? rem.name === mentionedCompany : true)
+                .slice(-30).map(rem => ({ cl: rem.name, txt: rem.topic.substring(0, 150), dt: rem.date }))
+};
 
     try {
         const response = await fetch(SCRIPT_URL, {
