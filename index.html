@@ -5732,81 +5732,59 @@ function generateReport() {
     const selMonth = document.getElementById('reportMonthFilter').value;
     const selDateRaw = document.getElementById('reportDateFilter').value;
     const targetDateStr = selDateRaw ? dFmt(selDateRaw) : new Date().toLocaleDateString('ru-RU');
+
     let dailyJournalHtml = "";
 
+    // --- 1. БЛОК ДЕТАЛЬНОГО ЖУРНАЛА (ВАШ НОВЫЙ РАСШИРЕННЫЙ КОНТРОЛЬ) ---
     if (selMan !== 'all') {
-    const todayActs = reminders.filter(r => {
-    if (r.isDeleted) return false;
-    
-    // Если задачу поставил этот менеджер (createdBy) 
-    // ИЛИ если он является исполнителем (manager) в отсутствие отметки создателя
-    const isAuthor = (r.createdBy === selMan) || (r.manager === selMan && !r.createdBy);
-    
-    // Превращаем ID (timestamp) в дату и сравниваем с выбранным днем
-    const createdDate = dFmt(parseInt(r.id)); 
-    
-    return isAuthor && createdDate === targetDateStr;
-});
-const todayReqs = requests.filter(r => r.manager === selMan && !r.isDeleted && dFmt(r.createdAt) === targetDateStr);
-const todayRefused = companies.filter(c => {
-    if (c.status !== 'refused' || c.isDeleted) return false;
-    
-    const hasLogToday = crmLogs.some(log => 
-        log[1] === selMan && 
-        log[3] === 'companies' && 
-        String(log[5]) === String(c.id) && 
-        dFmt(log[0]) === targetDateStr // <--- Здесь замена
-    );
-    
-    const isCreatedToday = dFmt(c.createdAt) === targetDateStr && c.manager === selMan; // <--- Здесь замена
-
-    return hasLogToday || isCreatedToday;
-});
+        // Считаем всё по вашему запросу
+        const todayComps = companies.filter(c => !c.isDeleted && c.createdBy === selMan && dFmt(c.createdAt) === targetDateStr);
+        const todayActs = reminders.filter(r => !r.isDeleted && (r.createdBy === selMan || (r.manager === selMan && !r.createdBy)) && dFmt(parseInt(r.id)) === targetDateStr);
+        const todayReqs = requests.filter(r => r.manager === selMan && !r.isDeleted && dFmt(r.createdAt) === targetDateStr);
+        const todayDeals = deals.filter(d => d.manager === selMan && !d.isDeleted && dFmt(d.createdAt) === targetDateStr);
+        const todayRefused = companies.filter(c => {
+            if (c.status !== 'refused' || c.isDeleted) return false;
+            const hasLogToday = crmLogs.some(log => log[1] === selMan && log[3] === 'companies' && String(log[5]) === String(c.id) && dFmt(log[0]) === targetDateStr);
+            const isCreatedToday = dFmt(c.createdAt) === targetDateStr && c.manager === selMan;
+            return hasLogToday || isCreatedToday;
+        });
 
         dailyJournalHtml = `
             <div style="background:#fff; border:2px solid var(--primary); padding:15px; border-radius:10px; margin-bottom:20px;">
-                <h3 style="margin-top:0; color:var(--primary); border-bottom:1px solid #eee; padding-bottom:10px;">📅 Журнал активности за ${targetDateStr}
-</h3>
-                <div style="display:flex; gap:20px; margin-bottom:15px;">
-                    <div style="flex:1; background:#f0f7ff; padding:10px; border-radius:5px; text-align:center;"><b>Звонки: ${todayActs.length}</b></div>
-                    <div style="flex:1; background:#fdf6ff; padding:10px; border-radius:5px; text-align:center;"><b>Запросы: ${todayReqs.length}</b></div>
-                    <div style="flex:1; background:#fff0f0; padding:10px; border-radius:5px; text-align:center;"><b>Отказы: ${todayRefused.length}</b></div>
+                <h3 style="margin-top:0; color:var(--primary); border-bottom:1px solid #eee; padding-bottom:10px;">📅 Журнал активности: ${selMan} за ${targetDateStr}</h3>
+                
+                <!-- Пятерка счетчиков -->
+                <div style="display:grid; grid-template-columns: repeat(5, 1fr); gap:10px; margin-bottom:15px;">
+                    <div style="background:#f0f7ff; padding:10px; border-radius:5px; text-align:center;"><b>🏢 Компании: ${todayComps.length}</b></div>
+                    <div style="background:#fdf6ff; padding:10px; border-radius:5px; text-align:center;"><b>📞 Задачи: ${todayActs.length}</b></div>
+                    <div style="background:#f0fff4; padding:10px; border-radius:5px; text-align:center;"><b>📦 Запросы: ${todayReqs.length}</b></div>
+                    <div style="background:#fffdf0; padding:10px; border-radius:5px; text-align:center;"><b>💰 Сделки: ${todayDeals.length}</b></div>
+                    <div style="background:#fff0f0; padding:10px; border-radius:5px; text-align:center;"><b>⛔ Отказы: ${todayRefused.length}</b></div>
                 </div>
+
                 <table class="report-table" style="font-size:10px;">
                     <tbody style="text-align:left;">
+                        ${todayComps.map(c => `<tr><td style="color:#1a73e8">🏢 НОВАЯ КОМП.</td><td><b>${c.name}</b></td><td>${c.product || '---'}</td></tr>`).join('')}
                         ${todayReqs.map(r => `<tr><td style="color:var(--warm)">📦 ЗАПРОС</td><td><b>${r.company}</b></td><td>${r.cargo}</td></tr>`).join('')}
-                        ${todayActs.map(a => `
-    <tr>
-        <td style="color:var(--primary); font-weight:bold;">📞 ДОБАВЛЕНА ЗАДАЧА</td>
-        <td><b>${a.name}</b></td>
-        <td>
-            <span style="background:#fff3e0; padding:2px 5px; border-radius:4px; font-size:9px;">План на: ${dFmt(a.date)}</span><br>
-            ${a.topic}
-        </td>
-    </tr>`).join('')}
+                        ${todayActs.map(a => `<tr><td style="color:var(--primary)">📞 ЗАДАЧА</td><td><b>${a.name}</b></td><td>${a.topic}</td></tr>`).join('')}
+                        ${todayDeals.map(d => `<tr><td style="color:#f29900">💰 НОВАЯ СДЕЛКА</td><td><b>№${d.num}</b></td><td>${d.company} (${d.cargo})</td></tr>`).join('')}
                         ${todayRefused.map(c => `<tr><td style="color:var(--danger)">⛔ ОТКАЗ</td><td><b>${c.name}</b></td><td>Статус изменен на "Не интересно"</td></tr>`).join('')}
-                        ${(todayActs.length + todayReqs.length + todayRefused.length === 0) ? '<tr><td colspan="3" style="text-align:center; color:#999;">Активности за сегодня не найдено</td></tr>' : ''}
+                        ${(todayActs.length + todayReqs.length + todayRefused.length + todayComps.length + todayDeals.length === 0) ? '<tr><td colspan="3" style="text-align:center; color:#999;">Активности за сегодня не найдено</td></tr>' : ''}
                     </tbody>
                 </table>
             </div>`;
     }
-    
-    document.getElementById('reportData').innerHTML = dailyJournalHtml; 
 
-    // --- 2. БЛОК KPI ПОМОЩНИКА (ДЛЯ ПОМОЩНИКОВ И АДМИНОВ) ---
-    // Проверяем роль через teamStructure
+    // --- 2. ВОССТАНОВЛЕННЫЙ БЛОК KPI ПОМОЩНИКА (С ТАБЛИЦАМИ ДЛЯ PDF) ---
     const targetUser = teamStructure ? teamStructure[selMan] : null;
+    let kpiHtml = "";
     if (selMan !== 'all' && targetUser && targetUser.role === 'assistant') {
         const kpiCompanies = companies.filter(c => {
             if (c.isDeleted) return false;
-            
             const creator = String(c.createdBy || "").trim().toLowerCase();
             const currentSearch = String(selMan).trim().toLowerCase();
             const assignedManager = String(c.manager || "").trim().toLowerCase();
-
-            // Условие: создал он И передал другому
-            if (creator !== currentSearch) return false;
-            if (assignedManager === currentSearch || assignedManager === "") return false;
+            if (creator !== currentSearch || assignedManager === currentSearch || assignedManager === "") return false;
 
             const d = new Date(c.createdAt);
             const matchY = (selYear === 'all' || d.getFullYear().toString() === selYear);
@@ -5816,68 +5794,96 @@ const todayRefused = companies.filter(c => {
 
         let managerDist = {}; 
         let validCount = 0;
-        
         let detailedRows = kpiCompanies.map(c => {
-            const acts = (reminders || []).filter(r => r.name === c.name && !r.isDeleted).length;
-            const reqs = (requests || []).filter(r => r.company === c.name && !r.isDeleted).length;
+            const acts = reminders.filter(r => r.name === c.name && !r.isDeleted).length;
+            const reqs = requests.filter(r => r.company === c.name && !r.isDeleted).length;
             const isValid = (acts + reqs) >= 2;
             if (isValid) validCount++;
-
             const mName = c.manager || "Не назначен";
             if (!managerDist[mName]) managerDist[mName] = { total: 0, valid: 0 };
             managerDist[mName].total++;
             if (isValid) managerDist[mName].valid++;
 
-            return `<tr>
-                <td style="text-align:left; padding:5px;">${c.name}</td>
-                <td>${c.product || '---'}</td>
-                <td>${c.contact || '---'}</td>
-                <td>${c.phone || '---'}</td>
-                <td>${isValid ? '<span style="color:green; font-weight:bold;">✅ Да</span>' : 'Нет'}</td>
-                <td>${dFmt(c.createdAt)}</td>
-            </tr>`;
+            return `<tr><td>${c.name}</td><td>${c.product || '---'}</td><td>${c.contact || '---'}</td><td>${c.phone || '---'}</td><td>${isValid ? '✅ Да' : 'Нет'}</td><td>${dFmt(c.createdAt)}</td></tr>`;
         }).join('');
 
-        let distRows = Object.keys(managerDist).map(m => `
-            <tr>
-                <td style="text-align:left; padding:5px 10px;">👤 ${m}</td>
-                <td>${managerDist[m].total}</td>
-                <td style="color:green; font-weight:bold;">${managerDist[m].valid}</td>
-            </tr>`).join('');
+        let distRows = Object.keys(managerDist).map(m => `<tr><td>👤 ${m}</td><td>${managerDist[m].total}</td><td>${managerDist[m].valid}</td></tr>`).join('');
 
-        const kpiHtml = `
+        kpiHtml = `
             <div id="pdf-kpi-area" style="background:#fdfbff; border:2px solid #511f54; padding:15px; border-radius:10px; margin-bottom:20px;">
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                     <h3 style="margin:0; color:#511f54;">📈 Отчет помощника: ${selMan}</h3>
                     <button class="btn-pdf" onclick="exportKpiToPdf()" style="width:150px; background:#511f54;">Выгрузить PDF</button>
                 </div>
                 <div style="display:flex; gap:20px; margin-top:10px;">
-                    <div style="flex:1; background:white; padding:10px; border-radius:5px; border:1px solid #eee; text-align:center;">
-                        <small>ОБЩЕЕ КОЛ-ВО ПЕРЕДАННЫХ:</small><br><b style="font-size:20px;">${kpiCompanies.length}</b>
-                    </div>
-                    <div style="flex:1; background:white; padding:10px; border-radius:5px; border:1px solid #eee; text-align:center;">
-                        <small>ВАЛИДНЫХ (2+ действия):</small><br><b style="font-size:20px; color:green;">${validCount}</b>
-                    </div>
+                    <div style="flex:1; background:white; padding:10px; border:1px solid #eee; text-align:center;"><small>ПЕРЕДАНО:</small><br><b style="font-size:20px;">${kpiCompanies.length}</b></div>
+                    <div style="flex:1; background:white; padding:10px; border:1px solid #eee; text-align:center;"><small>ВАЛИДНЫХ:</small><br><b style="font-size:20px; color:green;">${validCount}</b></div>
                 </div>
-                <div style="margin-top:15px; background:white; padding:10px; border-radius:5px; border:1px solid #eee;">
-                    <small style="font-weight:bold; color:#666; text-transform:uppercase;">Распределение по менеджерам:</small>
-                    <table style="width:100%; font-size:11px; margin-top:5px; border-collapse:collapse;" border="1" bordercolor="#eee">
+                <div style="margin-top:15px; background:white; padding:10px; border:1px solid #eee;">
+                    <table style="width:100%; font-size:11px; border-collapse:collapse;" border="1" bordercolor="#eee">
                         <thead><tr style="background:#f8f9fa;"><th>Менеджер</th><th>Передано</th><th>Валидных</th></tr></thead>
                         <tbody style="text-align:center;">${distRows || '<tr><td colspan="3">Нет данных</td></tr>'}</tbody>
                     </table>
                 </div>
-                <div id="assistant-detailed-table" style="display:none; margin-top:15px; background:white; padding:10px; border-radius:5px; border:1px solid #eee;">
-                    <small style="font-weight:bold; color:#666; text-transform:uppercase;">Детальный список переданных компаний:</small>
-                    <table style="width:100%; font-size:9px; margin-top:5px; border-collapse:collapse;" border="1" bordercolor="#eee">
+                <div id="assistant-detailed-table" style="display:none; margin-top:15px; background:white; padding:10px; border:1px solid #eee;">
+                    <table style="width:100%; font-size:9px; border-collapse:collapse;" border="1" bordercolor="#eee">
                         <thead><tr style="background:#f8f9fa;"><th>Название</th><th>Груз</th><th>Контакт</th><th>Телефон</th><th>Валид.</th><th>Дата</th></tr></thead>
-                        <tbody style="text-align:center;">${detailedRows || '<tr><td colspan="6">Список пуст</td></tr>'}</tbody>
+                        <tbody>${detailedRows}</tbody>
                     </table>
                 </div>
             </div>`;
-        document.getElementById('reportData').insertAdjacentHTML('afterbegin', kpiHtml);
     }
-}
 
+    // --- 3. ВОССТАНОВЛЕННЫЙ БЛОК ВИДЖЕТОВ ПРИБЫЛИ ---
+    const allFilteredDeals = deals.filter(d => {
+        if (d.isDeleted) return false;
+        const dDate = new Date(d.createdAt);
+        const mInfo = teamStructure[d.manager] || { team: 'none' };
+        if (role === 'leader' && String(mInfo.team).toLowerCase() !== myTeam) return false;
+        if (role === 'manager' && d.manager !== me) return false;
+        const matchesMan = (selMan === 'all') ? true : (d.manager === selMan);
+        const matchesYear = (selYear === 'all') ? true : (dDate.getFullYear().toString() === selYear);
+        const matchesMonth = (selMonth === 'all') ? true : (dDate.getMonth().toString() === selMonth);
+        return matchesMan && matchesYear && matchesMonth && (d.status === 'completed' || d.stage === 'closed' || d.isPaid === true);
+    });
+
+    const totalProfit = allFilteredDeals.reduce((sum, d) => sum + parseFloat(d.prof || 0), 0);
+    const motivationHtml = `
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px;">
+            <div style="background: linear-gradient(135deg, #511f54, #8e44ad); color: white; padding: 20px; border-radius: 12px;">
+                <label style="font-size: 10px; text-transform: uppercase; opacity: 0.8;">Общая прибыль</label>
+                <div style="font-size: 28px; font-weight: 900;">${fCurr(totalProfit)} USD</div>
+            </div>
+            <div style="background: white; border: 1px solid var(--border); padding: 20px; border-radius: 12px;">
+                <label style="font-size: 10px; text-transform: uppercase; color: #8e7a8e;">Сделок за период</label>
+                <div style="font-size: 28px; font-weight: 700; color: var(--primary);">${allFilteredDeals.length}</div>
+            </div>
+        </div>`;
+
+    // --- 4. ВОССТАНОВЛЕННАЯ ТАБЛИЦА ПЕРИОДОВ ---
+    const statsMap = new Map();
+    allFilteredDeals.forEach(d => {
+        const date = new Date(d.createdAt);
+        const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        if (!statsMap.has(key)) statsMap.set(key, { count: 0, profit: 0, month: date.getMonth(), year: date.getFullYear(), key: key });
+        const s = statsMap.get(key);
+        s.count++;
+        s.profit += parseFloat(d.prof || 0);
+    });
+
+    let tableHtml = `<table class="report-table"><thead><tr><th>Период</th><th>Сделок</th><th>Прибыль (USD)</th></tr></thead><tbody>`;
+    Array.from(statsMap.keys()).sort().reverse().forEach(k => {
+        const s = statsMap.get(k);
+        const msNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
+        tableHtml += `<tr class="clickable-row" onclick="showStatsDetail('${s.key}', '${selMan}', 'all')">
+            <td>${msNames[s.month]} ${s.year}</td><td>${s.count}</td><td style="color:var(--success); font-weight:bold;">${fCurr(s.profit)}</td>
+        </tr>`;
+    });
+    tableHtml += '</tbody></table>';
+
+    // ВЫВОД ВСЕГО ВМЕСТЕ
+    document.getElementById('reportData').innerHTML = dailyJournalHtml + kpiHtml + motivationHtml + tableHtml;
+}
     // --- ЛОГИКА ТРЕКИНГА ---
     function checkTrackingAccess(item) {
         const me = sessionStorage.getItem('crm_user');
