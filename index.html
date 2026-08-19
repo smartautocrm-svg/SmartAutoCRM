@@ -2485,20 +2485,20 @@ const parsers = {
         sharedWith: x[10], isDeleted: x[11] === true || x[11] === 'true'
     }),
     chats: x => ({ 
-        id: x[0] ? String(x[0]).replace(/[, ]/g, '').split('.')[0] : "", 
-        name: String(x[1]||""), 
-        creator: x[2], 
-        members: String(x[3]||""), 
-        time: x[4],
-        isDeleted: x[6] === true || x[6] === 'true' // Читаем из колонки G (индекс 6)
-    }),
-    chat_messages: x => ({ 
-        id: x[0] ? String(x[0]).replace(/[, ]/g, '').split('.')[0] : "", 
-        chatId: x[1] ? String(x[1]).replace(/[, ]/g, '').split('.')[0] : "", 
-        sender: String(x[2] || "Система"), 
-        text: String(x[3] || ""), 
-        time: x[4] 
-    }),
+    id: (x && x[0]) ? String(x[0]).replace(/[, ]/g, '').split('.')[0] : "", 
+    name: String(x[1]||""), 
+    creator: String(x[2]||""), 
+    members: String(x[3]||""), 
+    time: x[4],
+    isDeleted: x[6] === true || x[6] === 'true'
+}),
+chat_messages: x => ({ 
+    id: (x && x[0]) ? String(x[0]).replace(/[, ]/g, '').split('.')[0] : "", 
+    chatId: (x && x[1]) ? String(x[1]).replace(/[, ]/g, '').split('.')[0] : "", 
+    sender: String(x[2] || "Система"), 
+    text: String(x[3] || ""), 
+    time: x[4] 
+}),
     news: x => ({
         id: String(x[0]), date: x[1], author: x[2], title: x[3], text: x[4], isDeleted: x[5] === true || x[5] === 'true'
     })
@@ -2855,11 +2855,10 @@ function checkAccess(companyName, targetUser = null) {
     if (sharedList.includes(me)) return true;
 
     // 3. Я лидер этой команды
-    if (myRole === 'leader' && myTeam !== "") {
-        const ownerInfo = teamStructure[c.manager];
-        if (ownerInfo) {
-            const ownerTeam = String(ownerInfo.team || "").trim().toLowerCase();
-            // Сравниваем команды без учета регистра
+    if (myRole === 'leader' && myTeam !== "" && teamStructure) {
+        const ownerInfo = teamStructure[c.manager]; 
+        if (ownerInfo && ownerInfo.team) {
+            const ownerTeam = String(ownerInfo.team).trim().toLowerCase();
             if (ownerTeam === myTeam) return true;
         }
     }
@@ -5738,6 +5737,11 @@ function generateReport() {
     const targetDateStr = selDateRaw ? dFmt(selDateRaw) : new Date().toLocaleDateString('ru-RU');
 
     let dailyJournalHtml = "";
+    let todayComps = [];
+    let todayActs = [];
+    let todayReqs = [];
+    let todayDeals = [];
+    let todayRefused = [];
 
     // --- 1. БЛОК ДЕТАЛЬНОГО ЖУРНАЛА (ВАШ НОВЫЙ РАСШИРЕННЫЙ КОНТРОЛЬ) ---
     if (selMan !== 'all') {
@@ -5752,19 +5756,19 @@ function generateReport() {
         };
 
         // 1. Компании, по которым была активность сегодня
-        const todayComps = companies.filter(c => !c.isDeleted && c.createdBy === selMan && getActionDate(c) === targetDateStr);
+        todayComps = companies.filter(c => !c.isDeleted && c.createdBy === selMan && getActionDate(c) === targetDateStr);
         
         // 2. Задачи (напоминания), созданные или измененные сегодня
-        const todayActs = reminders.filter(r => !r.isDeleted && (r.createdBy === selMan || r.manager === selMan) && getActionDate(r) === targetDateStr);
+        todayActs = reminders.filter(r => !r.isDeleted && (r.createdBy === selMan || r.manager === selMan) && getActionDate(r) === targetDateStr);
         
         // 3. Запросы, созданные или обработанные сегодня
-        const todayReqs = requests.filter(r => !r.isDeleted && r.manager === selMan && getActionDate(r) === targetDateStr);
+        todayReqs = requests.filter(r => !r.isDeleted && r.manager === selMan && getActionDate(r) === targetDateStr);
         
         // 4. Сделки, созданные или обновленные сегодня
-        const todayDeals = deals.filter(d => !d.isDeleted && d.manager === selMan && getActionDate(d) === targetDateStr);
+        todayDeals = deals.filter(d => !d.isDeleted && d.manager === selMan && getActionDate(d) === targetDateStr);
         
         // 5. Отказы (компании, переведенные в "не интересно" сегодня)
-        const todayRefused = companies.filter(c => c.status === 'refused' && !c.isDeleted && c.manager === selMan && getActionDate(c) === targetDateStr);
+        todayRefused = companies.filter(c => c.status === 'refused' && !c.isDeleted && c.manager === selMan && getActionDate(c) === targetDateStr);
 }
 
         dailyJournalHtml = `
