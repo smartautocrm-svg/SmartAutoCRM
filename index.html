@@ -2429,14 +2429,15 @@ async function saveProfile() {
 // --- УНИВЕРСАЛЬНЫЕ ПАРСЕРЫ (DELTA-READY) ---
 const parsers = {
     companies: x => ({ 
-        id: String(x[0]), name: String(x[1]||""), contact: String(x[2]||""), phone: String(x[3]||""), 
-        product: String(x[4]||""), city: String(x[5]||""), email: String(x[6]||""), 
-        imp: String(x[7]||""),  exp: String(x[8]||""), status: x[9], 
-        createdAt: x[10], activatedAt: x[11], manager: String(x[12]||""), 
-        isPrivate: String(x[13]) === "true", sharedWith: String(x[14]||""), 
-        website: String(x[15]||""), isDeleted: x[16] === true || x[16] === 'true',
-        desc: String(x[17]||""),refuseReason: String(x[18]||""), createdBy: String(x[19] || "")
-    }),
+    id: String(x[0]), name: String(x[1]||""), contact: String(x[2]||""), phone: String(x[3]||""), 
+    product: String(x[4]||""), city: String(x[5]||""), email: String(x[6]||""), 
+    imp: String(x[7]||""),  exp: String(x[8]||""), status: x[9], 
+    createdAt: x[10], activatedAt: x[11], manager: String(x[12]||""), 
+    isPrivate: String(x[13]) === "true", sharedWith: String(x[14]||""), 
+    website: String(x[15]||""), isDeleted: x[16] === true || x[16] === 'true',
+    desc: String(x[17]||""),refuseReason: String(x[18]||""), createdBy: String(x[19] || ""),
+    uDate: x[39] // 
+}),
     requests: x => ({ 
         id: String(x[0]), company: String(x[1]||""), cargo: String(x[2]||""), transport: String(x[3]||""), 
         weight: x[4], vol: x[5], value: x[6], currency: x[7], load: String(x[8]||""), 
@@ -5743,10 +5744,18 @@ function generateReport() {
         const todayReqs = requests.filter(r => r.manager === selMan && !r.isDeleted && dFmt(r.createdAt) === targetDateStr);
         const todayDeals = deals.filter(d => d.manager === selMan && !d.isDeleted && dFmt(d.createdAt) === targetDateStr);
         const todayRefused = companies.filter(c => {
-            if (c.status !== 'refused' || c.isDeleted) return false;
-            const hasLogToday = crmLogs.some(log => log[1] === selMan && log[3] === 'companies' && String(log[5]) === String(c.id) && dFmt(log[0]) === targetDateStr);
-            const isCreatedToday = dFmt(c.createdAt) === targetDateStr && c.manager === selMan;
-            return hasLogToday || isCreatedToday;
+            // Базовые условия: статус "не интересно", не в корзине, и текущий менеджер
+            if (c.status !== 'refused' || c.isDeleted || c.manager !== selMan) return false;
+            
+            // Считаем "отказом за день", если:
+            // 1. Компания была СОЗДАНА сегодня сразу в статусе "не интересно"
+            const isCreatedToday = dFmt(c.createdAt) === targetDateStr;
+            
+            // 2. ИЛИ компания была ОБНОВЛЕНА сегодня (метка uDate из 40-й колонки)
+            // Это поймает переход из "холодного" в "не интересно", даже если логов больше 100
+            const isUpdatedToday = c.uDate && dFmt(c.uDate) === targetDateStr;
+            
+            return isCreatedToday || isUpdatedToday;
         });
 
         dailyJournalHtml = `
