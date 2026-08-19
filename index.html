@@ -2445,7 +2445,8 @@ const parsers = {
         comment: x[13], container: x[14], zip: x[15], manager: String(x[16]||""), 
         contQty: x[17], type: x[18], sharedWith: String(x[19] || ""), 
         isDeleted: x[20] === true || x[20] === 'true',
-        lossReason: String(x[21] || "")
+        lossReason: String(x[21] || ""),
+        uDate: x[39]
     }),
     deals: x => {
         let parsedFiles = [];
@@ -2461,7 +2462,8 @@ const parsers = {
             isPaid: x[28] === true || x[28] === 'true', payDate: x[29] || "",
             isPrivateDeal: x[30] === true || x[30] === 'true', isDeleted: x[31] === true || x[31] === 'true',
             folderUrl: x[34] || "", // Новое: ссылка на папку
-            folderId: x[35] || ""   // Новое: ID папки
+            folderId: x[35] || "",
+            uDate: x[39]   // Новое: ID папки
         };
     },
     reminders: x => ({ 
@@ -2470,7 +2472,8 @@ const parsers = {
     sharedWith: String(x[7] || ""), 
     priority: String(x[9] || "medium"),
     createdBy: String(x[10] || ""),
-    tgSent: x[11] || "" // <--- ДОБАВЛЕНО (Колонка L)
+    tgSent: x[11] || "",
+        uDate: x[39] // <--- ДОБАВЛЕНО (Колонка L)
 }),
     partners: x => ({ 
         id: String(x[0]), name: String(x[1]||""), status: x[2], country: x[3], contact: x[4], 
@@ -5738,25 +5741,31 @@ function generateReport() {
 
     // --- 1. БЛОК ДЕТАЛЬНОГО ЖУРНАЛА (ВАШ НОВЫЙ РАСШИРЕННЫЙ КОНТРОЛЬ) ---
     if (selMan !== 'all') {
-        // Считаем всё по вашему запросу
-        const todayComps = companies.filter(c => !c.isDeleted && c.createdBy === selMan && dFmt(c.createdAt) === targetDateStr);
-        const todayActs = reminders.filter(r => !r.isDeleted && (r.createdBy === selMan || (r.manager === selMan && !r.createdBy)) && dFmt(parseInt(r.id)) === targetDateStr);
-        const todayReqs = requests.filter(r => r.manager === selMan && !r.isDeleted && dFmt(r.createdAt) === targetDateStr);
-        const todayDeals = deals.filter(d => d.manager === selMan && !d.isDeleted && dFmt(d.createdAt) === targetDateStr);
-        const todayRefused = companies.filter(c => {
-            // Базовые условия: статус "не интересно", не в корзине, и текущий менеджер
-            if (c.status !== 'refused' || c.isDeleted || c.manager !== selMan) return false;
-            
-            // Считаем "отказом за день", если:
-            // 1. Компания была СОЗДАНА сегодня сразу в статусе "не интересно"
-            const isCreatedToday = dFmt(c.createdAt) === targetDateStr;
-            
-            // 2. ИЛИ компания была ОБНОВЛЕНА сегодня (метка uDate из 40-й колонки)
-            // Это поймает переход из "холодного" в "не интересно", даже если логов больше 100
-            const isUpdatedToday = c.uDate && dFmt(c.uDate) === targetDateStr;
-            
-            return isCreatedToday || isUpdatedToday;
-        });
+        // Вспомогательная функция для определения даты фактического действия
+        const getActionDate = (item) => {
+            // Приоритет: 1. Дата обновления (uDate), 2. Дата создания (createdAt), 3. Таймстамп из ID
+            let dateToUse = item.uDate || item.createdAt;
+            if (!dateToUse && item.id && String(item.id).length > 10) {
+                dateToUse = parseInt(item.id);
+            }
+            return dFmt(dateToUse);
+        };
+
+        // 1. Компании, по которым была активность сегодня
+        const todayComps = companies.filter(c => !c.isDeleted && c.createdBy === selMan && getActionDate(c) === targetDateStr);
+        
+        // 2. Задачи (напоминания), созданные или измененные сегодня
+        const todayActs = reminders.filter(r => !r.isDeleted && (r.createdBy === selMan || r.manager === selMan) && getActionDate(r) === targetDateStr);
+        
+        // 3. Запросы, созданные или обработанные сегодня
+        const todayReqs = requests.filter(r => !r.isDeleted && r.manager === selMan && getActionDate(r) === targetDateStr);
+        
+        // 4. Сделки, созданные или обновленные сегодня
+        const todayDeals = deals.filter(d => !d.isDeleted && d.manager === selMan && getActionDate(d) === targetDateStr);
+        
+        // 5. Отказы (компании, переведенные в "не интересно" сегодня)
+        const todayRefused = companies.filter(c => c.status === 'refused' && !c.isDeleted && c.manager === selMan && getActionDate(c) === targetDateStr);
+});
 
         dailyJournalHtml = `
             <div style="background:#fff; border:2px solid var(--primary); padding:15px; border-radius:10px; margin-bottom:20px;">
