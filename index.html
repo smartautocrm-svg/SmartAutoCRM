@@ -5768,7 +5768,7 @@ function generateReport() {
         
         // 5. Отказы (компании, переведенные в "не интересно" сегодня)
         todayRefused = companies.filter(c => c.status === 'refused' && !c.isDeleted && c.manager === selMan && getActionDate(c) === targetDateStr);
-}
+
 
         dailyJournalHtml = `
             <div style="background:#fff; border:2px solid var(--primary); padding:15px; border-radius:10px; margin-bottom:20px;">
