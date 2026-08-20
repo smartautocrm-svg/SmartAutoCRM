@@ -5760,41 +5760,41 @@ function generateReport() {
     return ("0" + d.getDate()).slice(-2) + "." + ("0" + (d.getMonth() + 1)).slice(-2) + "." + d.getFullYear();
 };
 
-        // 1. Компании, по которым была активность сегодня
-        todayComps = companies.filter(c => 
+        // 1. Компании: ТОЛЬКО дата создания (не меняется при правках)
+todayComps = companies.filter(c => 
     !c.isDeleted && 
     String(c.createdBy || "").trim() === String(selMan).trim() && 
-    getActionDate(c) === targetDateStr
+    dFmt(c.createdAt) === targetDateStr
 );
-        
-        // 2. Задачи (напоминания), созданные или измененные сегодня
-        todayActs = reminders.filter(r => 
-            !r.isDeleted && 
-            ((String(r.manager || "").trim() === String(selMan).trim()) || (String(r.createdBy || "").trim() === String(selMan).trim())) && 
-            getActionDate(r) === targetDateStr
-        );
-        
-        // 3. Запросы, созданные или обработанные сегодня
-        todayReqs = requests.filter(r => 
+
+// 2. Задачи: Мария либо исполнитель, либо создатель (считаем факт сохранения/завершения)
+todayActs = reminders.filter(r => 
+    !r.isDeleted && 
+    ((String(r.manager || "").trim() === String(selMan).trim()) || (String(r.createdBy || "").trim() === String(selMan).trim())) && 
+    dFmt(r.uDate || r.date) === targetDateStr
+);
+
+// 3. Запросы: ТОЛЬКО дата создания
+todayReqs = requests.filter(r => 
     !r.isDeleted && 
     String(r.manager || "").trim() === String(selMan).trim() && 
-    getActionDate(r) === targetDateStr
+    dFmt(r.createdAt) === targetDateStr
 );
-        
-        // 4. Сделки, созданные или обновленные сегодня
-        todayDeals = deals.filter(d => 
+
+// 4. Сделки: ТОЛЬКО дата создания
+todayDeals = deals.filter(d => 
     !d.isDeleted && 
     String(d.manager || "").trim() === String(selMan).trim() && 
-    getActionDate(d) === targetDateStr
+    dFmt(d.createdAt) === targetDateStr
 );
-        
-        // 5. Отказы (компании, переведенные в "не интересно" сегодня)
-        todayRefused = companies.filter(c => 
-            !c.isDeleted && 
-            c.status === 'refused' && 
-            ((String(c.manager || "").trim() === String(selMan).trim()) || (String(c.createdBy || "").trim() === String(selMan).trim())) && 
-            getActionDate(c) === targetDateStr
-        );
+
+// 5. Отказы: Считаем по дате перевода в этот статус (uDate)
+todayRefused = companies.filter(c => 
+    !c.isDeleted && 
+    c.status === 'refused' && 
+    ((String(c.manager || "").trim() === String(selMan).trim()) || (String(c.createdBy || "").trim() === String(selMan).trim())) && 
+    dFmt(c.uDate || c.createdAt) === targetDateStr
+);
 
 
         dailyJournalHtml = `
