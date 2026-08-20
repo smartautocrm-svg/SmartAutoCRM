@@ -2054,9 +2054,12 @@ function dtFmt(v) {
 }
 function dFmt(v) { 
     if (!v) return ""; 
-    const d = new Date(v); 
+    let d = new Date(v); 
     if (isNaN(d.getTime())) return v; 
-    return d.toLocaleDateString('ru-RU'); 
+    let day = ("0" + d.getDate()).slice(-2);
+    let month = ("0" + (d.getMonth() + 1)).slice(-2);
+    let year = d.getFullYear();
+    return day + "." + month + "." + year; 
 }
 function forInput(v) { 
     if (!v) return ""; 
@@ -5733,7 +5736,7 @@ function generateReport() {
     const selYear = document.getElementById('reportYearFilter').value;
     const selMonth = document.getElementById('reportMonthFilter').value;
     const selDateRaw = document.getElementById('reportDateFilter').value;
-    const targetDateStr = selDateRaw ? dFmt(selDateRaw) : new Date().toLocaleDateString('ru-RU');
+    const targetDateStr = selDateRaw ? dFmt(selDateRaw) : dFmt(new Date());
 
     let dailyJournalHtml = "";
     let todayComps = [];
@@ -5746,28 +5749,52 @@ function generateReport() {
     if (selMan !== 'all') {
         // Вспомогательная функция для определения даты фактического действия
         const getActionDate = (item) => {
-            // Приоритет: 1. Дата обновления (uDate), 2. Дата создания (createdAt), 3. Таймстамп из ID
-            let dateToUse = item.uDate || item.createdAt;
-            if (!dateToUse && item.id && String(item.id).length > 10) {
-                dateToUse = parseInt(item.id);
-            }
-            return dFmt(dateToUse);
-        };
+    // Берем uDate (дата изменения), если нет - createdAt (дата создания)
+    let val = item.uDate || item.createdAt || item.date; 
+    if (!val && item.id) val = parseInt(item.id);
+    if (!val) return "";
+    
+    let d = new Date(val);
+    if (isNaN(d.getTime())) return "";
+    // Возвращаем строго ДД.ММ.ГГГГ
+    return ("0" + d.getDate()).slice(-2) + "." + ("0" + (d.getMonth() + 1)).slice(-2) + "." + d.getFullYear();
+};
 
         // 1. Компании, по которым была активность сегодня
-        todayComps = companies.filter(c => !c.isDeleted && c.createdBy === selMan && getActionDate(c) === targetDateStr);
+        todayComps = companies.filter(c => 
+    !c.isDeleted && 
+    String(c.createdBy || "").trim() === String(selMan).trim() && 
+    getActionDate(c) === targetDateStr
+);
         
         // 2. Задачи (напоминания), созданные или измененные сегодня
-        todayActs = reminders.filter(r => !r.isDeleted && (r.createdBy === selMan || r.manager === selMan) && getActionDate(r) === targetDateStr);
+        todayActs = reminders.filter(r => 
+            !r.isDeleted && 
+            ((String(r.manager || "").trim() === String(selMan).trim()) || (String(r.createdBy || "").trim() === String(selMan).trim())) && 
+            getActionDate(r) === targetDateStr
+        );
         
         // 3. Запросы, созданные или обработанные сегодня
-        todayReqs = requests.filter(r => !r.isDeleted && r.manager === selMan && getActionDate(r) === targetDateStr);
+        todayReqs = requests.filter(r => 
+    !r.isDeleted && 
+    String(r.manager || "").trim() === String(selMan).trim() && 
+    getActionDate(r) === targetDateStr
+);
         
         // 4. Сделки, созданные или обновленные сегодня
-        todayDeals = deals.filter(d => !d.isDeleted && d.manager === selMan && getActionDate(d) === targetDateStr);
+        todayDeals = deals.filter(d => 
+    !d.isDeleted && 
+    String(d.manager || "").trim() === String(selMan).trim() && 
+    getActionDate(d) === targetDateStr
+);
         
         // 5. Отказы (компании, переведенные в "не интересно" сегодня)
-        todayRefused = companies.filter(c => c.status === 'refused' && !c.isDeleted && c.manager === selMan && getActionDate(c) === targetDateStr);
+        todayRefused = companies.filter(c => 
+            !c.isDeleted && 
+            c.status === 'refused' && 
+            ((String(c.manager || "").trim() === String(selMan).trim()) || (String(c.createdBy || "").trim() === String(selMan).trim())) && 
+            getActionDate(c) === targetDateStr
+        );
 
 
         dailyJournalHtml = `
