@@ -2711,6 +2711,7 @@ function exportCurrentData() {
     for (let i = 0; i < row.length; i++) {
         finalArray[i] = row[i];
     }
+        if (o.uDate) finalArray[39] = o.uDate;
     return finalArray;
 }
 
@@ -4163,6 +4164,7 @@ async function saveEdit() {
         companies[i].exp = document.getElementById('eCompExp').value;
         companies[i].manager = document.getElementById('eCompMan').value; 
         companies[i].status = newSt;
+        if (newSt === 'refused') companies[i].uDate = new Date().toISOString();
         companies[i].isPrivate = document.getElementById('eCompPriv').checked;
         companies[i].desc = document.getElementById('eCompDesc').value;
         
@@ -4290,6 +4292,7 @@ async function saveEdit() {
     if (i > -1) {
         showLoader(true); // Включаем лоадер
         companies[i].status = 'refused';
+        companies[i].uDate = new Date().toISOString();
         companies[i].refuseReason = reason;
         
         // Закрываем модалки сразу
