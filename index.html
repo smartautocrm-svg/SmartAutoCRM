@@ -6581,6 +6581,7 @@ function clearAIChat() {
 async function sendToAI() {
     const input = document.getElementById('ai-input');
     const prompt = input.value.trim();
+    const isBroadQuery = /(отказ|не интерес|статус|список|все|сколько|найди)/i.test(prompt);
     if (!prompt) return;
 
     const container = document.getElementById('ai-messages');
@@ -6600,8 +6601,9 @@ async function sendToAI() {
 const context = !isComplexQuery ? {} : {
     // Сокращаем количество записей и оставляем только суть
     companies: companies.filter(c => !c.isDeleted && checkAccess(c.name))
-                .filter(c => mentionedCompany ? c.name === mentionedCompany : true)
-                .slice(-10).map(c => ({ n: c.name, s: c.status })), // Убрали desc, оставили имя и статус
+            .filter(c => isBroadQuery || (mentionedCompany ? c.name === mentionedCompany : true))
+            .slice(isBroadQuery ? 0 : -10) // Если запрос про базу - берем всё (0), иначе последние 10
+            .map(c => ({ n: c.name, s: c.status })), // Передаем ТОЛЬКО имя и статус (минимум токенов)
 
     deals: deals.filter(d => !d.isDeleted && checkDealAccess(d))
                 .filter(d => mentionedCompany ? d.company === mentionedCompany : true)
