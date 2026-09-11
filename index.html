@@ -1970,6 +1970,11 @@ button.main:active {
             <option value="Другое (указать в комм.)">📝 Другое (указать в комм.)</option>
         </select>
 
+        <div id="expensiveFields" style="display:none; padding:10px; background:#fff5f5; border:1px solid #ffcdd2; border-radius:4px; margin-bottom:10px;">
+    <input type="number" id="reqLossTargetPrice" placeholder="Какую цену хотел клиент ($)?" style="width:100%; margin-bottom:5px;">
+    <input type="number" id="reqLossOurPrice" placeholder="Нашу цену ($)?" style="width:100%;">
+</div>
+
         <textarea id="reqCloseComment" style="width: 100%; height: 80px; padding: 8px; border: 1px solid var(--border); border-radius: 4px;" placeholder="Дополнительный комментарий..."></textarea>
         
         <input type="hidden" id="reqCloseId">
@@ -2448,6 +2453,8 @@ const parsers = {
         contQty: x[17], type: x[18], sharedWith: String(x[19] || ""), 
         isDeleted: x[20] === true || x[20] === 'true',
         lossReason: String(x[21] || ""),
+        lossTargetPrice: x[23] || 0, // Колонка X
+    lossOurPrice: x[24] || 0,    // Колонка Y
         uDate: x[39]
     }),
     deals: x => {
@@ -2694,7 +2701,15 @@ function exportCurrentData() {
     function formatRow(sh, o) {
     let row = []; 
     if (sh === 'companies') row = [o.id, o.name, o.contact, o.phone, o.product || "", o.city || "", o.email || "", o.imp || "", o.exp || "", o.status, o.createdAt, o.activatedAt || "", o.manager, o.isPrivate, o.sharedWith || "", o.website || "", o.isDeleted || false, o.desc || "", o.refuseReason || "", o.createdBy || ""];
-    else if (sh === 'requests') row = [o.id, o.company, o.cargo, o.transport, o.weight, o.vol, o.value, o.currency, o.load, o.unload, o.desc, o.createdAt, o.status, o.comment, o.container, o.zip, o.manager, o.contQty || "", o.type || "", o.sharedWith || "", o.isDeleted || false, o.lossReason || ""];
+    else if (sh === 'requests') row = [
+    o.id, o.company, o.cargo, o.transport, o.weight, o.vol, o.value, o.currency, 
+    o.load, o.unload, o.desc, o.createdAt, o.status, o.comment, o.container, 
+    o.zip, o.manager, o.contQty || "", o.type || "", o.sharedWith || "", 
+    o.isDeleted || false, o.lossReason || "", // V (21)
+    "",                                      // W (22) - LAST_UPDATED (не трогаем!)
+    o.lossTargetPrice || "",                  // X (23)
+    o.lossOurPrice || ""                      // Y (24)
+];
     else if (sh === 'deals') row = [o.id, o.num, o.company, o.cargo, o.trans, o.weight, o.vol, o.value, o.curr, o.load, o.zip, o.unload, o.info, o.manager, o.createdAt, o.exp, o.inc, o.prof, o.container, o.sharedWith || "", o.status, o.type, o.contQty || "", o.blNum || "", o.awbNum || "", JSON.stringify(o.files || []), o.margin, o.stage || "docs", o.isPaid || false, o.payDate || "", o.isPrivateDeal || false, o.isDeleted || false, "", "", o.folderUrl || "", o.folderId || ""];
     else if (sh === 'reminders') row = [o.id, o.name, o.date, o.topic, o.manager, o.status, o.isDeleted || false, o.sharedWith || "", "", o.priority || "medium", o.createdBy || "", o.tgSent || ""];
     else if (sh === 'partners') row = [o.id, o.name, o.status, o.country, o.contact, o.phone, o.email, o.website, o.desc, o.isDeleted || false];
@@ -5548,6 +5563,9 @@ function renderManagerStats() {
     // Обновляем визуальные графики (Chart.js)
     updateCharts(monthlyData, typeLabels, managerLabels);
 }
+
+
+    
    function updateCharts(monthly, types, managersData) {
     const ctxDyn = document.getElementById('chartProfitDynamics').getContext('2d');
     const ctxType = document.getElementById('chartProfitByType').getContext('2d');
@@ -5728,6 +5746,42 @@ function renderManagerStats() {
 
     document.getElementById('statsDetailTableContainer').innerHTML = h;
     document.getElementById('statsDetailModal').style.display = 'block';
+}
+
+    function renderLossAnalysis(typeFilter = 'all') {
+    const filtered = requests.filter(r => 
+        r.lossReason && r.lossReason.includes("Дорого") && 
+        (typeFilter === 'all' || r.type === typeFilter)
+    );
+
+    let html = `<h3>Анализ упущенной выгоды (Дорого)</h3>
+                <table class="report-table">
+                <thead><tr><th>Тип</th><th>Клиент</th><th>Наш ценник</th><th>Желаемый</th><th>Разница</th></tr></thead>
+                <tbody>`;
+    
+    filtered.forEach(r => {
+        const diff = (r.lossOurPrice - r.lossTargetPrice);
+        const percent = r.lossOurPrice > 0 ? ((diff / r.lossOurPrice) * 100).toFixed(1) : 0;
+        
+        html += `<tr>
+            <td>${r.type || '-'}</td>
+            <td>${r.company}</td>
+            <td>${r.lossOurPrice}$</td>
+            <td>${r.lossTargetPrice}$</td>
+            <td style="color:var(--danger); font-weight:bold;">${percent}%</td>
+        </tr>`;
+    });
+    html += `</tbody></table>`;
+    
+    document.getElementById('reportData').innerHTML = html;
+}
+
+    function checkLossFields() {
+    const reason = document.getElementById('reqLossReason').value;
+    const fields = document.getElementById('expensiveFields');
+    if (fields) {
+        fields.style.display = reason.includes("Дорого") ? 'block' : 'none';
+    }
 }
 
 function generateReport() {
@@ -6179,20 +6233,27 @@ async function deleteNews(id) {
 
    async function submitRequestClose() {
     const id = document.getElementById('reqCloseId').value;
-    const reason = document.getElementById('reqLossReason').value; // Список
-    const comment = document.getElementById('reqCloseComment').value.trim(); // Ручной текст
-
-    // --- БЛОК ВАЛИДАЦИИ (Твои оригинальные правила) ---
+    const reason = document.getElementById('reqLossReason').value; 
+    const comment = document.getElementById('reqCloseComment').value.trim();
     
-    // 1. Проверяем, выбрана ли причина из списка (Обязательно)
+    // Новые поля для анализа "Дорого"
+    const targetPrice = document.getElementById('reqLossTargetPrice').value.replace(',', '.');
+    const ourPrice = document.getElementById('reqLossOurPrice').value;
+
+    // --- БЛОК ВАЛИДАЦИИ ---
     if (!reason) {
         alert("Пожалуйста, выберите основную причину закрытия из списка!");
         return;
     }
 
-    // 2. Если выбрано "Другое", текст обязателен (минимум 5 символов)
     if (reason.includes("Другое") && comment.length < 5) {
         alert("Для причины 'Другое' пожалуйста, укажите подробности в комментарии (минимум 5 символов).");
+        return;
+    }
+
+    // ВАЛИДАЦИЯ для причины "Дорого"
+    if (reason.includes("Дорого") && (!targetPrice || !ourPrice)) {
+        alert("Укажите цену клиента и вашу цену для анализа недоработки!");
         return;
     }
     
@@ -6200,12 +6261,14 @@ async function deleteNews(id) {
 
     const i = requests.findIndex(x => String(x.id) === String(id));
     if (i > -1) {
-        // Устанавливаем статус
+        // Устанавливаем данные
         requests[i].status = 'completed';
+        requests[i].lossReason = reason;
+        requests[i].comment = comment;
         
-        // РАСПРЕДЕЛЯЕМ ПО КОЛОНКАМ:
-        requests[i].lossReason = reason; // Идет в новую колонку V (для графиков)
-        requests[i].comment = comment;    // Идет в колонку N (твой ручной текст)
+        // Записываем новые поля анализа (преобразуем в число для корректной статистики)
+        requests[i].lossTargetPrice = targetPrice ? parseFloat(targetPrice) : "";
+        requests[i].lossOurPrice = ourPrice ? parseFloat(ourPrice) : "";
         
         // Обновляем интерфейс
         renderRequests();
@@ -6213,13 +6276,12 @@ async function deleteNews(id) {
         // Закрываем модалку
         document.getElementById('requestCloseModal').style.display = 'none';
 
-        // Отправляем в Google Таблицу (через режим update)
+        // Отправляем в Google Таблицу
         await sync('requests', requests[i], 'update'); 
         
-        alert("Запрос успешно закрыт и данные распределены по колонкам.");
+        alert("Запрос успешно закрыт.");
     }
 }
-    // --- ФУНКЦИИ КОРЗИНЫ (ADMIN ONLY) ---
 
 // 1. Проверяем, админ ли зашел, и показываем кнопку
 function updateAdminUI() {
