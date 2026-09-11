@@ -1959,7 +1959,7 @@ button.main:active {
         </p>
         
         <!-- Выбор причины -->
-        <select id="reqLossReason" style="width: 100%; margin-bottom: 10px; font-weight: bold; border-color: var(--danger);">
+        <select id="reqLossReason" onchange="checkLossFields()" style="width: 100%; margin-bottom: 10px; font-weight: bold; border-color: var(--danger);">
             <option value="">-- Выберите причину отмены --</option>
             <option value="Предварительный просчет">📊 Предварительный просчет</option>
             <option value="Дорого (высокая ставка)">💰 Дорого (высокая ставка)</option>
