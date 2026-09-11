@@ -1709,6 +1709,13 @@ button.main:active {
             </select>
         </div>
 
+        <div style="margin-bottom: 20px;">
+            <button class="main" style="width: 280px; background: #d93025;" onclick="renderLossAnalysis()">
+                📊 Показать анализ упущенных сделок
+            </button>
+        </div>
+        <div id="statsLossTableContainer" style="margin-bottom: 20px;"></div>
+
         <div class="charts-container">
             <div class="chart-box">
                 <h4>Динамика прибыли (USD)</h4>
@@ -5748,32 +5755,60 @@ function renderManagerStats() {
     document.getElementById('statsDetailModal').style.display = 'block';
 }
 
-    function renderLossAnalysis(typeFilter = 'all') {
+    function renderLossAnalysis() {
+    const container = document.getElementById('statsLossTableContainer');
+    
+    // 1. Фильтруем: только закрытые запросы с причиной "Дорого"
+    // Используем .filter, чтобы отсеять пустые значения цен
     const filtered = requests.filter(r => 
-        r.lossReason && r.lossReason.includes("Дорого") && 
-        (typeFilter === 'all' || r.type === typeFilter)
+        r.status === 'completed' && 
+        r.lossReason && r.lossReason.includes("Дорого")
     );
 
-    let html = `<h3>Анализ упущенной выгоды (Дорого)</h3>
-                <table class="report-table">
-                <thead><tr><th>Тип</th><th>Клиент</th><th>Наш ценник</th><th>Желаемый</th><th>Разница</th></tr></thead>
-                <tbody>`;
+    if (filtered.length === 0) {
+        container.innerHTML = `<div style="padding:20px; text-align:center; color:#666;">Нет данных об отказах по цене.</div>`;
+        return;
+    }
+
+    // 2. Генерируем таблицу
+    let html = `
+        <h3 style="color:var(--danger); border-bottom: 1px solid #ddd; padding-bottom: 5px;">Анализ отказов: «Дорого»</h3>
+        <table class="report-table">
+            <thead>
+                <tr>
+                    <th>Дата</th>
+                    <th>Клиент</th>
+                    <th>Тип</th>
+                    <th>Хотели ($)</th>
+                    <th>Наш ($)</th>
+                    <th>Разница</th>
+                </tr>
+            </thead>
+            <tbody>`;
     
-    filtered.forEach(r => {
-        const diff = (r.lossOurPrice - r.lossTargetPrice);
-        const percent = r.lossOurPrice > 0 ? ((diff / r.lossOurPrice) * 100).toFixed(1) : 0;
+    // 3. Сортируем: свежие сверху
+    filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)).forEach(r => {
+        const target = parseFloat(r.lossTargetPrice) || 0;
+        const our = parseFloat(r.lossOurPrice) || 0;
+        
+        // Расчет процентов
+        const diff = our - target;
+        const percent = our > 0 ? ((diff / our) * 100).toFixed(1) : 0;
         
         html += `<tr>
-            <td>${r.type || '-'}</td>
+            <td>${dFmt(r.createdAt)}</td>
             <td>${r.company}</td>
-            <td>${r.lossOurPrice}$</td>
-            <td>${r.lossTargetPrice}$</td>
-            <td style="color:var(--danger); font-weight:bold;">${percent}%</td>
+            <td>${r.type || '-'}</td>
+            <td>${fCurr(target)}</td>
+            <td style="color:var(--danger)">${fCurr(our)}</td>
+            <td style="font-weight:bold;">${percent}%</td>
         </tr>`;
     });
+    
     html += `</tbody></table>`;
     
-    document.getElementById('reportData').innerHTML = html;
+    // 4. Выводим результат
+    container.innerHTML = html;
 }
 
     function checkLossFields() {
