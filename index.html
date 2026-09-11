@@ -1681,15 +1681,19 @@ button.main:active {
 <!-- ВКЛАДКА СТАТИСТИКА -->
 <div id="stats" class="content">
     <div class="scroll-list" style="background:#f8f9fa; padding:20px;">
+        
+        <!-- 1. АДМИН ПАНЕЛЬ -->
         <div id="admin-stats-selector" class="admin-controls" style="display:none;">
-    <span>ГРУППА:</span>
-    <select id="statsTeamFilter" onchange="updateStatsManagerList(); renderManagerStats();">
-        <option value="all">🌐 Все группы</option>
-    </select>
-    
-    <span style="margin-left:10px;">МЕНЕДЖЕР:</span>
-    <select id="statsManagerFilter" onchange="renderManagerStats()"></select>
-</div>
+            <span>ГРУППА:</span>
+            <select id="statsTeamFilter" onchange="updateStatsManagerList(); renderManagerStats();">
+                <option value="all">🌐 Все группы</option>
+            </select>
+            
+            <span style="margin-left:10px;">МЕНЕДЖЕР:</span>
+            <select id="statsManagerFilter" onchange="renderManagerStats()"></select>
+        </div>
+
+        <!-- 2. ПЕРИОДЫ И ТИПЫ -->
         <div class="period-controls">
             <select id="statsYearFilter" onchange="renderManagerStats()"></select>
             <select id="statsMonthFilter" onchange="renderManagerStats()">
@@ -1709,13 +1713,7 @@ button.main:active {
             </select>
         </div>
 
-        <div style="margin-bottom: 20px;">
-            <button class="main" style="width: 280px; background: #d93025;" onclick="renderLossAnalysis()">
-                📊 Показать анализ упущенных сделок
-            </button>
-        </div>
-        <div id="statsLossTableContainer" style="margin-bottom: 20px;"></div>
-
+        <!-- 3. НОВЫЙ БЛОК АНАЛИЗА ОТКАЗОВ -->
         <div style="margin-bottom: 20px; background: #fff; padding: 15px; border-radius: 8px; border: 1px solid var(--border);">
             <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
                 <button class="main" style="width: auto; background: var(--danger);" onclick="renderLossAnalysis()">📊 Показать анализ упущенных сделок</button>
@@ -1734,6 +1732,7 @@ button.main:active {
             <div id="statsLossTableContainer"></div>
         </div>
 
+        <!-- 4. ГРАФИКИ -->
         <div class="charts-container">
             <div class="chart-box">
                 <h4>Динамика прибыли (USD)</h4>
@@ -1752,10 +1751,10 @@ button.main:active {
                 <div style="height: 250px;">
                     <canvas id="chartLossReasons"></canvas>
                 </div>
-                </div>
             </div>
-            </div>
+        </div>
     </div>
+</div>
     
     <!-- ВКЛАДКА ТРЕКИНГ -->
 <div id="tracking" class="content">
