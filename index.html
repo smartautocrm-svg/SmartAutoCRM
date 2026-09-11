@@ -1716,6 +1716,24 @@ button.main:active {
         </div>
         <div id="statsLossTableContainer" style="margin-bottom: 20px;"></div>
 
+        <div style="margin-bottom: 20px; background: #fff; padding: 15px; border-radius: 8px; border: 1px solid var(--border);">
+            <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
+                <button class="main" style="width: auto; background: var(--danger);" onclick="renderLossAnalysis()">📊 Показать анализ упущенных сделок</button>
+                <select id="lossTypeFilter" onchange="renderLossAnalysis()" style="max-width: 200px;">
+                    <option value="all">Все типы сделок</option>
+                    <option value="карго из Китая">Карго из Китая</option>
+                    <option value="карго из Кореи">Карго из Кореи</option>
+                    <option value="фрахт">Фрахт</option>
+                    <option value="карго Европа">Карго Европа</option>
+                    <option value="контейнера - очистка">Контейнера - очистка</option>
+                    <option value="LCL">LCL</option>
+                    <option value="экспорт">Экспорт</option>
+                    <option value="trucking">Trucking</option>
+                </select>
+            </div>
+            <div id="statsLossTableContainer"></div>
+        </div>
+
         <div class="charts-container">
             <div class="chart-box">
                 <h4>Динамика прибыли (USD)</h4>
@@ -2220,6 +2238,7 @@ function openOceanTracking(containerNum) {
 
     
     let teamStructure = {}; 
+    let lossLimit = 20;
     let selectedIds = new Set();
     let listLimits = { 
         calls: 30, 
@@ -5817,6 +5836,10 @@ function renderManagerStats() {
     if (fields) {
         fields.style.display = reason.includes("Дорого") ? 'block' : 'none';
     }
+}
+    function loadMoreLoss() {
+    lossLimit += 20;
+    renderLossAnalysis();
 }
 
 function generateReport() {
