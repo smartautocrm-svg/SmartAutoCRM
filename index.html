@@ -1717,7 +1717,7 @@ button.main:active {
         <div style="margin-bottom: 20px; background: #fff; padding: 15px; border-radius: 8px; border: 1px solid var(--border);">
             <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
                 <button class="main" style="width: auto; background: var(--danger);" onclick="renderLossAnalysis()">📊 Показать анализ упущенных сделок</button>
-                <select id="lossTypeFilter" onchange="renderLossAnalysis()" style="max-width: 200px;">
+                <select id="lossTypeFilter" onchange="filterLossTable()" style="max-width: 200px;">
                     <option value="all">Все типы сделок</option>
                     <option value="карго из Китая">Карго из Китая</option>
                     <option value="карго из Кореи">Карго из Кореи</option>
@@ -5827,7 +5827,24 @@ function renderManagerStats() {
     
     // 4. Выводим результат
     container.innerHTML = html;
+        filterLossTable(); 
 }
+
+    function filterLossTable() {
+    const filterValue = document.getElementById('lossTypeFilter').value;
+    const rows = document.querySelectorAll('#statsLossTableContainer tbody tr');
+    
+    rows.forEach(row => {
+        // Тип сделки находится в 3-й колонке (индекс 2)
+        const typeCell = row.cells[2].innerText;
+        if (filterValue === 'all' || typeCell === filterValue) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+}
+
 
     function checkLossFields() {
     const reason = document.getElementById('reqLossReason').value;
