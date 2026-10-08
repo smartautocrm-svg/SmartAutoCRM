@@ -1582,8 +1582,16 @@ button.main:active {
     <div class="bottom-section">
         <div class="controls-bar">
             <input type="text" id="searchCompGlobal" placeholder="🔍 Поиск по названию, грузу, городу, импорту или экспорту..." oninput="debouncedRenderCompanies()" style="max-width: 450px;">
-            <select id="sortComp" onchange="updateSecondaryFilter()"><option value="">Фильтр</option><option value="manager">Менеджер</option><option value="status">Статус</option></select>
-            <select id="secondarySelect" style="display:none;" onchange="renderCompanies()"></select>
+            <select id="filterCompManager" onchange="renderCompanies()" style="min-width: 120px;">
+    <option value="all">👤 Все менеджеры</option>
+</select>
+<select id="filterCompStatus" onchange="renderCompanies()" style="min-width: 120px;">
+    <option value="all">📊 Все статусы</option>
+    <option value="cold">❄️ Холодный</option>
+    <option value="warm">🔥 Теплый</option>
+    <option value="active">🏆 Активный</option>
+    <option value="refused">⛔ Не интересно</option>
+</select>
             <input type="date" id="searchCompDate" onchange="renderCompanies()" style="max-width: 130px;" title="Фильтр по дате добавления">
             <label style="font-size: 10px; display: flex; align-items: center; gap: 4px; white-space: nowrap; background: #fff0f0; padding: 4px 8px; border-radius: 4px; border: 1px solid #ffcccc; cursor: pointer;">
     <input type="checkbox" id="hideActiveComp" onchange="renderCompanies()" style="width: auto;"> 
@@ -2357,6 +2365,8 @@ async function startApp() {
 
     // Первичная синхронизация
     await loadCloudData(); 
+
+    populateManagerFilter();
     
     // Интервал обновлений (теперь 15 секунд — это безопасно)
     setInterval(loadCloudData, 15000);
@@ -2554,6 +2564,7 @@ function processLoadedData(d) {
     if (d.news) news = d.news.map(parsers.news);
     if (d.logs) crmLogs = d.logs;
     if (d.teamStructure) teamStructure = d.teamStructure;
+    populateManagerFilter();
         const compManSel = document.getElementById('compManager');
     if (compManSel) {
         // Очищаем и заполняем список менеджеров
@@ -3755,8 +3766,6 @@ function renderDeals() {
 function renderCompanies() {
     // 1. Получаем значения фильтров и данные пользователя
     const s = document.getElementById('searchCompGlobal').value.toLowerCase();
-    const cat = document.getElementById('sortComp').value; 
-    const valSel = document.getElementById('secondarySelect').value;
     const onlyForgotten = document.getElementById('hideActiveComp').checked;
     const selDate = document.getElementById('searchCompDate').value;
 
@@ -3789,11 +3798,13 @@ function renderCompanies() {
         
         if (!matchGlobal) return false;
 
-        // Фильтр: Категории (Менеджер или Статус)
-        let matchCat = true; 
-        if (cat === 'manager' && valSel) matchCat = (c.manager === valSel); 
-        if (cat === 'status' && valSel) matchCat = (c.status === valSel);
-        if (!matchCat) return false;
+        const manFilter = document.getElementById('filterCompManager').value;
+const statusFilter = document.getElementById('filterCompStatus').value;
+
+const matchManager = (manFilter === 'all') || (c.manager === manFilter);
+const matchStatus = (statusFilter === 'all') || (c.status === statusFilter);
+
+if (!matchManager || !matchStatus) return false;
 
         // Фильтр: Дата добавления
         const matchesDate = !selDate || dFmt(c.createdAt) === dFmt(selDate);
@@ -5211,6 +5222,15 @@ function updateDatalists() {
         mdl.innerHTML = managers.map(m => `<option value="${m}">`).join('');
     }
 }
+
+    function populateManagerFilter() {
+    const manFilter = document.getElementById('filterCompManager');
+    if (manFilter) {
+        manFilter.innerHTML = '<option value="all">👤 Все менеджеры</option>' + 
+            managers.map(m => `<option value="${m}">${m}</option>`).join('');
+    }
+}
+    
 function updateCounters() { 
     const me = sessionStorage.getItem('crm_user');
 
@@ -5295,14 +5315,6 @@ function calcEditProf() {
     // Расчет маржи для редактирования
     const margin = inc > 0 ? (prof / inc * 100) : 0;
     document.getElementById('eDealMargin').value = margin.toFixed(1) + '%';
-}
-    function updateSecondaryFilter() { const p = document.getElementById('sortComp').value, s = document.getElementById('secondarySelect'); if (!p) { s.style.display = 'none'; renderCompanies(); return; } s.style.display = 'inline-block'; s.innerHTML = p === 'manager' ? '<option value="">Все</option>' + managers.map(m => `<option value="${m}">${m}</option>`).join('') : '<option value="">Все</option><option value="cold">Холодный</option><option value="warm">Теплый</option><option value="active">Активный</option><option value="refused">Не интересно</option>'; renderCompanies(); }
-    function clearCallFilters() { 
-    document.getElementById('searchCallComp').value = ''; 
-    document.getElementById('searchCallDate').value = ''; 
-    document.getElementById('showOverdueOnly').checked = false; // Добавлено: снимаем галочку просрочки
-    document.getElementById('hideDoneCalls').checked = false;   // Заодно и эту
-    renderReminders(); 
 }
 
 function updateDashboard() {
