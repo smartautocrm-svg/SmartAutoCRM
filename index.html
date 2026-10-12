@@ -4223,7 +4223,14 @@ async function saveEdit() {
         companies[i].refuseReason = ""; 
 
         updatedItem = companies[i];
+        const savedMan = document.getElementById('filterCompManager').value;
+        const savedStat = document.getElementById('filterCompStatus').value;
+        
         renderCompanies();
+        
+        document.getElementById('filterCompManager').value = savedMan;
+        document.getElementById('filterCompStatus').value = savedStat;
+        
         updateDatalists();
     } else if (type === 'request') {
     sheetName = 'requests';
@@ -4357,8 +4364,15 @@ async function saveEdit() {
             lastSyncTimestamp = 0;
             loadCloudData();
             
+            const savedMan = document.getElementById('filterCompManager').value;
+            const savedStat = document.getElementById('filterCompStatus').value;
+            
             // Вместо полной перезагрузки просто обновляем интерфейс локально
-            renderCompanies();
+            renderCompanies(); 
+            
+            document.getElementById('filterCompManager').value = savedMan;
+            document.getElementById('filterCompStatus').value = savedStat;
+            
             updateCounters();
             
             // Сбрасываем метку времени, чтобы следующая синхронизация точно подтянула изменения
