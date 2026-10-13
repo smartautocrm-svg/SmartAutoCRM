@@ -4354,34 +4354,40 @@ async function saveEdit() {
     const i = companies.findIndex(x => String(x.id) === String(id));
     
     if (i > -1) {
-        showLoader(true); // Включаем лоадер
+        showLoader(true);
+        
+        // 1. Запоминаем фильтры ПЕРЕД тем, как менять данные
+        savedFilters.manager = document.getElementById('filterCompManager').value;
+        savedFilters.status = document.getElementById('filterCompStatus').value;
+        
         companies[i].status = 'refused';
         companies[i].uDate = new Date().toISOString();
         companies[i].refuseReason = reason;
         
-        // Закрываем модалки сразу
         document.getElementById('companyRefuseModal').style.display = 'none';
         document.getElementById('editModal').style.display = 'none';
         
         try {
-            // 1. Сохраняем фильтры ПЕРЕД перерисовкой
-            savedFilters.manager = document.getElementById('filterCompManager').value;
-            savedFilters.status = document.getElementById('filterCompStatus').value;
-
+            // 2. Отправляем изменения на сервер
             await sync('companies', companies[i], 'update'); 
-
-            lastSyncTimestamp = 0;
-            await loadCloudData(); // Добавили await, чтобы дождаться данных
             
-            // 2. renderCompanies теперь сама применит сохраненные значения из savedFilters
+            // 3. Форсируем полную пересинхронизацию
+            lastSyncTimestamp = 0; 
+            await loadCloudData(); 
+            
+            // 4. После того как данные загружены, ПРИНУДИТЕЛЬНО возвращаем фильтры в UI
+            // Это гарантирует, что даже если DOM обновился, фильтры останутся прежними
+            document.getElementById('filterCompManager').value = savedFilters.manager;
+            document.getElementById('filterCompStatus').value = savedFilters.status;
+            
+            // 5. Отрисовываем список с учетом фильтров
             renderCompanies();
             updateCounters();
             
-            // Сбрасываем метку времени, чтобы следующая синхронизация точно подтянула изменения
-            lastSyncTimestamp = 0; 
-            console.log("Статус 'Не интересно' успешно сохранен");
+            console.log("Статус 'Не интересно' сохранен, фильтры восстановлены");
         } catch (e) {
-            alert("Ошибка сохранения статуса. Попробуйте еще раз.");
+            console.error(e);
+            alert("Ошибка при сохранении: " + e.message);
         } finally {
             showLoader(false);
         }
