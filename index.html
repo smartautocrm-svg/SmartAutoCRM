@@ -1373,7 +1373,7 @@ button.main:active {
 <select id="callAssignedManager" style="grid-column: span 2; background: #fffde7; border: 1.5px solid #fff59d;">
     <option value="">👤 Поставить задачу на (выберите менеджера)...</option>
 </select>
-                <textarea id="callTopic" style="grid-column: span 2;" placeholder="Результат..."></textarea>
+                <textarea id="callTopic" style="grid-column: span 2;" placeholder="Комментарий..."></textarea>
             </div>
             <button class="main" onclick="addReminder()">Добавить запись</button>
         </div>
@@ -1959,7 +1959,7 @@ button.main:active {
         <h3 id="followUpTitle">Завершение задачи</h3>
         <p id="followUpTargetCompany" style="font-weight: bold; color: var(--primary); margin-bottom: 10px;"></p>
         
-        <label style="font-size: 10px; color: #666;">РЕЗУЛЬТАТ ТЕКУЩЕГО КОНТАКТА:</label>
+        <label style="font-size: 10px; color: #666;">КОММЕНТАРИЙ К ЗАДАЧЕ:</label>
         <textarea id="currentCallResult" style="width: 100%; height: 60px; margin-bottom: 15px; padding: 5px; font-size: 11px; border: 1px solid var(--border);" placeholder="О чем договорились сейчас?"></textarea>
         
         <div style="background: #f0f7ff; padding: 10px; border-radius: 4px; border: 1px dashed var(--primary);">
@@ -3039,7 +3039,7 @@ function showCallPreview(id) {
             <div class="preview-box"><label>Приоритет</label><span>${pText}</span></div>
             <div class="preview-box"><label>Менеджер</label><span>${r.manager}</span></div>
             <div class="preview-box"><label>Статус</label><span>${r.status}</span></div>
-            <div class="preview-box" style="grid-column:span 2;"><label>Результат</label><p style="font-size:11px; margin-top:5px;">${r.topic}</p></div>
+            <div class="preview-box" style="grid-column:span 2;"><label>Комментарий</label><p style="font-size:11px; margin-top:5px;">${r.topic}</p></div>
             ${shareHtml}
         </div>`; 
 }
