@@ -2689,6 +2689,12 @@ async function loadCloudData() {
         if (activeTab) {
             renderTabById(activeTab);
 
+            if (activeTab === 'companies') {
+                document.getElementById('filterCompManager').value = savedFilters.manager;
+                document.getElementById('filterCompStatus').value = savedFilters.status;
+                renderCompanies(); // Перерисовываем с правильными фильтрами
+            }
+
             // ИСПРАВЛЕНИЕ ДЛЯ ЧАТОВ:
             // Если открыт мессенджер, обновляем и сообщения, и список чатов (чтобы видеть новые чаты)
             if (activeTab === 'messenger') {
@@ -5247,8 +5253,14 @@ function updateDatalists() {
     function populateManagerFilter() {
     const manFilter = document.getElementById('filterCompManager');
     if (manFilter) {
+        // Сохраняем текущий выбор
+        const currentVal = manFilter.value; 
+        
         manFilter.innerHTML = '<option value="all">👤 Все менеджеры</option>' + 
             managers.map(m => `<option value="${m}">${m}</option>`).join('');
+            
+        // Восстанавливаем выбор после перезаписи HTML
+        if (currentVal) manFilter.value = currentVal;
     }
 }
     
