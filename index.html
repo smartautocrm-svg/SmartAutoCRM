@@ -3765,14 +3765,19 @@ function renderDeals() {
     document.getElementById('historyModal').style.display = 'block';
 }
 function renderCompanies() {
-    // Принудительно устанавливаем фильтры из памяти перед фильтрацией
+    // 1. Сначала читаем то, что реально выбрал пользователь в UI
+    const manUI = document.getElementById('filterCompManager').value;
+    const statUI = document.getElementById('filterCompStatus').value;
+
+    // 2. Обновляем память новыми значениями
+    savedFilters.manager = manUI;
+    savedFilters.status = statUI;
+
+    // 3. А теперь ПРИНУДИТЕЛЬНО задаем эти значения селектам (чтобы они не слетали при перерисовке)
     document.getElementById('filterCompManager').value = savedFilters.manager;
     document.getElementById('filterCompStatus').value = savedFilters.status;
 
-    // При отрисовке всегда обновляем память тем, что сейчас выбрано
-    savedFilters.manager = document.getElementById('filterCompManager').value;
-    savedFilters.status = document.getElementById('filterCompStatus').value;
-    // 1. Получаем значения фильтров и данные пользователя
+    // 4. Получаем остальные данные для фильтрации
     const s = document.getElementById('searchCompGlobal').value.toLowerCase();
     const onlyForgotten = document.getElementById('hideActiveComp').checked;
     const selDate = document.getElementById('searchCompDate').value;
@@ -3781,22 +3786,19 @@ function renderCompanies() {
     const myRole = sessionStorage.getItem('crm_role');
     const myTeam = String(sessionStorage.getItem('crm_team') || "").trim().toLowerCase();
           
-    // 2. Определяем список компаний, по которым ведется работа (для тега "ЗАБЫТА")
     const companiesWithWork = new Set([
         ...reminders.filter(r => !r.isDeleted).map(r => r.name),
         ...requests.filter(r => !r.isDeleted).map(r => r.company),
         ...deals.filter(d => !d.isDeleted).map(d => d.company)
     ]);
 
-    // 3. Фильтруем массив компаний
+    // 5. Фильтруем
     let f = companies.filter(c => {
         if (c.isDeleted) return false;
 
-        // Фильтр: Только забытые
         const isForgotten = !companiesWithWork.has(c.name) && c.status !== 'refused';
         if (onlyForgotten && !isForgotten) return false;
 
-        // Фильтр: Умный глобальный поиск (Название, Груз, Город, Импорт, Экспорт)
         const matchGlobal = 
             String(c.name || "").toLowerCase().includes(s) ||
             String(c.product || "").toLowerCase().includes(s) ||
@@ -3806,15 +3808,12 @@ function renderCompanies() {
         
         if (!matchGlobal) return false;
 
-        const manFilter = document.getElementById('filterCompManager').value;
-const statusFilter = document.getElementById('filterCompStatus').value;
+        // ИСПОЛЬЗУЕМ ЗНАЧЕНИЯ ИЗ НАШИХ ПЕРЕМЕННЫХ
+        const matchManager = (savedFilters.manager === 'all') || (c.manager === savedFilters.manager);
+        const matchStatus = (savedFilters.status === 'all') || (c.status === savedFilters.status);
 
-const matchManager = (manFilter === 'all') || (c.manager === manFilter);
-const matchStatus = (statusFilter === 'all') || (c.status === statusFilter);
+        if (!matchManager || !matchStatus) return false;
 
-if (!matchManager || !matchStatus) return false;
-
-        // Фильтр: Дата добавления
         const matchesDate = !selDate || dFmt(c.createdAt) === dFmt(selDate);
         if (!matchesDate) return false;
 
