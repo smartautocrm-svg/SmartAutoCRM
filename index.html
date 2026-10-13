@@ -4223,13 +4223,13 @@ async function saveEdit() {
         companies[i].refuseReason = ""; 
 
         updatedItem = companies[i];
-        const savedMan = document.getElementById('filterCompManager').value;
-        const savedStat = document.getElementById('filterCompStatus').value;
+        const manFilter = document.getElementById('filterCompManager').value;
+        const statFilter = document.getElementById('filterCompStatus').value;
         
         renderCompanies();
         
-        document.getElementById('filterCompManager').value = savedMan;
-        document.getElementById('filterCompStatus').value = savedStat;
+        document.getElementById('filterCompManager').value = manFilter;
+        document.getElementById('filterCompStatus').value = statFilter;
         
         updateDatalists();
     } else if (type === 'request') {
@@ -4358,20 +4358,20 @@ async function saveEdit() {
         document.getElementById('editModal').style.display = 'none';
         
         try {
-            // Отправляем в таблицу и ЖДЕМ завершения (await)
+            // СОХРАНЯЕМ ВЫБОР ПЕРЕД СИНХРОНИЗАЦИЕЙ
+            const manFilter = document.getElementById('filterCompManager').value;
+            const statFilter = document.getElementById('filterCompStatus').value;
+
             await sync('companies', companies[i], 'update'); 
 
             lastSyncTimestamp = 0;
-            loadCloudData();
+            await loadCloudData(); // Дождитесь загрузки данных
             
-            const savedMan = document.getElementById('filterCompManager').value;
-            const savedStat = document.getElementById('filterCompStatus').value;
+            renderCompanies();
             
-            // Вместо полной перезагрузки просто обновляем интерфейс локально
-            renderCompanies(); 
-            
-            document.getElementById('filterCompManager').value = savedMan;
-            document.getElementById('filterCompStatus').value = savedStat;
+            // ВОЗВРАЩАЕМ ВЫБОР
+            document.getElementById('filterCompManager').value = manFilter;
+            document.getElementById('filterCompStatus').value = statFilter;
             
             updateCounters();
             
