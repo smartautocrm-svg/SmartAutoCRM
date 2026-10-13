@@ -2120,6 +2120,7 @@ function forInput(v) {
 }
     let lastSyncTimestamp = localStorage.getItem('lastSyncTimestamp') || 0;
     let reminders = [], companies = [], partners = [], requests = [], managers = [], deals = [], tracking = [], crmLogs = [], news = []; 
+    let savedFilters = { manager: 'all', status: 'all' };
     let chats = [], chat_messages = [];
     let currentChatId = null;
     let lastSeenMsgId = localStorage.getItem('lastSeenMsgId') || 0;
@@ -3764,6 +3765,13 @@ function renderDeals() {
     document.getElementById('historyModal').style.display = 'block';
 }
 function renderCompanies() {
+    // Принудительно устанавливаем фильтры из памяти перед фильтрацией
+    document.getElementById('filterCompManager').value = savedFilters.manager;
+    document.getElementById('filterCompStatus').value = savedFilters.status;
+
+    // При отрисовке всегда обновляем память тем, что сейчас выбрано
+    savedFilters.manager = document.getElementById('filterCompManager').value;
+    savedFilters.status = document.getElementById('filterCompStatus').value;
     // 1. Получаем значения фильтров и данные пользователя
     const s = document.getElementById('searchCompGlobal').value.toLowerCase();
     const onlyForgotten = document.getElementById('hideActiveComp').checked;
@@ -4223,15 +4231,14 @@ async function saveEdit() {
         companies[i].refuseReason = ""; 
 
         updatedItem = companies[i];
-        const manFilter = document.getElementById('filterCompManager').value;
-        const statFilter = document.getElementById('filterCompStatus').value;
+
+    // ЗАПОМИНАЕМ В ГЛОБАЛЬНУЮ ПЕРЕМЕННУЮ
+    savedFilters.manager = document.getElementById('filterCompManager').value;
+    savedFilters.status = document.getElementById('filterCompStatus').value;
+    
+    renderCompanies(); 
+    updateDatalists();
         
-        renderCompanies();
-        
-        document.getElementById('filterCompManager').value = manFilter;
-        document.getElementById('filterCompStatus').value = statFilter;
-        
-        updateDatalists();
     } else if (type === 'request') {
     sheetName = 'requests';
     const i = requests.findIndex(x => String(x.id) === String(id));
@@ -4358,21 +4365,17 @@ async function saveEdit() {
         document.getElementById('editModal').style.display = 'none';
         
         try {
-            // СОХРАНЯЕМ ВЫБОР ПЕРЕД СИНХРОНИЗАЦИЕЙ
-            const manFilter = document.getElementById('filterCompManager').value;
-            const statFilter = document.getElementById('filterCompStatus').value;
+            // 1. Сохраняем фильтры ПЕРЕД перерисовкой
+            savedFilters.manager = document.getElementById('filterCompManager').value;
+            savedFilters.status = document.getElementById('filterCompStatus').value;
 
             await sync('companies', companies[i], 'update'); 
 
             lastSyncTimestamp = 0;
-            await loadCloudData(); // Дождитесь загрузки данных
+            await loadCloudData(); // Добавили await, чтобы дождаться данных
             
+            // 2. renderCompanies теперь сама применит сохраненные значения из savedFilters
             renderCompanies();
-            
-            // ВОЗВРАЩАЕМ ВЫБОР
-            document.getElementById('filterCompManager').value = manFilter;
-            document.getElementById('filterCompStatus').value = statFilter;
-            
             updateCounters();
             
             // Сбрасываем метку времени, чтобы следующая синхронизация точно подтянула изменения
